@@ -74,7 +74,7 @@
             {% for week in calendar.weeks %}
                 <div class="calendar-week">
                     {% for day in week %}
-                        <div class="calendar-day {% if not day.is_current_month %}other-month{% endif %} {% if day.is_today %}today{% endif %}">
+                        <div class="calendar-day {% if not day.is_current_month %}other-month{% endif %} {% if day.is_today %}today{% endif %} {% if day.is_past %}past{% endif %}">
                             <div class="day-number">{{ day.date.day }}</div>
                             {% if day.hospital_hours %}
                                 <div class="hours-badge hospital">H: {{ day.hospital_hours }}</div>

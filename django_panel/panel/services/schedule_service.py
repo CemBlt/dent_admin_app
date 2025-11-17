@@ -53,6 +53,7 @@ def build_calendar_data(year: int, month: int, selected_doctor_id: str | None = 
                 "date": current,
                 "is_current_month": current.month == month,
                 "is_today": current == date.today(),
+                "is_past": current < date.today(),
                 "holidays": [],
                 "hospital_hours": None,
                 "doctor_hours": None,

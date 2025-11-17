@@ -285,6 +285,133 @@ span.secondary {
     color: var(--text) !important;
 }
 
+/* Modern Buton Stilleri */
+button.primary,
+.btn-primary,
+input[type="submit"].primary,
+a.primary {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-sm);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+button.primary:hover,
+.btn-primary:hover,
+input[type="submit"].primary:hover,
+a.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+}
+
+button.primary:active,
+.btn-primary:active,
+input[type="submit"].primary:active,
+a.primary:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+}
+
+button.danger,
+.btn-danger,
+input[type="submit"].danger,
+a.danger {
+    background: linear-gradient(135deg, var(--danger), #DC2626);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-sm);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+}
+
+button.danger:hover,
+.btn-danger:hover,
+input[type="submit"].danger:hover,
+a.danger:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    background: linear-gradient(135deg, #DC2626, var(--danger));
+}
+
+button.danger:active,
+.btn-danger:active,
+input[type="submit"].danger:active,
+a.danger:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+}
+
+button.secondary,
+.btn-secondary,
+input[type="submit"].secondary,
+a.secondary {
+    background: var(--bg-secondary);
+    color: var(--text);
+    border: 2px solid var(--card-border);
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+}
+
+button.secondary:hover,
+.btn-secondary:hover,
+input[type="submit"].secondary:hover,
+a.secondary:hover {
+    background: var(--card);
+    border-color: var(--primary);
+    color: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+button.link,
+.btn-link,
+a.link {
+    background: transparent;
+    border: none;
+    color: var(--primary);
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+    transition: color 0.2s ease;
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+button.link:hover,
+.btn-link:hover,
+a.link:hover {
+    color: var(--primary-dark);
+    background: var(--primary-light);
+    text-decoration: none;
+}
+
 * {
     box-sizing: border-box;
     margin: 0;

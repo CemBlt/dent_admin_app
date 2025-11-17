@@ -97,10 +97,12 @@ button.link:hover {
 .doctor-accordion details {
     border: 2px solid var(--card-border);
     border-radius: 16px;
-    padding: 16px;
+    padding: 12px 16px;
     margin-bottom: 12px;
     background: var(--bg);
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
+    max-height: 60px;
+    overflow: hidden;
 }
 
 .doctor-accordion details:hover {
@@ -136,6 +138,56 @@ button.link:hover {
     margin: 4px 0;
     color: var(--muted);
     font-size: 14px;
+}
+
+/* Modal Stilleri - Tema Uyumlu */
+.modal-content {
+    background: var(--card);
+    border: 2px solid var(--card-border);
+    border-radius: 20px;
+    box-shadow: var(--shadow-lg);
+}
+
+.modal-header {
+    border-bottom: 2px solid var(--card-border);
+    padding: 20px 24px;
+}
+
+.modal-title {
+    color: var(--text);
+    font-weight: 600;
+    font-size: 20px;
+}
+
+.modal-body {
+    padding: 24px;
+    color: var(--text);
+}
+
+.modal-footer {
+    border-top: 2px solid var(--card-border);
+    padding: 20px 24px;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.btn-close {
+    filter: var(--text) opacity(0.5);
+}
+
+[data-theme="dark"] .btn-close {
+    filter: invert(1) opacity(0.5);
+}
+
+[data-theme="dark"] .btn-close:hover {
+    filter: invert(1) opacity(0.75);
+}
+
+/* Accordion - Açık olanın yüksekliği artar */
+.doctor-accordion details[open] {
+    max-height: 2000px;
+    padding: 16px;
 }
 
 @media (max-width: 800px) {
