@@ -194,3 +194,133 @@ class ServiceAssignmentForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.fields["doctors"].choices = doctor_choices
         self.fields["hospitals"].choices = hospital_choices
+
+
+class ReviewFilterForm(forms.Form):
+    doctor = forms.ChoiceField(label="Doktor", required=False)
+    min_rating = forms.ChoiceField(
+        label="Minimum Puan",
+        required=False,
+        choices=[
+            ("", "Tümü"),
+            ("1", "1 Yıldız"),
+            ("2", "2 Yıldız"),
+            ("3", "3 Yıldız"),
+            ("4", "4 Yıldız"),
+            ("5", "5 Yıldız"),
+        ],
+    )
+    max_rating = forms.ChoiceField(
+        label="Maximum Puan",
+        required=False,
+        choices=[
+            ("", "Tümü"),
+            ("1", "1 Yıldız"),
+            ("2", "2 Yıldız"),
+            ("3", "3 Yıldız"),
+            ("4", "4 Yıldız"),
+            ("5", "5 Yıldız"),
+        ],
+    )
+    date_from = forms.DateField(label="Başlangıç Tarihi", required=False, widget=forms.DateInput(attrs={"type": "date"}))
+    date_to = forms.DateField(label="Bitiş Tarihi", required=False, widget=forms.DateInput(attrs={"type": "date"}))
+    has_reply = forms.ChoiceField(
+        label="Yanıt Durumu",
+        required=False,
+        choices=[
+            ("", "Tümü"),
+            ("true", "Yanıtlanmış"),
+            ("false", "Yanıtlanmamış"),
+        ],
+    )
+
+    def __init__(self, *args, **kwargs):
+        doctor_choices = kwargs.pop("doctor_choices", [])
+        super().__init__(*args, **kwargs)
+        self.fields["doctor"].choices = [("", "Tüm Doktorlar")] + doctor_choices
+
+
+class ReviewReplyForm(forms.Form):
+    review_id = forms.CharField(widget=forms.HiddenInput)
+    reply = forms.CharField(label="Yanıt", widget=forms.Textarea(attrs={"rows": 4}))
+
+
+class GeneralSettingsForm(forms.Form):
+    active_hospital_id = forms.ChoiceField(label="Aktif Hastane", choices=[])
+    panel_title = forms.CharField(label="Panel Başlığı", max_length=120)
+    date_format = forms.ChoiceField(
+        label="Tarih Formatı",
+        choices=[
+            ("DD.MM.YYYY", "DD.MM.YYYY"),
+            ("MM/DD/YYYY", "MM/DD/YYYY"),
+            ("YYYY-MM-DD", "YYYY-MM-DD"),
+        ],
+    )
+    time_format = forms.ChoiceField(
+        label="Saat Formatı",
+        choices=[
+            ("24", "24 Saat"),
+            ("12", "12 Saat (AM/PM)"),
+        ],
+    )
+    language = forms.ChoiceField(
+        label="Dil",
+        choices=[
+            ("tr", "Türkçe"),
+            ("en", "English"),
+        ],
+    )
+
+    def __init__(self, *args, **kwargs):
+        hospital_choices = kwargs.pop("hospital_choices", [])
+        super().__init__(*args, **kwargs)
+        self.fields["active_hospital_id"].choices = hospital_choices
+
+
+class NotificationSettingsForm(forms.Form):
+    email_enabled = forms.BooleanField(label="E-posta Bildirimleri", required=False)
+    new_appointment = forms.BooleanField(label="Yeni Randevu Bildirimi", required=False)
+    new_review = forms.BooleanField(label="Yeni Yorum Bildirimi", required=False)
+    appointment_reminder = forms.BooleanField(label="Randevu Hatırlatması", required=False)
+    reminder_hours_before = forms.IntegerField(
+        label="Hatırlatma Süresi (Saat)",
+        min_value=1,
+        max_value=168,
+        help_text="Randevudan kaç saat önce hatırlatma gönderilsin?",
+    )
+
+
+class DataManagementForm(forms.Form):
+    backup_enabled = forms.BooleanField(label="Otomatik Yedekleme", required=False)
+    auto_backup_days = forms.IntegerField(
+        label="Yedekleme Sıklığı (Gün)",
+        min_value=1,
+        max_value=30,
+        help_text="Kaç günde bir otomatik yedekleme yapılsın?",
+    )
+
+
+class SecuritySettingsForm(forms.Form):
+    session_timeout_minutes = forms.IntegerField(
+        label="Oturum Zaman Aşımı (Dakika)",
+        min_value=5,
+        max_value=480,
+        help_text="Kaç dakika hareketsiz kalındığında oturum sonlandırılsın?",
+    )
+
+
+class AppearanceSettingsForm(forms.Form):
+    theme = forms.ChoiceField(
+        label="Tema",
+        choices=[
+            ("default", "Varsayılan"),
+            ("light", "Açık"),
+            ("dark", "Koyu"),
+        ],
+    )
+    show_dashboard_widgets = forms.BooleanField(label="Dashboard Widget'larını Göster", required=False)
+    records_per_page = forms.IntegerField(
+        label="Sayfa Başına Kayıt Sayısı",
+        min_value=5,
+        max_value=100,
+    )

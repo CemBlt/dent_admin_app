@@ -1,0 +1,29 @@
+{
+  "general": {
+    "active_hospital_id": "1",
+    "panel_title": "Hastane Yönetim Paneli",
+    "date_format": "DD.MM.YYYY",
+    "time_format": "24",
+    "language": "tr"
+  },
+  "notifications": {
+    "email_enabled": true,
+    "new_appointment": true,
+    "new_review": true,
+    "appointment_reminder": true,
+    "reminder_hours_before": 24
+  },
+  "data_management": {
+    "backup_enabled": true,
+    "auto_backup_days": 7
+  },
+  "security": {
+    "session_timeout_minutes": 30
+  },
+  "appearance": {
+    "theme": "default",
+    "show_dashboard_widgets": true,
+    "records_per_page": 20
+  }
+}
+

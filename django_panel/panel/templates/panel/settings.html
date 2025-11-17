@@ -1,0 +1,139 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ page_title }} • Sistem Ayarları</title>
+    <link rel="stylesheet" href="{% static 'panel/dashboard.css' %}">
+    <link rel="stylesheet" href="{% static 'panel/settings.css' %}">
+</head>
+<body>
+<aside class="sidebar">
+    <div>
+        <div class="brand">{{ hospital.name }}</div>
+        <p style="margin:4px 0 0; color:#6C757D; font-size:13px;">{{ hospital.address }}</p>
+    </div>
+    <ul class="nav-links">
+        <li><a href="{% url 'dashboard' %}">Genel Bakış</a></li>
+        <li><a href="{% url 'hospital_settings' %}">Hastane Bilgileri</a></li>
+        <li><a href="{% url 'doctor_management' %}">Doktorlar</a></li>
+        <li><a href="{% url 'appointment_management' %}">Randevular</a></li>
+        <li><a href="{% url 'schedule_management' %}">Çalışma Takvimi</a></li>
+        <li><a href="{% url 'service_management' %}">Hizmetler</a></li>
+        <li><a href="{% url 'review_management' %}">Yorumlar</a></li>
+        <li><a class="active" href="{% url 'settings' %}">Ayarlar</a></li>
+    </ul>
+</aside>
+<div class="content">
+    <div class="top-bar">
+        <div>
+            <p style="margin:0; color:#6C757D; font-size:13px;">Sistem Yönetimi</p>
+            <h1>{{ page_title }}</h1>
+        </div>
+    </div>
+
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="message {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="tab-container">
+        <input type="radio" id="tab-general" name="tabs" checked>
+        <label for="tab-general">Genel Ayarlar</label>
+        <section class="tab-panel">
+            <h2>Genel Ayarlar</h2>
+            <form method="post" class="settings-form">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="general">
+                {{ general_form.as_p }}
+                <div class="form-actions">
+                    <button type="submit" class="primary">Kaydet</button>
+                </div>
+            </form>
+        </section>
+
+        <input type="radio" id="tab-notifications" name="tabs">
+        <label for="tab-notifications">Bildirimler</label>
+        <section class="tab-panel">
+            <h2>Bildirim Ayarları</h2>
+            <form method="post" class="settings-form">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="notifications">
+                {{ notification_form.as_p }}
+                <div class="form-actions">
+                    <button type="submit" class="primary">Kaydet</button>
+                </div>
+            </form>
+        </section>
+
+        <input type="radio" id="tab-data" name="tabs">
+        <label for="tab-data">Veri Yönetimi</label>
+        <section class="tab-panel">
+            <h2>Veri Yönetimi</h2>
+            
+            <div class="data-stats">
+                <h3>Veri İstatistikleri</h3>
+                <div class="stats-grid">
+                    {% for key, value in data_statistics.items %}
+                        <div class="stat-card">
+                            <strong>{{ key|title }}</strong>
+                            <span class="stat-value">{{ value }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <form method="post" class="settings-form">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="data_management">
+                {{ data_management_form.as_p }}
+                <div class="form-actions">
+                    <button type="submit" class="primary">Kaydet</button>
+                </div>
+            </form>
+
+            <div class="data-actions">
+                <h3>Veri İşlemleri</h3>
+                <form method="post" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="export_data">
+                    <button type="submit" class="button secondary">Verileri Dışa Aktar (JSON)</button>
+                </form>
+            </div>
+        </section>
+
+        <input type="radio" id="tab-security" name="tabs">
+        <label for="tab-security">Güvenlik</label>
+        <section class="tab-panel">
+            <h2>Güvenlik Ayarları</h2>
+            <form method="post" class="settings-form">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="security">
+                {{ security_form.as_p }}
+                <div class="form-actions">
+                    <button type="submit" class="primary">Kaydet</button>
+                </div>
+            </form>
+        </section>
+
+        <input type="radio" id="tab-appearance" name="tabs">
+        <label for="tab-appearance">Görünüm</label>
+        <section class="tab-panel">
+            <h2>Görünüm Ayarları</h2>
+            <form method="post" class="settings-form">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="appearance">
+                {{ appearance_form.as_p }}
+                <div class="form-actions">
+                    <button type="submit" class="primary">Kaydet</button>
+                </div>
+            </form>
+        </section>
+    </div>
+</div>
+</body>
+</html>
+

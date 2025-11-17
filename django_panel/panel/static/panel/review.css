@@ -1,0 +1,158 @@
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.review-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.review-card {
+    padding: 20px;
+    border: 1px solid #E5EAF0;
+    border-radius: 12px;
+    background: white;
+    transition: box-shadow 0.2s;
+}
+
+.review-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.review-card.unreplied {
+    border-left: 4px solid #F59E0B;
+    background: #FFFBEB;
+}
+
+.review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #E5EAF0;
+}
+
+.review-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.review-user .avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--teal);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.review-rating {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.stars {
+    display: flex;
+    gap: 2px;
+}
+
+.star {
+    color: #D1D5DB;
+    font-size: 18px;
+}
+
+.star.filled {
+    color: #F59E0B;
+}
+
+.review-content {
+    margin-bottom: 16px;
+}
+
+.review-content p {
+    margin: 0;
+    line-height: 1.6;
+    color: #374151;
+}
+
+.reply-section {
+    margin-top: 16px;
+    padding: 16px;
+    background: #F9FAFB;
+    border-radius: 8px;
+    border-left: 3px solid var(--teal);
+}
+
+.reply-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    color: var(--teal-dark);
+}
+
+.reply-section p {
+    margin: 0;
+    line-height: 1.6;
+    color: #374151;
+}
+
+.reply-actions {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+}
+
+.reply-form-section {
+    margin-top: 16px;
+    padding: 16px;
+    background: #F9FAFB;
+    border-radius: 8px;
+}
+
+.reply-form textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 12px;
+    border: 1px solid #E5EAF0;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+}
+
+.reply-form textarea:focus {
+    outline: none;
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+}
+
+.form-actions {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+}
+
+.button.small {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+.button.danger {
+    background: #EF4444;
+    color: white;
+}
+
+.button.danger:hover {
+    background: #DC2626;
+}
+

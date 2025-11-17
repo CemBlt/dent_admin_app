@@ -1,0 +1,231 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ page_title }} • Yorum Yönetimi</title>
+    <link rel="stylesheet" href="{% static 'panel/dashboard.css' %}">
+    <link rel="stylesheet" href="{% static 'panel/review.css' %}">
+</head>
+<body>
+<aside class="sidebar">
+    <div>
+        <div class="brand">{{ hospital.name }}</div>
+        <p style="margin:4px 0 0; color:#6C757D; font-size:13px;">{{ hospital.address }}</p>
+    </div>
+    <ul class="nav-links">
+        <li><a href="{% url 'dashboard' %}">Genel Bakış</a></li>
+        <li><a href="{% url 'hospital_settings' %}">Hastane Bilgileri</a></li>
+        <li><a href="{% url 'doctor_management' %}">Doktorlar</a></li>
+        <li><a href="{% url 'appointment_management' %}">Randevular</a></li>
+        <li><a href="{% url 'schedule_management' %}">Çalışma Takvimi</a></li>
+        <li><a href="{% url 'service_management' %}">Hizmetler</a></li>
+        <li><a class="active" href="{% url 'review_management' %}">Yorumlar</a></li>
+        <li><a href="{% url 'settings' %}">Ayarlar</a></li>
+    </ul>
+</aside>
+<div class="content">
+    <div class="top-bar">
+        <div>
+            <p style="margin:0; color:#6C757D; font-size:13px;">Müşteri Geri Bildirimi</p>
+            <h1>{{ page_title }}</h1>
+        </div>
+    </div>
+
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="message {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <section class="kpi-grid">
+        <article class="kpi-card">
+            <span class="pill" style="background:#BFDBFE33; color:#1E3A8A;">Toplam Yorum</span>
+            <div class="value">{{ statistics.total_reviews }}</div>
+            <p style="margin:0; color:#6C757D;">Tüm zamanlar</p>
+        </article>
+        <article class="kpi-card">
+            <span class="pill" style="background:#FDE68A33; color:#F59E0B;">Ortalama Puan</span>
+            <div class="value">{{ statistics.average_rating }}</div>
+            <p style="margin:0; color:#6C757D;">Hastane geneli</p>
+        </article>
+        <article class="kpi-card">
+            <span class="pill" style="background:#C6F6D533; color:#047857;">Yanıtlanmış</span>
+            <div class="value">{{ statistics.replied_count }}</div>
+            <p style="margin:0; color:#6C757D;">Yanıt verilen yorumlar</p>
+        </article>
+        <article class="kpi-card">
+            <span class="pill" style="background:#FECACA33; color:#B91C1C;">Yanıtlanmamış</span>
+            <div class="value">{{ statistics.not_replied_count }}</div>
+            <p style="margin:0; color:#6C757D;">Yanıt bekleyen yorumlar</p>
+        </article>
+        <article class="kpi-card">
+            <span class="pill" style="background:#E0E7FF33; color:#4338CA;">Son 30 Gün</span>
+            <div class="value">{{ statistics.recent_count }}</div>
+            <p style="margin:0; color:#6C757D;">Yeni yorumlar</p>
+        </article>
+    </section>
+
+    <section class="panel-card">
+        <h2>Yorumları Filtrele</h2>
+        <form method="get" class="filter-grid">
+            <div>
+                <label>{{ filter_form.doctor.label }}</label>
+                {{ filter_form.doctor }}
+            </div>
+            <div>
+                <label>{{ filter_form.min_rating.label }}</label>
+                {{ filter_form.min_rating }}
+            </div>
+            <div>
+                <label>{{ filter_form.max_rating.label }}</label>
+                {{ filter_form.max_rating }}
+            </div>
+            <div>
+                <label>{{ filter_form.date_from.label }}</label>
+                {{ filter_form.date_from }}
+            </div>
+            <div>
+                <label>{{ filter_form.date_to.label }}</label>
+                {{ filter_form.date_to }}
+            </div>
+            <div>
+                <label>{{ filter_form.has_reply.label }}</label>
+                {{ filter_form.has_reply }}
+            </div>
+            <div style="align-self:flex-end;">
+                <button type="submit" class="primary">Filtrele</button>
+                <a href="{% url 'review_management' %}" class="button secondary" style="margin-left:8px;">Temizle</a>
+            </div>
+        </form>
+    </section>
+
+    <section class="panel-card">
+        <h2>Yorum Listesi</h2>
+        {% if review_cards %}
+            <div class="review-list">
+                {% for card in review_cards %}
+                    {% with review=card.data %}
+                        <article class="review-card {% if not review.has_reply %}unreplied{% endif %}">
+                            <div class="review-header">
+                                <div class="review-user">
+                                    <div class="avatar">
+                                        {% if review.user %}
+                                            {{ review.user.name|first }}{{ review.user.surname|first }}
+                                        {% else %}
+                                            ??
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <strong>
+                                            {% if review.user %}
+                                                {{ review.user.name }} {{ review.user.surname }}
+                                            {% else %}
+                                                Bilinmeyen Kullanıcı
+                                            {% endif %}
+                                        </strong>
+                                        <p style="margin:2px 0 0; font-size:12px; color:#6C757D;">
+                                            {% if review.created_at_dt %}
+                                                {{ review.created_at_dt|date:"d.m.Y H:i" }}
+                                            {% else %}
+                                                {{ review.createdAt|slice:":10" }}
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="review-rating">
+                                    {% if review.avg_rating %}
+                                        <div class="stars">
+                                            {% with rating_int=review.avg_rating|floatformat:0 %}
+                                                {% for i in "12345" %}
+                                                    {% if forloop.counter <= rating_int|add:0 %}
+                                                        <span class="star filled">★</span>
+                                                    {% else %}
+                                                        <span class="star">★</span>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            {% endwith %}
+                                        </div>
+                                        <small style="color:#6C757D; margin-left:8px;">
+                                            ({{ review.doctor_rating }}/5 doktor, {{ review.hospital_rating }}/5 hastane)
+                                        </small>
+                                    {% else %}
+                                        <span style="color:#6C757D;">Puan yok</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="review-content">
+                                <p>{{ review.comment }}</p>
+                                {% if review.doctor %}
+                                    <p style="margin:8px 0 0; font-size:13px; color:#6C757D;">
+                                        <strong>Doktor:</strong> {{ review.doctor.name }} {{ review.doctor.surname }}
+                                        {% if review.doctor.specialty %}
+                                            ({{ review.doctor.specialty }})
+                                        {% endif %}
+                                    </p>
+                                {% endif %}
+                            </div>
+                            {% if review.has_reply %}
+                                <div class="reply-section">
+                                    <div class="reply-header">
+                                        <strong>Yanıt:</strong>
+                                        <span style="font-size:12px; color:#6C757D; margin-left:8px;">
+                                            {% if review.replied_at_dt %}
+                                                {{ review.replied_at_dt|date:"d.m.Y H:i" }}
+                                            {% elif review.repliedAt %}
+                                                {{ review.repliedAt|slice:":10" }}
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    <p>{{ review.reply }}</p>
+                                    <div class="reply-actions">
+                                        <button type="button" class="button small" onclick="toggleReplyForm('{{ review.id }}')">
+                                            Düzenle
+                                        </button>
+                                        <form method="post" style="display:inline;" onsubmit="return confirm('Yanıtı silmek istediğinize emin misiniz?');">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="form_type" value="delete_reply">
+                                            <input type="hidden" name="review_id" value="{{ review.id }}">
+                                            <button type="submit" class="button small danger">Sil</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            {% endif %}
+                            <div class="reply-form-section" id="reply-form-{{ review.id }}" style="display:{% if review.has_reply %}none{% else %}block{% endif %};">
+                                <form method="post" class="reply-form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="form_type" value="{% if review.has_reply %}edit_reply{% else %}add_reply{% endif %}">
+                                    {{ card.reply_form.as_p }}
+                                    <div class="form-actions">
+                                        <button type="submit" class="primary">{% if review.has_reply %}Güncelle{% else %}Yanıtla{% endif %}</button>
+                                        {% if review.has_reply %}
+                                            <button type="button" class="secondary" onclick="toggleReplyForm('{{ review.id }}')">İptal</button>
+                                        {% endif %}
+                                    </div>
+                                </form>
+                            </div>
+                        </article>
+                    {% endwith %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="empty-state">Filtre kriterlerine uygun yorum bulunamadı.</p>
+        {% endif %}
+    </section>
+</div>
+
+<script>
+function toggleReplyForm(reviewId) {
+    const formSection = document.getElementById('reply-form-' + reviewId);
+    if (formSection.style.display === 'none') {
+        formSection.style.display = 'block';
+    } else {
+        formSection.style.display = 'none';
+    }
+}
+</script>
+</body>
+</html>
+
