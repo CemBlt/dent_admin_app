@@ -44,13 +44,7 @@
     border: 2px solid var(--card-border);
 }
 
-#tab-general:checked ~ label[for="tab-general"] + .tab-panel,
-#tab-gallery:checked ~ label[for="tab-gallery"] + .tab-panel,
-#tab-services:checked ~ label[for="tab-services"] + .tab-panel,
-#tab-hours:checked ~ label[for="tab-hours"] + .tab-panel,
-#tab-holidays:checked ~ label[for="tab-holidays"] + .tab-panel {
-    display: block;
-}
+/* Tab panel'ler JavaScript ile kontrol ediliyor */
 
 .tab-panel form {
     display: flex;

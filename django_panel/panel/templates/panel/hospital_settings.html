@@ -67,7 +67,7 @@
         <input type="radio" id="tab-holidays" name="tabs">
         <label for="tab-holidays">Tatiller</label>
 
-        <section class="tab-panel">
+        <section id="panel-general" class="tab-panel">
             <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
                 <input type="hidden" name="form_type" value="general">
@@ -76,7 +76,7 @@
             </form>
         </section>
 
-        <section class="tab-panel">
+        <section id="panel-gallery" class="tab-panel">
             {% with gallery=gallery_list %}
             <div class="gallery-grid">
                 {% for image in gallery %}
@@ -106,7 +106,7 @@
             {% endwith %}
         </section>
 
-        <section class="tab-panel">
+        <section id="panel-services" class="tab-panel">
             <form method="post">
                 {% csrf_token %}
                 <input type="hidden" name="form_type" value="services">
@@ -123,7 +123,7 @@
             </div>
         </section>
 
-        <section class="tab-panel">
+        <section id="panel-hours" class="tab-panel">
             <form method="post">
                 {% csrf_token %}
                 <input type="hidden" name="form_type" value="working_hours">
@@ -151,7 +151,7 @@
             </form>
         </section>
 
-        <section class="tab-panel">
+        <section id="panel-holidays" class="tab-panel">
             <div class="holiday-list">
                 {% for holiday in holidays %}
                     <div class="holiday-item">
@@ -200,6 +200,38 @@
             localStorage.setItem('theme', theme);
             themeButtons.forEach(b => b.classList.remove('active'));
             this.classList.add('active');
+        });
+    });
+})();
+
+// Tab Yönetimi
+(function() {
+    const tabInputs = document.querySelectorAll('.tab-container input[type="radio"]');
+    const tabPanels = document.querySelectorAll('.tab-panel');
+    
+    function showTab(tabId) {
+        // Tüm panel'leri gizle
+        tabPanels.forEach(panel => {
+            panel.style.display = 'none';
+        });
+        
+        // Seçilen tab'ın panel'ini göster
+        const panelId = 'panel-' + tabId.replace('tab-', '');
+        const panel = document.getElementById(panelId);
+        if (panel) {
+            panel.style.display = 'block';
+        }
+    }
+    
+    // İlk yüklemede genel bilgiler tab'ını göster
+    showTab('tab-general');
+    
+    // Tab değişikliklerini dinle
+    tabInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            if (this.checked) {
+                showTab(this.id);
+            }
         });
     });
 })();
