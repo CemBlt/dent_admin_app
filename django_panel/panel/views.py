@@ -17,12 +17,14 @@ from .forms import (
     HospitalServicesForm,
     ScheduleFilterForm,
     ScheduleHolidayForm,
+    ServiceAssignmentForm,
+    ServiceForm,
     WorkingHoursForm,
     DAYS,
 )
 from .services import appointment_service, doctor_service, hospital_service, user_service
 from .services.dashboard_service import load_dashboard_context
-from .services import schedule_service
+from .services import schedule_service, service_service
 
 
 def dashboard(request):
@@ -491,3 +493,90 @@ class ScheduleManagementView(View):
         if doctor:
             params += f"&doctor={doctor}"
         return redirect(f"/schedule/?{params}")
+
+class ServiceManagementView(View):
+    template_name = "panel/service_management.html"
+
+    def get(self, request):
+        return render(request, self.template_name, self._build_context())
+
+    def post(self, request):
+        action = request.POST.get("form_type")
+        if action == "create_service":
+            form = ServiceForm(request.POST)
+            if form.is_valid():
+                service_service.add_service(form.cleaned_data)
+                messages.success(request, "Hizmet oluşturuldu")
+                return redirect("service_management")
+            messages.error(request, "Hizmet oluşturulamadı")
+
+        elif action == "update_service":
+            form = ServiceForm(request.POST)
+            if form.is_valid():
+                service_service.update_service(form.cleaned_data["service_id"], form.cleaned_data)
+                messages.success(request, "Hizmet güncellendi")
+                return redirect("service_management")
+            messages.error(request, "Hizmet güncellenemedi")
+
+        elif action == "delete_service":
+            service_service.delete_service(request.POST.get("service_id"))
+            messages.success(request, "Hizmet silindi")
+            return redirect("service_management")
+
+        elif action == "update_assignments":
+            doctors = request.POST.getlist("doctors")
+            hospitals = request.POST.getlist("hospitals")
+            service_id = request.POST.get("service_id")
+            service_service.update_doctor_assignments(service_id, doctors)
+            service_service.update_hospital_assignments(service_id, hospitals)
+            messages.success(request, "Atamalar güncellendi")
+            return redirect("service_management")
+
+        context = self._build_context()
+        return render(request, self.template_name, context)
+
+    def _build_context(self):
+        services = service_service.get_services()
+        doctors = doctor_service.get_doctors()
+        hospitals = hospital_service.get_hospitals()
+        hospital = hospital_service.get_hospital()
+
+        doctor_choices = [(doc["id"], f"{doc['name']} {doc['surname']}") for doc in doctors]
+        hospital_choices = [(h["id"], h["name"]) for h in hospitals]
+
+        service_cards = []
+        for service in services:
+            general_form = ServiceForm(initial={
+                "service_id": service["id"],
+                "name": service["name"],
+                "description": service.get("description", ""),
+                "price": service.get("price", 0),
+            })
+            assigned_doctors = [doc["id"] for doc in doctors if service["id"] in doc.get("services", [])]
+            assigned_hospitals = [h["id"] for h in hospitals if service["id"] in h.get("services", [])]
+            assignment_form = ServiceAssignmentForm(
+                initial={
+                    "service_id": service["id"],
+                    "doctors": assigned_doctors,
+                    "hospitals": assigned_hospitals,
+                },
+                doctor_choices=doctor_choices,
+                hospital_choices=hospital_choices,
+            )
+            service_cards.append({
+                "data": service,
+                "general_form": general_form,
+                "assignment_form": assignment_form,
+                "assigned_doctors": [doc for doc in doctors if doc["id"] in assigned_doctors],
+                "assigned_hospitals": [h for h in hospitals if h["id"] in assigned_hospitals],
+            })
+
+        context = {
+            "page_title": "Hizmetler",
+            "hospital": hospital,
+            "service_cards": service_cards,
+            "create_form": ServiceForm(),
+            "doctor_choices": doctor_choices,
+            "hospital_choices": hospital_choices,
+        }
+        return context

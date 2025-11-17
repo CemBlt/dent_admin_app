@@ -165,3 +165,6 @@ def build_initial_working_hours(hospital: dict) -> dict:
         initial[f"{key}_start"] = datetime.strptime(start, "%H:%M").time() if start else None
         initial[f"{key}_end"] = datetime.strptime(end, "%H:%M").time() if end else None
     return initial
+
+def get_hospitals() -> list[dict]:
+    return load_json("hospitals")

@@ -1,0 +1,54 @@
+.service-grid {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 18px;
+}
+
+.service-card {
+    background: var(--card);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 15px 30px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.service-card header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.service-card header h3 {
+    margin: 0;
+}
+
+.price {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--teal-dark);
+}
+
+.details summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--teal);
+}
+
+.inline-form {
+    margin-top: 8px;
+}
+
+.assignment-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.assignment-summary ul {
+    margin: 0;
+    padding-left: 18px;
+}

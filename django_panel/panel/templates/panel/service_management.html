@@ -1,0 +1,123 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ page_title }} • Hizmetler</title>
+    <link rel="stylesheet" href="{% static 'panel/dashboard.css' %}">
+    <link rel="stylesheet" href="{% static 'panel/service.css' %}">
+</head>
+<body>
+<aside class="sidebar">
+    <div>
+        <div class="brand">{{ hospital.name }}</div>
+        <p style="margin:4px 0 0; color:#6C757D; font-size:13px;">{{ hospital.address }}</p>
+    </div>
+    <ul class="nav-links">
+        <li><a href="{% url 'dashboard' %}">Genel Bakış</a></li>
+        <li><a href="{% url 'hospital_settings' %}">Hastane Bilgileri</a></li>
+        <li><a href="{% url 'doctor_management' %}">Doktorlar</a></li>
+        <li><a href="{% url 'appointment_management' %}">Randevular</a></li>
+        <li><a href="{% url 'schedule_management' %}">Çalışma Takvimi</a></li>
+        <li><a class="active" href="{% url 'service_management' %}">Hizmetler</a></li>
+        <li><a href="#">Yorumlar</a></li>
+        <li><a href="#">Ayarlar</a></li>
+    </ul>
+</aside>
+<div class="content">
+    <div class="top-bar">
+        <div>
+            <p style="margin:0; color:#6C757D; font-size:13px;">Hizmet Yönetimi</p>
+            <h1>{{ page_title }}</h1>
+        </div>
+    </div>
+
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="message {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <section class="panel-card">
+        <h2>Yeni Hizmet Ekle</h2>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="create_service">
+            {{ create_form.as_p }}
+            <button type="submit" class="primary">Kaydet</button>
+        </form>
+    </section>
+
+    <section class="service-grid">
+        {% for card in service_cards %}
+            <article class="service-card">
+                <header>
+                    <div>
+                        <h3>{{ card.data.name }}</h3>
+                        <p>{{ card.data.description }}</p>
+                    </div>
+                    <span class="price">{{ card.data.price }} ₺</span>
+                </header>
+
+                <details open>
+                    <summary>Genel Bilgiler</summary>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="update_service">
+                        {{ card.general_form.as_p }}
+                        <button type="submit" class="primary">Güncelle</button>
+                    </form>
+                    <form method="post" class="inline-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="delete_service">
+                        <input type="hidden" name="service_id" value="{{ card.data.id }}">
+                        <button type="submit" class="danger">Sil</button>
+                    </form>
+                </details>
+
+                <details>
+                    <summary>Atamalar</summary>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="update_assignments">
+                        {{ card.assignment_form.as_p }}
+                        <button type="submit" class="primary">Atamaları Kaydet</button>
+                    </form>
+                </details>
+
+                <div class="assignment-summary">
+                    <div>
+                        <h4>Doktorlar</h4>
+                        {% if card.assigned_doctors %}
+                            <ul>
+                                {% for doctor in card.assigned_doctors %}
+                                    <li>{{ doctor.name }} {{ doctor.surname }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="empty-state">Doktor ataması yok</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <h4>Hastaneler</h4>
+                        {% if card.assigned_hospitals %}
+                            <ul>
+                                {% for hospital in card.assigned_hospitals %}
+                                    <li>{{ hospital.name }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="empty-state">Hastane ataması yok</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </article>
+        {% empty %}
+            <p class="empty-state">Henüz hizmet eklenmemiş.</p>
+        {% endfor %}
+    </section>
+</div>
+</body>
+</html>

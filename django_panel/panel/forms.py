@@ -175,3 +175,22 @@ class ScheduleHolidayForm(forms.Form):
         doctor_choices = kwargs.pop("doctor_choices", [])
         super().__init__(*args, **kwargs)
         self.fields["doctor_id"].choices = [("", "Hastane Geneli")] + doctor_choices
+
+class ServiceForm(forms.Form):
+    service_id = forms.CharField(widget=forms.HiddenInput, required=False)
+    name = forms.CharField(label="Hizmet Adı", max_length=120)
+    description = forms.CharField(label="Açıklama", widget=forms.Textarea, required=False)
+    price = forms.DecimalField(label="Fiyat (₺)", max_digits=10, decimal_places=2)
+
+
+class ServiceAssignmentForm(forms.Form):
+    service_id = forms.CharField(widget=forms.HiddenInput)
+    doctors = forms.MultipleChoiceField(label="Doktorlar", required=False, widget=forms.CheckboxSelectMultiple)
+    hospitals = forms.MultipleChoiceField(label="Hastaneler", required=False, widget=forms.CheckboxSelectMultiple)
+
+    def __init__(self, *args, **kwargs):
+        doctor_choices = kwargs.pop("doctor_choices", [])
+        hospital_choices = kwargs.pop("hospital_choices", [])
+        super().__init__(*args, **kwargs)
+        self.fields["doctors"].choices = doctor_choices
+        self.fields["hospitals"].choices = hospital_choices

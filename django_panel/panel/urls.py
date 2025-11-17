@@ -8,4 +8,5 @@ urlpatterns = [
     path('doctors/', views.DoctorManagementView.as_view(), name='doctor_management'),
     path('appointments/', views.AppointmentManagementView.as_view(), name='appointment_management'),
     path('schedule/', views.ScheduleManagementView.as_view(), name='schedule_management'),
+    path('services/', views.ServiceManagementView.as_view(), name='service_management'),
 ]
