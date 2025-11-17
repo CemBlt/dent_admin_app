@@ -1,0 +1,155 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ page_title }} • {{ hospital.name }}</title>
+    <link rel="stylesheet" href="{% static 'panel/dashboard.css' %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+</head>
+<body>
+<aside class="sidebar">
+    <div>
+        <div class="brand">{{ hospital.name }}</div>
+        <p style="margin:4px 0 0; color:#6C757D; font-size:13px;">{{ hospital.address }}</p>
+    </div>
+    <ul class="nav-links">
+        <li><a class="active" href="#">Genel Bakış</a></li>
+        <li><a href="#">Hastane Bilgileri</a></li>
+        <li><a href="#">Doktorlar</a></li>
+        <li><a href="#">Randevular</a></li>
+        <li><a href="#">Çalışma Takvimi</a></li>
+        <li><a href="#">Hizmetler</a></li>
+        <li><a href="#">Yorumlar</a></li>
+        <li><a href="#">Ayarlar</a></li>
+    </ul>
+</aside>
+<div class="content">
+    <div class="top-bar">
+        <div>
+            <p style="margin:0; color:#6C757D; font-size:13px;">Merhaba, yönetici</p>
+            <h1>{{ page_title }}</h1>
+        </div>
+        <div class="user-chip">
+            <div class="avatar">H</div>
+            <div>
+                <strong>{{ hospital.name }}</strong>
+                <p style="margin:0; font-size:12px; color:#6C757D;">Kontrol Paneli</p>
+            </div>
+        </div>
+    </div>
+
+    <section class="kpi-grid">
+        {% for card in kpi_cards %}
+            <article class="kpi-card">
+                <span class="pill" style="background: {{ card.color }}33; color: {{ card.color }};">{{ card.title }}</span>
+                <div class="value">{{ card.value }}</div>
+                <p style="margin:0; color:#6C757D;">{{ card.description }}</p>
+            </article>
+        {% endfor %}
+    </section>
+
+    <section class="grid-two-columns">
+        <article class="panel-card">
+            <h2>Bugünkü Randevular</h2>
+            {% if todays_appointments %}
+                <ul class="appointments-list">
+                    {% for item in todays_appointments %}
+                        <li class="appointment-item">
+                            <div>
+                                <strong>{{ item.time }}</strong>
+                                <p style="margin:2px 0 0; font-size:13px;">{{ item.patient }} • {{ item.service }}</p>
+                                <p style="margin:0; font-size:12px; color:#6C757D;">{{ item.doctor }}</p>
+                            </div>
+                            <span class="status-chip status-{{ item.status }}">{{ item.status }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="empty-state">Bugün için randevu yok.</p>
+            {% endif %}
+        </article>
+        <article class="panel-card">
+            <h2>Doktor Durumu</h2>
+            {% if doctor_status %}
+                <ul class="doctor-list">
+                    {% for doctor in doctor_status %}
+                        <li class="doctor-item">
+                            <div>
+                                <strong>{{ doctor.name }}</strong>
+                                <p style="margin:2px 0 0; font-size:12px; color:#6C757D;">{{ doctor.specialty }}</p>
+                            </div>
+                            <span class="badge" style="background: {% if doctor.is_available %}#C4F1BE{% else %}#FECACA{% endif %};">
+                                {{ doctor.status }}
+                            </span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="empty-state">Doktor bulunamadı.</p>
+            {% endif %}
+        </article>
+    </section>
+
+    <section class="grid-two-columns">
+        <article class="panel-card">
+            <h2>Hizmet Performansı</h2>
+            {% if service_stats %}
+                <ul class="service-list">
+                    {% for service in service_stats %}
+                        <li class="service-item">
+                            <div style="flex:1;">
+                                <strong>{{ service.name }}</strong>
+                                <div class="progress-bar">
+                                    <span style="width: {{ service.percent }}%"></span>
+                                </div>
+                            </div>
+                            <span style="font-weight:600;">{{ service.count }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="empty-state">Hizmet verisi bulunamadı.</p>
+            {% endif %}
+        </article>
+        <article class="panel-card">
+            <h2>Yaklaşan Tatiller</h2>
+            {% if upcoming_holidays %}
+                <ul class="holiday-list">
+                    {% for holiday in upcoming_holidays %}
+                        <li class="holiday-item">
+                            <div>
+                                <strong>{{ holiday.reason }}</strong>
+                                <p style="margin:2px 0 0; font-size:12px; color:#6C757D;">{{ holiday.date }}</p>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="empty-state">Planlanan tatil bulunmuyor.</p>
+            {% endif %}
+        </article>
+    </section>
+
+    <article class="panel-card">
+        <h2>Son Yorumlar</h2>
+        {% if latest_reviews %}
+            <ul class="review-list">
+                {% for review in latest_reviews %}
+                    <li class="review-item">
+                        <div>
+                            <strong>{{ review.patient }}</strong>
+                            <p style="margin:2px 0 4px; font-size:12px; color:#6C757D;">{{ review.date }}</p>
+                            <p style="margin:0; font-size:13px;">{{ review.comment }}</p>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="empty-state">Henüz yorum bulunmuyor.</p>
+        {% endif %}
+    </article>
+</div>
+</body>
+</html>
