@@ -1,18 +1,28 @@
+/* Service Management - Diş Hastanesi Teması */
+
 .service-grid {
     margin-top: 24px;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 18px;
+    gap: 20px;
 }
 
 .service-card {
     background: var(--card);
     border-radius: 20px;
-    padding: 20px;
-    box-shadow: 0 15px 30px rgba(0,0,0,0.05);
+    padding: 24px;
+    box-shadow: var(--shadow);
+    border: 2px solid var(--card-border);
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 18px;
+    transition: all 0.3s ease;
+}
+
+.service-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary);
 }
 
 .service-card header {
@@ -20,35 +30,64 @@
     justify-content: space-between;
     align-items: flex-start;
     gap: 16px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--primary-light);
 }
 
 .service-card header h3 {
     margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
 }
 
 .price {
-    font-size: 20px;
+    font-size: 24px;
     font-weight: 700;
-    color: var(--teal-dark);
+    color: var(--primary-dark);
+    background: var(--primary-light);
+    padding: 8px 16px;
+    border-radius: 12px;
 }
 
 .details summary {
     cursor: pointer;
     font-weight: 600;
-    color: var(--teal);
+    color: var(--primary);
+    padding: 12px;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    margin: -12px;
+    padding: 12px;
+}
+
+.details summary:hover {
+    background: var(--primary-light);
+    color: var(--primary-dark);
 }
 
 .inline-form {
-    margin-top: 8px;
+    margin-top: 12px;
 }
 
 .assignment-summary {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 16px;
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--bg);
+    border-radius: 12px;
+    border: 2px solid var(--card-border);
 }
 
 .assignment-summary ul {
     margin: 0;
-    padding-left: 18px;
+    padding-left: 20px;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.assignment-summary li {
+    margin: 4px 0;
 }

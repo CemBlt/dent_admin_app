@@ -21,9 +21,8 @@
     "session_timeout_minutes": 30
   },
   "appearance": {
-    "theme": "default",
+    "theme": "dark",
     "show_dashboard_widgets": true,
     "records_per_page": 20
   }
 }
-

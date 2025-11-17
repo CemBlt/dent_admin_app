@@ -1,78 +1,141 @@
+/* Appointment Management - Diş Hastanesi Teması */
+
 .filter-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 16px;
+    margin-bottom: 24px;
 }
 
 .table-wrapper {
     overflow-x: auto;
+    border-radius: 16px;
+    border: 2px solid var(--card-border);
+    box-shadow: var(--shadow-sm);
+    background: var(--card);
 }
 
 .appointment-table {
     width: 100%;
     border-collapse: collapse;
+    background: var(--card);
 }
 
 .appointment-table th,
 .appointment-table td {
-    padding: 12px;
+    padding: 16px;
     text-align: left;
-    border-bottom: 1px solid #E5EAF0;
+    border-bottom: 1px solid var(--card-border);
+}
+
+.appointment-table th {
+    background: var(--bg-secondary);
+    font-weight: 600;
+    color: var(--text);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: sticky;
+    top: 0;
+}
+
+.appointment-table tr:hover {
+    background: var(--bg);
 }
 
 .appointment-table td details {
     font-size: 13px;
+    color: var(--text-secondary);
 }
 
 .status-form {
-    margin-top: 6px;
+    margin-top: 8px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
 }
 
 .status-form select {
-    padding: 6px 8px;
+    padding: 8px 12px;
     border-radius: 8px;
-    border: 1px solid #E5EAF0;
+    border: 2px solid var(--card-border);
+    background: var(--card);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.status-form select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
 }
 
 button.link {
     background: transparent;
     border: none;
-    color: var(--teal);
+    color: var(--primary);
     font-weight: 600;
     cursor: pointer;
+    font-size: 13px;
+    transition: color 0.2s ease;
+}
+
+button.link:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
 }
 
 .status-chip {
-    padding: 4px 10px;
-    border-radius: 999px;
+    padding: 6px 14px;
+    border-radius: 20px;
     font-size: 12px;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
 .status-pending {
-    background: #FDE68A;
-    color: #92400E;
+    background: var(--status-pending);
+    color: var(--status-pending-text);
 }
 
 .status-completed {
-    background: #C6F6D5;
-    color: #22543D;
+    background: var(--status-completed);
+    color: var(--status-completed-text);
 }
 
 .status-cancelled {
-    background: #FECACA;
-    color: #7F1D1D;
+    background: var(--status-cancelled);
+    color: var(--status-cancelled-text);
 }
 
 .appointment-table details summary {
     cursor: pointer;
-    color: var(--teal-dark);
+    color: var(--primary-dark);
     font-weight: 600;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+}
+
+.appointment-table details summary:hover {
+    background: var(--primary-light);
 }
 
 .appointment-table form textarea {
     min-height: 80px;
+    padding: 12px;
+    border: 2px solid var(--card-border);
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+    transition: all 0.2s ease;
+}
+
+.appointment-table form textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
 }

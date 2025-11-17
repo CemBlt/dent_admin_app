@@ -1,37 +1,51 @@
+/* Doctor Management - Diş Hastanesi Teması */
+
 .doctor-grid {
     margin-top: 24px;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-    gap: 18px;
+    gap: 20px;
 }
 
 .doctor-card {
     background: var(--card);
     border-radius: 20px;
-    padding: 20px;
-    box-shadow: 0 15px 30px rgba(0,0,0,0.05);
+    padding: 24px;
+    box-shadow: var(--shadow);
+    border: 2px solid var(--card-border);
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 20px;
+    transition: all 0.3s ease;
+}
+
+.doctor-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary);
 }
 
 .doctor-card header {
     display: flex;
     align-items: center;
     gap: 16px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--primary-light);
 }
 
 .avatar-large {
-    width: 72px;
-    height: 72px;
-    border-radius: 50%;
-    background: #CFF6F7;
+    width: 80px;
+    height: 80px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--primary-light), var(--secondary-light));
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    color: var(--teal);
+    color: var(--primary-dark);
     overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    border: 2px solid var(--primary-light);
 }
 
 .avatar-large img {
@@ -42,21 +56,23 @@
 
 .status-pill {
     display: inline-block;
-    margin-top: 6px;
-    padding: 4px 10px;
-    border-radius: 999px;
+    margin-top: 8px;
+    padding: 6px 14px;
+    border-radius: 20px;
     font-size: 12px;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
 .status-pill.active {
-    background: #C6F6D5;
-    color: #22543D;
+    background: var(--status-completed);
+    color: var(--status-completed-text);
 }
 
 .status-pill.inactive {
-    background: #FED7D7;
-    color: #742A2A;
+    background: var(--status-cancelled);
+    color: var(--status-cancelled-text);
 }
 
 .toggle-form {
@@ -66,38 +82,60 @@
 button.link {
     background: transparent;
     border: none;
-    color: var(--teal);
+    color: var(--primary);
     cursor: pointer;
     font-weight: 600;
+    font-size: 14px;
+    transition: color 0.2s ease;
+}
+
+button.link:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
 }
 
 .doctor-accordion details {
-    border: 1px solid #E5EAF0;
-    border-radius: 14px;
-    padding: 12px 16px;
-    margin-bottom: 10px;
+    border: 2px solid var(--card-border);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    background: var(--bg);
+    transition: all 0.2s ease;
+}
+
+.doctor-accordion details:hover {
+    border-color: var(--primary);
+    background: var(--card);
 }
 
 .doctor-accordion summary {
     cursor: pointer;
     font-weight: 600;
-    color: var(--teal-dark);
+    color: var(--primary-dark);
+    padding: 8px;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+}
+
+.doctor-accordion summary:hover {
+    background: var(--primary-light);
 }
 
 .doctor-accordion form {
-    margin-top: 12px;
+    margin-top: 16px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
 }
 
 .inline-form {
-    margin-top: 8px;
+    margin-top: 12px;
 }
 
 .doctor-card p {
-    margin: 2px 0;
-    color: #6C757D;
+    margin: 4px 0;
+    color: var(--muted);
+    font-size: 14px;
 }
 
 @media (max-width: 800px) {
@@ -108,5 +146,6 @@ button.link {
 
     .toggle-form {
         margin-left: 0;
+        margin-top: 12px;
     }
 }

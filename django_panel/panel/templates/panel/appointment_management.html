@@ -6,28 +6,39 @@
     <title>{{ page_title }} • Randevu Yönetimi</title>
     <link rel="stylesheet" href="{% static 'panel/dashboard.css' %}">
     <link rel="stylesheet" href="{% static 'panel/appointment.css' %}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 </head>
 <body>
 <aside class="sidebar">
     <div>
         <div class="brand">{{ hospital.name }}</div>
-        <p style="margin:4px 0 0; color:#6C757D; font-size:13px;">{{ hospital.address }}</p>
+        <p style="margin:4px 0 0; font-size:13px;" class="muted-text">{{ hospital.address }}</p>
     </div>
     <ul class="nav-links">
-        <li><a href="{% url 'dashboard' %}">Genel Bakış</a></li>
-        <li><a href="{% url 'hospital_settings' %}">Hastane Bilgileri</a></li>
-        <li><a href="{% url 'doctor_management' %}">Doktorlar</a></li>
-        <li><a class="active" href="{% url 'appointment_management' %}">Randevular</a></li>
-        <li><a href="{% url 'schedule_management' %}">Çalışma Takvimi</a></li>
-        <li><a href="{% url 'service_management' %}">Hizmetler</a></li>
-        <li><a href="{% url 'review_management' %}">Yorumlar</a></li>
-        <li><a href="{% url 'settings' %}">Ayarlar</a></li>
+        <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i> Genel Bakış</a></li>
+        <li><a href="{% url 'hospital_settings' %}"><i class="bi bi-building"></i> Hastane Bilgileri</a></li>
+        <li><a href="{% url 'doctor_management' %}"><i class="bi bi-person-badge"></i> Doktorlar</a></li>
+        <li><a class="active" href="{% url 'appointment_management' %}"><i class="bi bi-calendar-check"></i> Randevular</a></li>
+        <li><a href="{% url 'schedule_management' %}"><i class="bi bi-calendar3"></i> Çalışma Takvimi</a></li>
+        <li><a href="{% url 'service_management' %}"><i class="bi bi-briefcase"></i> Hizmetler</a></li>
+        <li><a href="{% url 'review_management' %}"><i class="bi bi-chat-left-text"></i> Yorumlar</a></li>
+        <li><a href="{% url 'settings' %}"><i class="bi bi-gear"></i> Ayarlar</a></li>
     </ul>
+    
+    <!-- Tema Değiştirme -->
+    <div class="theme-toggle">
+        <button class="theme-btn" data-theme="light" title="Açık Tema">
+            <i class="bi bi-sun-fill"></i>
+        </button>
+        <button class="theme-btn active" data-theme="dark" title="Koyu Tema">
+            <i class="bi bi-moon-fill"></i>
+        </button>
+    </div>
 </aside>
 <div class="content">
     <div class="top-bar">
         <div>
-            <p style="margin:0; color:#6C757D; font-size:13px;">Randevu Akışı</p>
+            <p style="margin:0; font-size:13px;" class="muted-text">Randevu Akışı</p>
             <h1>{{ page_title }}</h1>
         </div>
     </div>
@@ -44,22 +55,22 @@
         <article class="kpi-card">
             <span class="pill" style="background:#FDE68A33; color:#F59E0B;">Bekleyen</span>
             <div class="value">{{ summary.pending }}</div>
-            <p style="margin:0; color:#6C757D;">Onay bekleyen randevular</p>
+            <p style="margin:0;" class="muted-text">Onay bekleyen randevular</p>
         </article>
         <article class="kpi-card">
             <span class="pill" style="background:#C6F6D533; color:#047857;">Tamamlanan</span>
             <div class="value">{{ summary.completed }}</div>
-            <p style="margin:0; color:#6C757D;">Son kayıtlı tamamlananlar</p>
+            <p style="margin:0;" class="muted-text">Son kayıtlı tamamlananlar</p>
         </article>
         <article class="kpi-card">
             <span class="pill" style="background:#FECACA33; color:#B91C1C;">İptal</span>
             <div class="value">{{ summary.cancelled }}</div>
-            <p style="margin:0; color:#6C757D;">İptal edilen randevular</p>
+            <p style="margin:0;" class="muted-text">İptal edilen randevular</p>
         </article>
         <article class="kpi-card">
             <span class="pill" style="background:#BFDBFE; color:#1E3A8A;">Bugün</span>
             <div class="value">{{ summary.today }}</div>
-            <p style="margin:0; color:#6C757D;">Bugünün toplam randevusu</p>
+            <p style="margin:0;" class="muted-text">Bugünün toplam randevusu</p>
         </article>
     </section>
 
@@ -138,5 +149,30 @@
         </div>
     </section>
 </div>
+
+<script>
+// Tema Yönetimi
+(function() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    const themeButtons = document.querySelectorAll('.theme-btn');
+    themeButtons.forEach(btn => {
+        if (btn.dataset.theme === savedTheme) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    themeButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const theme = this.dataset.theme;
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            themeButtons.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+})();
+</script>
 </body>
 </html>

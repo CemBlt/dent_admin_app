@@ -1,97 +1,129 @@
+/* Schedule Management - Diş Hastanesi Teması */
+
 .filter-form {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 16px;
     align-items: end;
+    margin-bottom: 24px;
 }
 
 .calendar-grid {
-    margin-top: 20px;
+    margin-top: 24px;
 }
 
 .calendar-header {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
-    margin-bottom: 8px;
+    gap: 6px;
+    margin-bottom: 10px;
 }
 
 .calendar-header > div {
     text-align: center;
     font-weight: 600;
-    padding: 8px;
-    color: var(--teal);
+    padding: 12px;
+    color: var(--primary-dark);
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 2px solid var(--card-border);
 }
 
 .calendar-week {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
-    margin-bottom: 4px;
+    gap: 6px;
+    margin-bottom: 6px;
 }
 
 .calendar-day {
-    min-height: 100px;
-    border: 1px solid #E5EAF0;
-    border-radius: 8px;
-    padding: 8px;
+    min-height: 120px;
+    border: 2px solid var(--card-border);
+    border-radius: 12px;
+    padding: 10px;
     background: var(--card);
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.calendar-day:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-2px);
 }
 
 .calendar-day.other-month {
     opacity: 0.4;
-    background: #F8FBFD;
+    background: var(--bg);
 }
 
 .calendar-day.today {
-    border: 2px solid var(--teal);
-    background: #E0F7FA;
+    border: 3px solid var(--primary);
+    background: var(--primary-light);
+    box-shadow: var(--shadow-sm);
 }
 
 .day-number {
     font-weight: 700;
-    font-size: 14px;
+    font-size: 15px;
     color: var(--text);
 }
 
+.calendar-day.today .day-number {
+    color: var(--primary-dark);
+}
+
 .hours-badge {
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 4px;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 8px;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
 .hours-badge.hospital {
-    background: #C6F6D5;
-    color: #22543D;
+    background: var(--status-completed);
+    color: var(--status-completed-text);
 }
 
 .hours-badge.doctor {
-    background: #BFDBFE;
-    color: #1E3A8A;
+    background: var(--info-light);
+    color: #1E40AF;
 }
 
 .holiday-badge {
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 4px;
-    background: #FECACA;
-    color: #7F1D1D;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: var(--status-cancelled);
+    color: var(--status-cancelled-text);
     font-weight: 600;
-    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-top: 4px;
 }
 
 @media (max-width: 900px) {
     .calendar-day {
-        min-height: 80px;
+        min-height: 90px;
+        font-size: 12px;
+        padding: 8px;
+    }
+    
+    .hours-badge, 
+    .holiday-badge {
+        font-size: 9px;
+        padding: 3px 6px;
+    }
+    
+    .calendar-header > div {
+        padding: 8px;
         font-size: 11px;
     }
-    .hours-badge, .holiday-badge {
-        font-size: 9px;
-        padding: 1px 4px;
-    }
 }
-

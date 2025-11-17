@@ -6,28 +6,39 @@
     <title>{{ page_title }} • Doktor Yönetimi</title>
     <link rel="stylesheet" href="{% static 'panel/dashboard.css' %}">
     <link rel="stylesheet" href="{% static 'panel/doctor.css' %}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 </head>
 <body>
 <aside class="sidebar">
     <div>
         <div class="brand">{{ hospital.name }}</div>
-        <p style="margin:4px 0 0; color:#6C757D; font-size:13px;">{{ hospital.address }}</p>
+        <p style="margin:4px 0 0; font-size:13px;" class="muted-text">{{ hospital.address }}</p>
     </div>
     <ul class="nav-links">
-        <li><a href="{% url 'dashboard' %}">Genel Bakış</a></li>
-        <li><a href="{% url 'hospital_settings' %}">Hastane Bilgileri</a></li>
-        <li><a class="active" href="{% url 'doctor_management' %}">Doktorlar</a></li>
-        <li><a href="{% url 'appointment_management' %}">Randevular</a></li>
-        <li><a href="{% url 'schedule_management' %}">Çalışma Takvimi</a></li>
-        <li><a href="{% url 'service_management' %}">Hizmetler</a></li>
-        <li><a href="{% url 'review_management' %}">Yorumlar</a></li>
-        <li><a href="{% url 'settings' %}">Ayarlar</a></li>
+        <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i> Genel Bakış</a></li>
+        <li><a href="{% url 'hospital_settings' %}"><i class="bi bi-building"></i> Hastane Bilgileri</a></li>
+        <li><a class="active" href="{% url 'doctor_management' %}"><i class="bi bi-person-badge"></i> Doktorlar</a></li>
+        <li><a href="{% url 'appointment_management' %}"><i class="bi bi-calendar-check"></i> Randevular</a></li>
+        <li><a href="{% url 'schedule_management' %}"><i class="bi bi-calendar3"></i> Çalışma Takvimi</a></li>
+        <li><a href="{% url 'service_management' %}"><i class="bi bi-briefcase"></i> Hizmetler</a></li>
+        <li><a href="{% url 'review_management' %}"><i class="bi bi-chat-left-text"></i> Yorumlar</a></li>
+        <li><a href="{% url 'settings' %}"><i class="bi bi-gear"></i> Ayarlar</a></li>
     </ul>
+    
+    <!-- Tema Değiştirme -->
+    <div class="theme-toggle">
+        <button class="theme-btn" data-theme="light" title="Açık Tema">
+            <i class="bi bi-sun-fill"></i>
+        </button>
+        <button class="theme-btn active" data-theme="dark" title="Koyu Tema">
+            <i class="bi bi-moon-fill"></i>
+        </button>
+    </div>
 </aside>
 <div class="content">
     <div class="top-bar">
         <div>
-            <p style="margin:0; color:#6C757D; font-size:13px;">Ekip Yönetimi</p>
+            <p style="margin:0; font-size:13px;" class="muted-text">Ekip Yönetimi</p>
             <h1>{{ page_title }}</h1>
         </div>
         <button class="primary" onclick="document.querySelector('#create-doctor').scrollIntoView({behavior: 'smooth'});">
@@ -141,5 +152,30 @@
         {% endfor %}
     </section>
 </div>
+
+<script>
+// Tema Yönetimi
+(function() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    const themeButtons = document.querySelectorAll('.theme-btn');
+    themeButtons.forEach(btn => {
+        if (btn.dataset.theme === savedTheme) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    themeButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const theme = this.dataset.theme;
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            themeButtons.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+})();
+</script>
 </body>
 </html>
