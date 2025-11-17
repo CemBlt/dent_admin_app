@@ -1,0 +1,142 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ page_title }} • Randevu Yönetimi</title>
+    <link rel="stylesheet" href="{% static 'panel/dashboard.css' %}">
+    <link rel="stylesheet" href="{% static 'panel/appointment.css' %}">
+</head>
+<body>
+<aside class="sidebar">
+    <div>
+        <div class="brand">{{ hospital.name }}</div>
+        <p style="margin:4px 0 0; color:#6C757D; font-size:13px;">{{ hospital.address }}</p>
+    </div>
+    <ul class="nav-links">
+        <li><a href="{% url 'dashboard' %}">Genel Bakış</a></li>
+        <li><a href="{% url 'hospital_settings' %}">Hastane Bilgileri</a></li>
+        <li><a href="{% url 'doctor_management' %}">Doktorlar</a></li>
+        <li><a class="active" href="{% url 'appointment_management' %}">Randevular</a></li>
+        <li><a href="#">Çalışma Takvimi</a></li>
+        <li><a href="#">Hizmetler</a></li>
+        <li><a href="#">Yorumlar</a></li>
+        <li><a href="#">Ayarlar</a></li>
+    </ul>
+</aside>
+<div class="content">
+    <div class="top-bar">
+        <div>
+            <p style="margin:0; color:#6C757D; font-size:13px;">Randevu Akışı</p>
+            <h1>{{ page_title }}</h1>
+        </div>
+    </div>
+
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="message {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <section class="kpi-grid">
+        <article class="kpi-card">
+            <span class="pill" style="background:#FDE68A33; color:#F59E0B;">Bekleyen</span>
+            <div class="value">{{ summary.pending }}</div>
+            <p style="margin:0; color:#6C757D;">Onay bekleyen randevular</p>
+        </article>
+        <article class="kpi-card">
+            <span class="pill" style="background:#C6F6D533; color:#047857;">Tamamlanan</span>
+            <div class="value">{{ summary.completed }}</div>
+            <p style="margin:0; color:#6C757D;">Son kayıtlı tamamlananlar</p>
+        </article>
+        <article class="kpi-card">
+            <span class="pill" style="background:#FECACA33; color:#B91C1C;">İptal</span>
+            <div class="value">{{ summary.cancelled }}</div>
+            <p style="margin:0; color:#6C757D;">İptal edilen randevular</p>
+        </article>
+        <article class="kpi-card">
+            <span class="pill" style="background:#BFDBFE; color:#1E3A8A;">Bugün</span>
+            <div class="value">{{ summary.today }}</div>
+            <p style="margin:0; color:#6C757D;">Bugünün toplam randevusu</p>
+        </article>
+    </section>
+
+    <section class="panel-card">
+        <h2>Randevuları Filtrele</h2>
+        <form method="get" class="filter-grid">
+            {{ filter_form.as_p }}
+            <div style="align-self:flex-end;">
+                <button type="submit" class="primary">Filtrele</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="panel-card">
+        <h2>Randevu Listesi</h2>
+        <div class="table-wrapper">
+            <table class="appointment-table">
+                <thead>
+                    <tr>
+                        <th>Tarih</th>
+                        <th>Hasta • Hizmet</th>
+                        <th>Doktor</th>
+                        <th>Not</th>
+                        <th>Durum</th>
+                        <th>Aksiyonlar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in appointments %}
+                        <tr>
+                            <td>
+                                <strong>{{ item.data.date }}</strong>
+                                <p>{{ item.data.time }}</p>
+                            </td>
+                            <td>
+                                <strong>{{ item.patient }}</strong>
+                                <p>{{ item.service }}</p>
+                            </td>
+                            <td>{{ item.doctor }}</td>
+                            <td>
+                                <details>
+                                    <summary>{{ item.data.notes|default:'Not yok' }}</summary>
+                                    <form method="post">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="form_type" value="update_note">
+                                        {{ item.note_form.as_p }}
+                                        <button type="submit" class="primary">Kaydet</button>
+                                    </form>
+                                </details>
+                            </td>
+                            <td>
+                                <span class="status-chip status-{{ item.status_class }}">{{ item.status_label }}</span>
+                                <form method="post" class="status-form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="form_type" value="update_status">
+                                    {{ item.status_form.as_p }}
+                                    <button type="submit" class="link">Güncelle</button>
+                                </form>
+                            </td>
+                            <td>
+                                <form method="post" class="inline-form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="form_type" value="delete_appointment">
+                                    <input type="hidden" name="appointment_id" value="{{ item.data.id }}">
+                                    <button type="submit" class="danger">Sil</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="empty-state">Randevu bulunamadı.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+</body>
+</html>

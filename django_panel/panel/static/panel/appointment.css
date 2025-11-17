@@ -1,0 +1,78 @@
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+.appointment-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.appointment-table th,
+.appointment-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #E5EAF0;
+}
+
+.appointment-table td details {
+    font-size: 13px;
+}
+
+.status-form {
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.status-form select {
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid #E5EAF0;
+}
+
+button.link {
+    background: transparent;
+    border: none;
+    color: var(--teal);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.status-chip {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.status-pending {
+    background: #FDE68A;
+    color: #92400E;
+}
+
+.status-completed {
+    background: #C6F6D5;
+    color: #22543D;
+}
+
+.status-cancelled {
+    background: #FECACA;
+    color: #7F1D1D;
+}
+
+.appointment-table details summary {
+    cursor: pointer;
+    color: var(--teal-dark);
+    font-weight: 600;
+}
+
+.appointment-table form textarea {
+    min-height: 80px;
+}

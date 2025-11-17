@@ -112,3 +112,44 @@ class DoctorHolidayForm(forms.Form):
     doctor_id = forms.CharField(widget=forms.HiddenInput)
     date = forms.DateField(label="Tarih", widget=forms.DateInput(attrs={"type": "date"}))
     reason = forms.CharField(label="Açıklama", max_length=120)
+
+
+class AppointmentFilterForm(forms.Form):
+    status = forms.ChoiceField(
+        label="Durum",
+        required=False,
+        choices=[
+            ("", "Tümü"),
+            ("pending", "Bekleyen"),
+            ("completed", "Tamamlandı"),
+            ("cancelled", "İptal"),
+        ],
+    )
+    doctor = forms.ChoiceField(label="Doktor", required=False)
+    service = forms.ChoiceField(label="Hizmet", required=False)
+    start_date = forms.DateField(label="Başlangıç Tarihi", required=False, widget=forms.DateInput(attrs={"type": "date"}))
+    end_date = forms.DateField(label="Bitiş Tarihi", required=False, widget=forms.DateInput(attrs={"type": "date"}))
+
+    def __init__(self, *args, **kwargs):
+        doctor_choices = kwargs.pop("doctor_choices", [])
+        service_choices = kwargs.pop("service_choices", [])
+        super().__init__(*args, **kwargs)
+        self.fields["doctor"].choices = [("", "Tümü")] + doctor_choices
+        self.fields["service"].choices = [("", "Tümü")] + service_choices
+
+
+class AppointmentNoteForm(forms.Form):
+    appointment_id = forms.CharField(widget=forms.HiddenInput)
+    notes = forms.CharField(label="Notlar", widget=forms.Textarea, required=False)
+
+
+class AppointmentStatusForm(forms.Form):
+    appointment_id = forms.CharField(widget=forms.HiddenInput)
+    status = forms.ChoiceField(
+        label="Durum",
+        choices=[
+            ("pending", "Bekleyen"),
+            ("completed", "Tamamlandı"),
+            ("cancelled", "İptal"),
+        ],
+    )

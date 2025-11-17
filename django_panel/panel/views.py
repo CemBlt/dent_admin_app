@@ -1,8 +1,13 @@
+from datetime import datetime
+
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.views import View
 
 from .forms import (
+    AppointmentFilterForm,
+    AppointmentNoteForm,
+    AppointmentStatusForm,
     DoctorForm,
     DoctorHolidayForm,
     DoctorWorkingHoursForm,
@@ -13,7 +18,7 @@ from .forms import (
     WorkingHoursForm,
     DAYS,
 )
-from .services import doctor_service, hospital_service
+from .services import appointment_service, doctor_service, hospital_service, user_service
 from .services.dashboard_service import load_dashboard_context
 
 
@@ -296,3 +301,119 @@ class DoctorManagementView(View):
         if not valid:
             messages.error(request, "Çalışma saatleri doğrulaması başarısız.")
         return valid
+
+
+class AppointmentManagementView(View):
+    template_name = "panel/appointment_management.html"
+    STATUS_LABELS = {
+        "pending": ("Bekleyen", "pending"),
+        "completed": ("Tamamlandı", "completed"),
+        "cancelled": ("İptal", "cancelled"),
+    }
+
+    def get(self, request):
+        context = self._build_context(request)
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        action = request.POST.get("form_type")
+        if action == "update_status":
+            form = AppointmentStatusForm(request.POST)
+            if form.is_valid():
+                appointment_service.update_appointment(
+                    form.cleaned_data["appointment_id"],
+                    status=form.cleaned_data["status"],
+                )
+                messages.success(request, "Randevu durumu güncellendi.")
+                return redirect("appointment_management")
+            messages.error(request, "Durum güncellenemedi.")
+
+        elif action == "update_note":
+            form = AppointmentNoteForm(request.POST)
+            if form.is_valid():
+                appointment_service.update_appointment(
+                    form.cleaned_data["appointment_id"],
+                    notes=form.cleaned_data["notes"],
+                )
+                messages.success(request, "Randevu notu kaydedildi.")
+                return redirect("appointment_management")
+            messages.error(request, "Not kaydedilemedi.")
+
+        elif action == "delete_appointment":
+            appointment_service.delete_appointment(request.POST.get("appointment_id"))
+            messages.success(request, "Randevu silindi.")
+            return redirect("appointment_management")
+
+        context = self._build_context(request)
+        return render(request, self.template_name, context)
+
+    def _build_context(self, request):
+        hospital = hospital_service.get_hospital()
+        doctors = doctor_service.get_doctors()
+        services = hospital_service.get_services()
+        doctor_choices = [(doc["id"], f"{doc['name']} {doc['surname']}") for doc in doctors]
+        service_choices = [(svc["id"], svc["name"]) for svc in services]
+
+        filter_form = AppointmentFilterForm(
+            request.GET or None,
+            doctor_choices=doctor_choices,
+            service_choices=service_choices,
+        )
+
+        filters = filter_form.cleaned_data if filter_form.is_valid() else {}
+        start_date = filters.get("start_date")
+        end_date = filters.get("end_date")
+        appointments = appointment_service.filter_appointments(
+            status=filters.get("status") or None,
+            doctor_id=filters.get("doctor") or None,
+            service_id=filters.get("service") or None,
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+        enriched = self._enrich_appointments(appointments, doctors, services)
+
+        context = {
+            "page_title": "Randevu Yönetimi",
+            "hospital": hospital,
+            "filter_form": filter_form,
+            "appointments": enriched,
+            "summary": appointment_service.get_summary(),
+        }
+        return context
+
+    def _enrich_appointments(self, appointments, doctors, services):
+        doctor_map = {doc["id"]: doc for doc in doctors}
+        service_map = {svc["id"]: svc for svc in services}
+        user_map = user_service.get_user_map()
+        enriched = []
+        for apt in appointments:
+            doctor = doctor_map.get(apt["doctorId"])
+            service = service_map.get(apt["service"])
+            user = user_map.get(apt["userId"])
+            status_label, status_class = self.STATUS_LABELS.get(
+                apt["status"], (apt["status"], "pending")
+            )
+            enriched.append(
+                {
+                    "data": apt,
+                    "patient": f"{user['name']} {user['surname']}" if user else "Hasta",
+                    "doctor": f"{doctor['name']} {doctor['surname']}" if doctor else "Doktor",
+                    "service": service["name"] if service else "Hizmet",
+                    "status_label": status_label,
+                    "status_class": status_class,
+                    "note_form": AppointmentNoteForm(
+                        initial={
+                            "appointment_id": apt["id"],
+                            "notes": apt.get("notes", ""),
+                        }
+                    ),
+                    "status_form": AppointmentStatusForm(
+                        initial={
+                            "appointment_id": apt["id"],
+                            "status": apt["status"],
+                        }
+                    ),
+                }
+            )
+        return enriched
