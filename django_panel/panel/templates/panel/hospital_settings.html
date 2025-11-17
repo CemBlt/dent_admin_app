@@ -1,0 +1,172 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ page_title }} • {{ hospital.name }}</title>
+    <link rel="stylesheet" href="{% static 'panel/dashboard.css' %}">
+    <link rel="stylesheet" href="{% static 'panel/hospital.css' %}">
+</head>
+<body>
+<aside class="sidebar">
+    <div>
+        <div class="brand">{{ hospital.name }}</div>
+        <p style="margin:4px 0 0; color:#6C757D; font-size:13px;">{{ hospital.address }}</p>
+    </div>
+    <ul class="nav-links">
+        <li><a href="{% url 'dashboard' %}">Genel Bakış</a></li>
+        <li><a class="active" href="{% url 'hospital_settings' %}">Hastane Bilgileri</a></li>
+        <li><a href="{% url 'doctor_management' %}">Doktorlar</a></li>
+        <li><a href="#">Randevular</a></li>
+        <li><a href="#">Çalışma Takvimi</a></li>
+        <li><a href="#">Hizmetler</a></li>
+        <li><a href="#">Yorumlar</a></li>
+        <li><a href="#">Ayarlar</a></li>
+    </ul>
+</aside>
+<div class="content">
+    <div class="top-bar">
+        <div>
+            <p style="margin:0; color:#6C757D; font-size:13px;">Hastane Yönetimi</p>
+            <h1>{{ page_title }}</h1>
+        </div>
+    </div>
+
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="message {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="tab-container">
+        <input type="radio" id="tab-general" name="tabs" checked>
+        <label for="tab-general">Genel Bilgiler</label>
+
+        <input type="radio" id="tab-gallery" name="tabs">
+        <label for="tab-gallery">Galeri</label>
+
+        <input type="radio" id="tab-services" name="tabs">
+        <label for="tab-services">Hizmetler</label>
+
+        <input type="radio" id="tab-hours" name="tabs">
+        <label for="tab-hours">Çalışma Saatleri</label>
+
+        <input type="radio" id="tab-holidays" name="tabs">
+        <label for="tab-holidays">Tatiller</label>
+
+        <section class="tab-panel">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="general">
+                {{ general_form.as_p }}
+                <button type="submit" class="primary">Kaydet</button>
+            </form>
+        </section>
+
+        <section class="tab-panel">
+            {% with gallery=gallery_list %}
+            <div class="gallery-grid">
+                {% for image in gallery %}
+                    <div class="gallery-card">
+                        <img src="{% static image %}" alt="Galeri">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="form_type" value="gallery_remove">
+                            <input type="hidden" name="index" value="{{ forloop.counter0 }}">
+                            <button type="submit" class="danger">Sil</button>
+                        </form>
+                    </div>
+                {% empty %}
+                    <p class="empty-state">Henüz galeri görseli eklenmemiş.</p>
+                {% endfor %}
+            </div>
+            {% if gallery|length < 5 %}
+                <form method="post" enctype="multipart/form-data" class="gallery-add">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="gallery_add">
+                    {{ gallery_add_form.as_p }}
+                    <button type="submit" class="primary">Görsel Ekle</button>
+                </form>
+            {% else %}
+                <p class="empty-state">Maksimum 5 görsele ulaşıldı.</p>
+            {% endif %}
+            {% endwith %}
+        </section>
+
+        <section class="tab-panel">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="services">
+                {{ services_form.as_p }}
+                <button type="submit" class="primary">Hizmetleri Kaydet</button>
+            </form>
+            <div class="service-info">
+                {% for service in services_catalog %}
+                    <div>
+                        <strong>{{ service.name }}</strong>
+                        <p>{{ service.description }} — {{ service.price }} ₺</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="tab-panel">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="working_hours">
+                <table class="hours-table">
+                    <thead>
+                        <tr>
+                            <th>Gün</th>
+                            <th>Açık</th>
+                            <th>Başlangıç</th>
+                            <th>Bitiş</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for field in day_fields %}
+                            <tr>
+                                <td>{{ field.label }}</td>
+                                <td>{{ field.open_field }}</td>
+                                <td>{{ field.start_field }}</td>
+                                <td>{{ field.end_field }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <button type="submit" class="primary">Çalışma Saatlerini Kaydet</button>
+            </form>
+        </section>
+
+        <section class="tab-panel">
+            <div class="holiday-list">
+                {% for holiday in holidays %}
+                    <div class="holiday-item">
+                        <div>
+                            <strong>{{ holiday.reason }}</strong>
+                            <p>{{ holiday.date }}</p>
+                        </div>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="form_type" value="holiday_delete">
+                            <input type="hidden" name="holiday_id" value="{{ holiday.id }}">
+                            <button type="submit" class="danger">Sil</button>
+                        </form>
+                    </div>
+                {% empty %}
+                    <p class="empty-state">Kayıtlı tatil bulunmuyor.</p>
+                {% endfor %}
+            </div>
+            <form method="post" class="holiday-add">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="holiday_add">
+                {{ holiday_add_form.as_p }}
+                <button type="submit" class="primary">Tatil Ekle</button>
+            </form>
+        </section>
+    </div>
+</div>
+</body>
+</html>

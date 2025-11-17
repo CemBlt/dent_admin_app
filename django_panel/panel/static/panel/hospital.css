@@ -1,0 +1,149 @@
+.tab-container {
+    margin-top: 16px;
+}
+
+.tab-container input[type="radio"] {
+    display: none;
+}
+
+.tab-container label {
+    display: inline-block;
+    padding: 10px 18px;
+    margin-right: 8px;
+    border-radius: 999px;
+    background: #E5EAF0;
+    cursor: pointer;
+    font-weight: 600;
+    color: #4A5568;
+}
+
+.tab-container input[type="radio"]:checked + label {
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+    color: #fff;
+}
+
+.tab-panel {
+    display: none;
+    margin-top: 20px;
+    padding: 24px;
+    background: var(--card);
+    border-radius: 20px;
+    box-shadow: 0 15px 30px rgba(0,0,0,0.05);
+}
+
+#tab-general:checked ~ label[for="tab-general"] + .tab-panel,
+#tab-gallery:checked ~ label[for="tab-gallery"] + .tab-panel,
+#tab-services:checked ~ label[for="tab-services"] + .tab-panel,
+#tab-hours:checked ~ label[for="tab-hours"] + .tab-panel,
+#tab-holidays:checked ~ label[for="tab-holidays"] + .tab-panel {
+    display: block;
+}
+
+.tab-panel form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.tab-panel button.primary {
+    align-self: flex-start;
+}
+
+button.primary {
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+    border: none;
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+button.danger {
+    background: #F56565;
+    border: none;
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.messages {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.message {
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.message.success {
+    background: #C6F6D5;
+    color: #22543D;
+}
+
+.message.error {
+    background: #FED7D7;
+    color: #742A2A;
+}
+
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+}
+
+.gallery-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+    padding: 12px;
+    text-align: center;
+}
+
+.gallery-card img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 12px;
+    margin-bottom: 10px;
+}
+
+.hours-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.hours-table th,
+.hours-table td {
+    padding: 10px;
+    border-bottom: 1px solid #E5EAF0;
+}
+
+.holiday-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.holiday-item {
+    background: #fff;
+    border-radius: 14px;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.04);
+}
+
+.holiday-add {
+    margin-top: 20px;
+}
+
+.service-info p {
+    margin: 4px 0 12px;
+    color: #6C757D;
+}

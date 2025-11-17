@@ -1,0 +1,145 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ page_title }} • Doktor Yönetimi</title>
+    <link rel="stylesheet" href="{% static 'panel/dashboard.css' %}">
+    <link rel="stylesheet" href="{% static 'panel/doctor.css' %}">
+</head>
+<body>
+<aside class="sidebar">
+    <div>
+        <div class="brand">{{ hospital.name }}</div>
+        <p style="margin:4px 0 0; color:#6C757D; font-size:13px;">{{ hospital.address }}</p>
+    </div>
+    <ul class="nav-links">
+        <li><a href="{% url 'dashboard' %}">Genel Bakış</a></li>
+        <li><a href="{% url 'hospital_settings' %}">Hastane Bilgileri</a></li>
+        <li><a class="active" href="{% url 'doctor_management' %}">Doktorlar</a></li>
+        <li><a href="#">Randevular</a></li>
+        <li><a href="#">Çalışma Takvimi</a></li>
+        <li><a href="#">Hizmetler</a></li>
+        <li><a href="#">Yorumlar</a></li>
+        <li><a href="#">Ayarlar</a></li>
+    </ul>
+</aside>
+<div class="content">
+    <div class="top-bar">
+        <div>
+            <p style="margin:0; color:#6C757D; font-size:13px;">Ekip Yönetimi</p>
+            <h1>{{ page_title }}</h1>
+        </div>
+        <button class="primary" onclick="document.querySelector('#create-doctor').scrollIntoView({behavior: 'smooth'});">
+            + Doktor Ekle
+        </button>
+    </div>
+
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="message {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <section id="create-doctor" class="panel-card">
+        <h2>Yeni Doktor Ekle</h2>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="create_doctor">
+            {{ doctor_create_form.as_p }}
+            <button type="submit" class="primary">Doktoru Kaydet</button>
+        </form>
+    </section>
+
+    <section class="doctor-grid">
+        {% for card in doctor_cards %}
+            <article class="doctor-card">
+                <header>
+                    <div class="avatar-large">
+                        {% if card.data.image %}
+                            <img src="{% static card.data.image %}" alt="{{ card.data.name }}">
+                        {% else %}
+                            {{ card.data.name|first }}{{ card.data.surname|first }}
+                        {% endif %}
+                    </div>
+                    <div>
+                        <h3>{{ card.data.name }} {{ card.data.surname }}</h3>
+                        <p>{{ card.data.specialty }}</p>
+                        <span class="status-pill {{ card.data.isActive|yesno:'active,inactive' }}">
+                            {{ card.data.isActive|yesno:'Aktif,Pasif' }}
+                        </span>
+                    </div>
+                    <form method="post" class="toggle-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="toggle_active">
+                        <input type="hidden" name="doctor_id" value="{{ card.data.id }}">
+                        <input type="hidden" name="is_active" value="{{ card.data.isActive|yesno:'false,true' }}">
+                        <button type="submit" class="link">Durumu Değiştir</button>
+                    </form>
+                </header>
+
+                <div class="doctor-accordion">
+                    <details open>
+                        <summary>Genel Bilgiler</summary>
+                        <form method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <input type="hidden" name="form_type" value="update_doctor">
+                            {{ card.general_form.as_p }}
+                            <button type="submit" class="primary">Güncelle</button>
+                        </form>
+                        <form method="post" class="inline-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="form_type" value="delete_doctor">
+                            <input type="hidden" name="doctor_id" value="{{ card.data.id }}">
+                            <button type="submit" class="danger">Sil</button>
+                        </form>
+                    </details>
+
+                    <details>
+                        <summary>Çalışma Saatleri</summary>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="form_type" value="working_hours">
+                            {{ card.working_form.as_p }}
+                            <button type="submit" class="primary">Saatleri Kaydet</button>
+                        </form>
+                    </details>
+
+                    <details>
+                        <summary>Tatiller / İzinler</summary>
+                        <div class="holiday-list">
+                            {% for holiday in card.holidays %}
+                                <div class="holiday-item">
+                                    <div>
+                                        <strong>{{ holiday.reason }}</strong>
+                                        <p>{{ holiday.date }}</p>
+                                    </div>
+                                    <form method="post">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="form_type" value="delete_holiday">
+                                        <input type="hidden" name="holiday_id" value="{{ holiday.id }}">
+                                        <button type="submit" class="danger">Sil</button>
+                                    </form>
+                                </div>
+                            {% empty %}
+                                <p class="empty-state">Kayıtlı tatil yok.</p>
+                            {% endfor %}
+                        </div>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="form_type" value="add_holiday">
+                            {{ card.holiday_form.as_p }}
+                            <button type="submit" class="primary">Tatil Ekle</button>
+                        </form>
+                    </details>
+                </div>
+            </article>
+        {% empty %}
+            <p class="empty-state">Henüz doktor eklenmemiş.</p>
+        {% endfor %}
+    </section>
+</div>
+</body>
+</html>
