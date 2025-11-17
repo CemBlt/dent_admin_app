@@ -153,3 +153,25 @@ class AppointmentStatusForm(forms.Form):
             ("cancelled", "İptal"),
         ],
     )
+
+
+class ScheduleFilterForm(forms.Form):
+    doctor = forms.ChoiceField(label="Doktor", required=False)
+    year = forms.IntegerField(label="Yıl", min_value=2020, max_value=2100)
+    month = forms.IntegerField(label="Ay", min_value=1, max_value=12)
+
+    def __init__(self, *args, **kwargs):
+        doctor_choices = kwargs.pop("doctor_choices", [])
+        super().__init__(*args, **kwargs)
+        self.fields["doctor"].choices = [("", "Tüm Doktorlar")] + doctor_choices
+
+
+class ScheduleHolidayForm(forms.Form):
+    date = forms.DateField(label="Tarih", widget=forms.DateInput(attrs={"type": "date"}))
+    reason = forms.CharField(label="Açıklama", max_length=120)
+    doctor_id = forms.ChoiceField(label="Doktor (Opsiyonel)", required=False)
+
+    def __init__(self, *args, **kwargs):
+        doctor_choices = kwargs.pop("doctor_choices", [])
+        super().__init__(*args, **kwargs)
+        self.fields["doctor_id"].choices = [("", "Hastane Geneli")] + doctor_choices

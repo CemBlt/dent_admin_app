@@ -15,11 +15,14 @@ from .forms import (
     HolidayAddForm,
     HospitalGeneralForm,
     HospitalServicesForm,
+    ScheduleFilterForm,
+    ScheduleHolidayForm,
     WorkingHoursForm,
     DAYS,
 )
 from .services import appointment_service, doctor_service, hospital_service, user_service
 from .services.dashboard_service import load_dashboard_context
+from .services import schedule_service
 
 
 def dashboard(request):
@@ -417,3 +420,74 @@ class AppointmentManagementView(View):
                 }
             )
         return enriched
+
+
+class ScheduleManagementView(View):
+    template_name = "panel/schedule_management.html"
+
+    def get(self, request):
+        from datetime import date
+
+        today = date.today()
+        year = int(request.GET.get("year", today.year))
+        month = int(request.GET.get("month", today.month))
+        selected_doctor_id = request.GET.get("doctor", "")
+
+        doctors = doctor_service.get_doctors()
+        doctor_choices = [(doc["id"], f"{doc['name']} {doc['surname']}") for doc in doctors]
+
+        filter_form = ScheduleFilterForm(
+            initial={"year": year, "month": month, "doctor": selected_doctor_id},
+            doctor_choices=doctor_choices,
+        )
+
+        calendar_data = schedule_service.build_calendar_data(
+            year, month, selected_doctor_id if selected_doctor_id else None
+        )
+
+        hospital = hospital_service.get_hospital()
+        holiday_form = ScheduleHolidayForm(doctor_choices=doctor_choices)
+
+        context = {
+            "page_title": "Çalışma Takvimi",
+            "hospital": hospital,
+            "calendar": calendar_data,
+            "filter_form": filter_form,
+            "holiday_form": holiday_form,
+            "doctors": doctors,
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        from datetime import date
+
+        form_type = request.POST.get("form_type")
+        if form_type == "add_holiday":
+            form = ScheduleHolidayForm(request.POST)
+            if form.is_valid():
+                holiday_date = form.cleaned_data["date"]
+                reason = form.cleaned_data["reason"]
+                doctor_id = form.cleaned_data.get("doctor_id") or None
+
+                if doctor_id:
+                    doctor_service.add_doctor_holiday(doctor_id, holiday_date.isoformat(), reason)
+                else:
+                    hospital_service.add_holiday(holiday_date.isoformat(), reason)
+
+                messages.success(request, "Tatil başarıyla eklendi.")
+            else:
+                messages.error(request, "Tatil eklenirken hata oluştu.")
+        elif form_type == "delete_holiday":
+            holiday_id = request.POST.get("holiday_id")
+            if holiday_id:
+                hospital_service.delete_holiday(holiday_id)
+                messages.success(request, "Tatil silindi.")
+
+        today = date.today()
+        year = int(request.POST.get("year", request.GET.get("year", today.year)))
+        month = int(request.POST.get("month", request.GET.get("month", today.month)))
+        doctor = request.POST.get("doctor", request.GET.get("doctor", ""))
+        params = f"year={year}&month={month}"
+        if doctor:
+            params += f"&doctor={doctor}"
+        return redirect(f"/schedule/?{params}")

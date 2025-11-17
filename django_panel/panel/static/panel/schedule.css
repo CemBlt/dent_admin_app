@@ -1,0 +1,97 @@
+.filter-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    align-items: end;
+}
+
+.calendar-grid {
+    margin-top: 20px;
+}
+
+.calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.calendar-header > div {
+    text-align: center;
+    font-weight: 600;
+    padding: 8px;
+    color: var(--teal);
+}
+
+.calendar-week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+.calendar-day {
+    min-height: 100px;
+    border: 1px solid #E5EAF0;
+    border-radius: 8px;
+    padding: 8px;
+    background: var(--card);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.calendar-day.other-month {
+    opacity: 0.4;
+    background: #F8FBFD;
+}
+
+.calendar-day.today {
+    border: 2px solid var(--teal);
+    background: #E0F7FA;
+}
+
+.day-number {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text);
+}
+
+.hours-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.hours-badge.hospital {
+    background: #C6F6D5;
+    color: #22543D;
+}
+
+.hours-badge.doctor {
+    background: #BFDBFE;
+    color: #1E3A8A;
+}
+
+.holiday-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #FECACA;
+    color: #7F1D1D;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+@media (max-width: 900px) {
+    .calendar-day {
+        min-height: 80px;
+        font-size: 11px;
+    }
+    .hours-badge, .holiday-badge {
+        font-size: 9px;
+        padding: 1px 4px;
+    }
+}
+

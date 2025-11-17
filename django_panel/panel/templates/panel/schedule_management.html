@@ -1,0 +1,96 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ page_title }} • Çalışma Takvimi</title>
+    <link rel="stylesheet" href="{% static 'panel/dashboard.css' %}">
+    <link rel="stylesheet" href="{% static 'panel/schedule.css' %}">
+</head>
+<body>
+<aside class="sidebar">
+    <div>
+        <div class="brand">{{ hospital.name }}</div>
+        <p style="margin:4px 0 0; color:#6C757D; font-size:13px;">{{ hospital.address }}</p>
+    </div>
+    <ul class="nav-links">
+        <li><a href="{% url 'dashboard' %}">Genel Bakış</a></li>
+        <li><a href="{% url 'hospital_settings' %}">Hastane Bilgileri</a></li>
+        <li><a href="{% url 'doctor_management' %}">Doktorlar</a></li>
+        <li><a href="{% url 'appointment_management' %}">Randevular</a></li>
+        <li><a class="active" href="{% url 'schedule_management' %}">Çalışma Takvimi</a></li>
+        <li><a href="#">Hizmetler</a></li>
+        <li><a href="#">Yorumlar</a></li>
+        <li><a href="#">Ayarlar</a></li>
+    </ul>
+</aside>
+<div class="content">
+    <div class="top-bar">
+        <div>
+            <p style="margin:0; color:#6C757D; font-size:13px;">Takvim Yönetimi</p>
+            <h1>{{ page_title }} - {{ calendar.month_name }} {{ calendar.year }}</h1>
+        </div>
+    </div>
+
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="message {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <section class="panel-card">
+        <h2>Filtreler</h2>
+        <form method="get" class="filter-form">
+            {{ filter_form.as_p }}
+            <button type="submit" class="primary">Göster</button>
+        </form>
+    </section>
+
+    <section class="panel-card">
+        <h2>Takvim</h2>
+        <div class="calendar-grid">
+            <div class="calendar-header">
+                <div>Pzt</div>
+                <div>Sal</div>
+                <div>Çar</div>
+                <div>Per</div>
+                <div>Cum</div>
+                <div>Cmt</div>
+                <div>Paz</div>
+            </div>
+            {% for week in calendar.weeks %}
+                <div class="calendar-week">
+                    {% for day in week %}
+                        <div class="calendar-day {% if not day.is_current_month %}other-month{% endif %} {% if day.is_today %}today{% endif %}">
+                            <div class="day-number">{{ day.date.day }}</div>
+                            {% if day.hospital_hours %}
+                                <div class="hours-badge hospital">H: {{ day.hospital_hours }}</div>
+                            {% endif %}
+                            {% if day.doctor_hours %}
+                                <div class="hours-badge doctor">D: {{ day.doctor_hours }}</div>
+                            {% endif %}
+                            {% for holiday in day.holidays %}
+                                <div class="holiday-badge">{{ holiday.reason }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="panel-card">
+        <h2>Yeni Tatil Ekle</h2>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="add_holiday">
+            {{ holiday_form.as_p }}
+            <button type="submit" class="primary">Tatil Ekle</button>
+        </form>
+    </section>
+</div>
+</body>
+</html>
+
