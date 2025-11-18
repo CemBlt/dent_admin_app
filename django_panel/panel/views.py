@@ -571,10 +571,8 @@ class ServiceManagementView(View):
 
         elif action == "update_assignments":
             doctors = request.POST.getlist("doctors")
-            hospitals = request.POST.getlist("hospitals")
             service_id = request.POST.get("service_id")
             service_service.update_doctor_assignments(service_id, doctors)
-            service_service.update_hospital_assignments(service_id, hospitals)
             messages.success(request, "Atamalar güncellendi")
             return redirect("service_management")
 
@@ -582,13 +580,15 @@ class ServiceManagementView(View):
         return render(request, self.template_name, context)
 
     def _build_context(self):
-        services = service_service.get_services()
+        all_services = service_service.get_services()
         doctors = doctor_service.get_doctors()
-        hospitals = hospital_service.get_hospitals()
         hospital = hospital_service.get_hospital()
+        
+        # Sadece hastanenin seçtiği hizmetleri göster
+        selected_service_ids = set(hospital.get("services", []))
+        services = [s for s in all_services if s["id"] in selected_service_ids]
 
         doctor_choices = [(doc["id"], f"{doc['name']} {doc['surname']}") for doc in doctors]
-        hospital_choices = [(h["id"], h["name"]) for h in hospitals]
 
         service_cards = []
         for service in services:
@@ -598,22 +598,18 @@ class ServiceManagementView(View):
                 "description": service.get("description", ""),
             })
             assigned_doctors = [doc["id"] for doc in doctors if service["id"] in doc.get("services", [])]
-            assigned_hospitals = [h["id"] for h in hospitals if service["id"] in h.get("services", [])]
             assignment_form = ServiceAssignmentForm(
                 initial={
                     "service_id": service["id"],
                     "doctors": assigned_doctors,
-                    "hospitals": assigned_hospitals,
                 },
                 doctor_choices=doctor_choices,
-                hospital_choices=hospital_choices,
             )
             service_cards.append({
                 "data": service,
                 "general_form": general_form,
                 "assignment_form": assignment_form,
                 "assigned_doctors": [doc for doc in doctors if doc["id"] in assigned_doctors],
-                "assigned_hospitals": [h for h in hospitals if h["id"] in assigned_hospitals],
             })
 
         context = {
@@ -621,7 +617,6 @@ class ServiceManagementView(View):
             "hospital": hospital,
             "service_cards": service_cards,
             "doctor_choices": doctor_choices,
-            "hospital_choices": hospital_choices,
         }
         return context
 

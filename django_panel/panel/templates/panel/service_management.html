@@ -61,7 +61,7 @@
                     </div>
                 </header>
 
-                <details open>
+                <details>
                     <summary>Genel Bilgiler</summary>
                     <form method="post">
                         {% csrf_token %}
@@ -98,18 +98,6 @@
                             </ul>
                         {% else %}
                             <p class="empty-state">Doktor ataması yok</p>
-                        {% endif %}
-                    </div>
-                    <div>
-                        <h4>Hastaneler</h4>
-                        {% if card.assigned_hospitals %}
-                            <ul>
-                                {% for hospital in card.assigned_hospitals %}
-                                    <li>{{ hospital.name }}</li>
-                                {% endfor %}
-                            </ul>
-                        {% else %}
-                            <p class="empty-state">Hastane ataması yok</p>
                         {% endif %}
                     </div>
                 </div>

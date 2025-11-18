@@ -19,7 +19,8 @@
       "1",
       "2",
       "3",
-      "4"
+      "4",
+      "5"
     ],
     "workingHours": {
       "monday": {
@@ -85,8 +86,8 @@
     "services": [
       "1",
       "2",
-      "4",
-      "5"
+      "5",
+      "4"
     ],
     "workingHours": {
       "monday": {
@@ -143,10 +144,10 @@
       "assets/images/hospital_3_3.jpg"
     ],
     "services": [
+      "6",
       "2",
       "3",
-      "5",
-      "6"
+      "5"
     ],
     "workingHours": {
       "monday": {

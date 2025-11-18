@@ -276,14 +276,11 @@ class ServiceForm(forms.Form):
 class ServiceAssignmentForm(forms.Form):
     service_id = forms.CharField(widget=forms.HiddenInput)
     doctors = forms.MultipleChoiceField(label="Doktorlar", required=False, widget=forms.CheckboxSelectMultiple)
-    hospitals = forms.MultipleChoiceField(label="Hastaneler", required=False, widget=forms.CheckboxSelectMultiple)
 
     def __init__(self, *args, **kwargs):
         doctor_choices = kwargs.pop("doctor_choices", [])
-        hospital_choices = kwargs.pop("hospital_choices", [])
         super().__init__(*args, **kwargs)
         self.fields["doctors"].choices = doctor_choices
-        self.fields["hospitals"].choices = hospital_choices
 
 
 class ReviewFilterForm(forms.Form):
