@@ -57,6 +57,42 @@ def get_summary():
     return stats
 
 
+def auto_cancel_overdue_appointments(hospital_id: str = "1") -> int:
+    """
+    Randevu tarihinden 5 gün geçmiş ve hala tamamlanmamış randevuları otomatik iptal eder.
+    Returns: İptal edilen randevu sayısı
+    """
+    from datetime import timedelta
+    
+    appointments = get_appointments()
+    today = date.today()
+    cancelled_count = 0
+    
+    for apt in appointments:
+        if apt.get("hospitalId") != hospital_id:
+            continue
+        
+        # Sadece pending ve completed olmayan randevuları kontrol et
+        if apt["status"] in ["completed", "cancelled"]:
+            continue
+        
+        try:
+            apt_date = datetime.strptime(apt["date"], "%Y-%m-%d").date()
+            days_passed = (today - apt_date).days
+            
+            # 5 gün geçmişse iptal et
+            if days_passed > 5:
+                apt["status"] = "cancelled"
+                cancelled_count += 1
+        except (ValueError, KeyError):
+            continue
+    
+    if cancelled_count > 0:
+        save_json("appointments", appointments)
+    
+    return cancelled_count
+
+
 def is_appointment_time_blocked(appointment_date: date, appointment_time: str, hospital_id: str = "1") -> bool:
     """
     Belirli bir tarih ve saatte randevu alınıp alınamayacağını kontrol eder.

@@ -1,6 +1,7 @@
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.views import View
@@ -423,6 +424,11 @@ class AppointmentManagementView(View):
         return render(request, self.template_name, context)
 
     def _build_context(self, request):
+        # Otomatik iptal kontrolü - her sayfa yüklendiğinde
+        cancelled_count = appointment_service.auto_cancel_overdue_appointments()
+        if cancelled_count > 0:
+            messages.info(request, f"{cancelled_count} randevu otomatik olarak iptal edildi (5 gün geçmiş).")
+        
         hospital = hospital_service.get_hospital()
         doctors = doctor_service.get_doctors()
         services = hospital_service.get_services()
@@ -438,6 +444,9 @@ class AppointmentManagementView(View):
         filters = filter_form.cleaned_data if filter_form.is_valid() else {}
         start_date = filters.get("start_date")
         end_date = filters.get("end_date")
+        # per_page değerini form'dan al, yoksa GET parametresinden al
+        per_page = filters.get("per_page") or request.GET.get("per_page", "10")
+        
         appointments = appointment_service.filter_appointments(
             status=filters.get("status") or None,
             doctor_id=filters.get("doctor") or None,
@@ -446,16 +455,69 @@ class AppointmentManagementView(View):
             end_date=end_date,
         )
 
+        # Sıralama: Bekleyen randevular önce (tarih/saat), tamamlanan en altta
         enriched = self._enrich_appointments(appointments, doctors, services)
+        enriched = self._sort_appointments(enriched)
 
+        # Pagination
+        per_page = int(per_page or "10")
+        paginator = Paginator(enriched, per_page)
+        page_number = request.GET.get("page", 1)
+        try:
+            page_obj = paginator.get_page(page_number)
+        except:
+            page_obj = paginator.get_page(1)
+
+        # Filter form'a per_page değerini set et
+        if filter_form.is_valid():
+            filter_form.fields["per_page"].initial = str(per_page)
+        else:
+            filter_form.fields["per_page"].initial = request.GET.get("per_page", "10")
+        
         context = {
             "page_title": "Randevu Yönetimi",
             "hospital": hospital,
             "filter_form": filter_form,
-            "appointments": enriched,
+            "appointments": page_obj,
             "summary": appointment_service.get_summary(),
+            "paginator": paginator,
         }
         return context
+    
+    def _sort_appointments(self, appointments):
+        """
+        Randevuları sıralar: Bekleyen randevular önce (tarih/saat), tamamlanan en altta
+        """
+        pending = []
+        completed = []
+        cancelled = []
+        
+        for apt in appointments:
+            status = apt["data"].get("status", "pending")
+            if status == "pending":
+                pending.append(apt)
+            elif status == "completed":
+                completed.append(apt)
+            else:
+                cancelled.append(apt)
+        
+        # Tarih ve saat sırasına göre sırala
+        def sort_key(apt):
+            try:
+                date_str = apt["data"].get("date", "")
+                time_str = apt["data"].get("time", "00:00")
+                date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+                time_obj = datetime.strptime(time_str, "%H:%M").time()
+                return (date_obj, time_obj)
+            except (ValueError, KeyError):
+                return (date.today(), datetime.min.time())
+        
+        pending.sort(key=sort_key)
+        completed.sort(key=sort_key, reverse=True)  # Tamamlananlar en yeniden eskiye
+        cancelled.sort(key=sort_key, reverse=True)
+        
+        # Bekleyen önce, sonra iptal, en son tamamlanan
+        return pending + cancelled + completed
 
     def _enrich_appointments(self, appointments, doctors, services):
         doctor_map = {doc["id"]: doc for doc in doctors}

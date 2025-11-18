@@ -233,6 +233,16 @@ class AppointmentFilterForm(forms.Form):
     service = forms.ChoiceField(label="Hizmet", required=False)
     start_date = forms.DateField(label="Başlangıç Tarihi", required=False, widget=forms.DateInput(attrs={"type": "date"}))
     end_date = forms.DateField(label="Bitiş Tarihi", required=False, widget=forms.DateInput(attrs={"type": "date"}))
+    per_page = forms.ChoiceField(
+        label="Sayfa Başına",
+        required=False,
+        choices=[
+            ("10", "10"),
+            ("20", "20"),
+            ("50", "50"),
+        ],
+        initial="10",
+    )
 
     def __init__(self, *args, **kwargs):
         doctor_choices = kwargs.pop("doctor_choices", [])

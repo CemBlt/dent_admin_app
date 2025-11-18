@@ -145,6 +145,69 @@
                 </tbody>
             </table>
         </div>
+        
+        {% if appointments.has_other_pages %}
+            <div class="pagination-wrapper" style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: var(--text-secondary); font-size: 14px;">
+                        Toplam {{ paginator.count }} randevu
+                    </span>
+                    <span style="color: var(--text-secondary); font-size: 14px;">
+                        (Sayfa {{ appointments.number }} / {{ paginator.num_pages }})
+                    </span>
+                </div>
+                <div class="pagination" style="display: flex; gap: 8px; align-items: center;">
+                    {% if appointments.has_previous %}
+                        <a href="?page=1{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.doctor %}&doctor={{ request.GET.doctor }}{% endif %}{% if request.GET.service %}&service={{ request.GET.service }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if request.GET.per_page %}&per_page={{ request.GET.per_page }}{% endif %}" 
+                           class="pagination-btn" style="padding: 8px 12px; border-radius: 8px; background: var(--card); border: 1px solid var(--card-border); color: var(--text); text-decoration: none; font-size: 14px;">
+                            <i class="bi bi-chevron-double-left"></i>
+                        </a>
+                        <a href="?page={{ appointments.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.doctor %}&doctor={{ request.GET.doctor }}{% endif %}{% if request.GET.service %}&service={{ request.GET.service }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if request.GET.per_page %}&per_page={{ request.GET.per_page }}{% endif %}" 
+                           class="pagination-btn" style="padding: 8px 12px; border-radius: 8px; background: var(--card); border: 1px solid var(--card-border); color: var(--text); text-decoration: none; font-size: 14px;">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    {% else %}
+                        <span class="pagination-btn disabled" style="padding: 8px 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--card-border); color: var(--text-secondary); font-size: 14px; cursor: not-allowed;">
+                            <i class="bi bi-chevron-double-left"></i>
+                        </span>
+                        <span class="pagination-btn disabled" style="padding: 8px 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--card-border); color: var(--text-secondary); font-size: 14px; cursor: not-allowed;">
+                            <i class="bi bi-chevron-left"></i>
+                        </span>
+                    {% endif %}
+                    
+                    {% for num in appointments.paginator.page_range %}
+                        {% if appointments.number == num %}
+                            <span class="pagination-btn active" style="padding: 8px 12px; border-radius: 8px; background: var(--primary); color: #fff; font-size: 14px; font-weight: 600;">
+                                {{ num }}
+                            </span>
+                        {% elif num > appointments.number|add:'-3' and num < appointments.number|add:'3' %}
+                            <a href="?page={{ num }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.doctor %}&doctor={{ request.GET.doctor }}{% endif %}{% if request.GET.service %}&service={{ request.GET.service }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if request.GET.per_page %}&per_page={{ request.GET.per_page }}{% endif %}" 
+                               class="pagination-btn" style="padding: 8px 12px; border-radius: 8px; background: var(--card); border: 1px solid var(--card-border); color: var(--text); text-decoration: none; font-size: 14px;">
+                                {{ num }}
+                            </a>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if appointments.has_next %}
+                        <a href="?page={{ appointments.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.doctor %}&doctor={{ request.GET.doctor }}{% endif %}{% if request.GET.service %}&service={{ request.GET.service }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if request.GET.per_page %}&per_page={{ request.GET.per_page }}{% endif %}" 
+                           class="pagination-btn" style="padding: 8px 12px; border-radius: 8px; background: var(--card); border: 1px solid var(--card-border); color: var(--text); text-decoration: none; font-size: 14px;">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                        <a href="?page={{ paginator.num_pages }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.doctor %}&doctor={{ request.GET.doctor }}{% endif %}{% if request.GET.service %}&service={{ request.GET.service }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if request.GET.per_page %}&per_page={{ request.GET.per_page }}{% endif %}" 
+                           class="pagination-btn" style="padding: 8px 12px; border-radius: 8px; background: var(--card); border: 1px solid var(--card-border); color: var(--text); text-decoration: none; font-size: 14px;">
+                            <i class="bi bi-chevron-double-right"></i>
+                        </a>
+                    {% else %}
+                        <span class="pagination-btn disabled" style="padding: 8px 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--card-border); color: var(--text-secondary); font-size: 14px; cursor: not-allowed;">
+                            <i class="bi bi-chevron-right"></i>
+                        </span>
+                        <span class="pagination-btn disabled" style="padding: 8px 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--card-border); color: var(--text-secondary); font-size: 14px; cursor: not-allowed;">
+                            <i class="bi bi-chevron-double-right"></i>
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
     </section>
 </div>
 

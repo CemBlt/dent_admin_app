@@ -986,6 +986,16 @@ body {
     content: "\F622"; /* bi-x-circle-fill */
 }
 
+.message.info {
+    background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+    color: #FFFFFF;
+    border-color: #1E40AF;
+}
+
+.message.info::before {
+    content: "\F430"; /* bi-info-circle-fill */
+}
+
 @keyframes slideInDown {
     from {
         opacity: 0;

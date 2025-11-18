@@ -186,7 +186,7 @@
     "doctorId": "1",
     "date": "2024-03-05",
     "time": "10:00",
-    "status": "pending",
+    "status": "cancelled",
     "service": "1",
     "notes": "Rutin kontrol randevusu",
     "createdAt": "2024-02-10T14:30:00Z"
@@ -198,7 +198,7 @@
     "doctorId": "2",
     "date": "2024-03-08",
     "time": "14:00",
-    "status": "pending",
+    "status": "cancelled",
     "service": "3",
     "notes": "Protez kontrolü ve ölçü",
     "createdAt": "2024-02-12T10:15:00Z"
@@ -258,7 +258,7 @@
     "doctorId": "1",
     "date": "2024-03-28",
     "time": "09:00",
-    "status": "pending",
+    "status": "cancelled",
     "service": "7",
     "notes": "Ortodonti kontrolü",
     "createdAt": "2024-02-25T10:00:00Z"
