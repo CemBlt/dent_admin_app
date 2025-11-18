@@ -51,7 +51,9 @@ def get_holidays() -> list[dict]:
     ]
 
 
-def add_holiday(date_str: str, reason: str) -> None:
+def add_holiday(date_str: str, reason: str, is_full_day: bool = True, start_time: str | None = None, end_time: str | None = None) -> None:
+    from datetime import datetime, date
+    
     existing = load_json("holidays")
     new_id = str(max((int(item["id"]) for item in existing), default=0) + 1)
     payload = {
@@ -60,8 +62,29 @@ def add_holiday(date_str: str, reason: str) -> None:
         "doctorId": None,
         "date": date_str,
         "reason": reason,
+        "isFullDay": is_full_day,
+        "startTime": start_time if not is_full_day else None,
+        "endTime": end_time if not is_full_day else None,
     }
     append_to_collection("holidays", payload)
+    
+    # Saatli tatil ise, o günün çalışma saatlerini tatil başlangıç saatine kadar kısalt
+    if not is_full_day and start_time:
+        holiday_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        weekday_names = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+        weekday_name = weekday_names[holiday_date.weekday()]
+        
+        hospital = get_hospital()
+        working_hours = hospital.get("workingHours", {})
+        day_hours = working_hours.get(weekday_name, {})
+        
+        # Eğer o gün çalışma günü ise ve başlangıç saati varsa
+        if day_hours.get("isAvailable") and day_hours.get("start"):
+            # Çalışma saatlerini tatil başlangıç saatine kadar kısalt
+            day_hours["end"] = start_time
+            working_hours[weekday_name] = day_hours
+            hospital["workingHours"] = working_hours
+            save_hospital(hospital)
 
 
 def delete_holiday(holiday_id: str) -> None:

@@ -77,10 +77,10 @@
                         <div class="calendar-day {% if not day.is_current_month %}other-month{% endif %} {% if day.is_today %}today{% endif %} {% if day.is_past %}past{% endif %}">
                             <div class="day-number">{{ day.date.day }}</div>
                             {% if day.hospital_hours %}
-                                <div class="hours-badge hospital">H: {{ day.hospital_hours }}</div>
+                                <div class="hours-badge hospital {% if day.has_full_day_holiday %}cancelled{% endif %}">H: {{ day.hospital_hours }}</div>
                             {% endif %}
                             {% if day.doctor_hours %}
-                                <div class="hours-badge doctor">D: {{ day.doctor_hours }}</div>
+                                <div class="hours-badge doctor {% if day.has_full_day_holiday %}cancelled{% endif %}">D: {{ day.doctor_hours }}</div>
                             {% endif %}
                             {% for holiday in day.holidays %}
                                 <div class="holiday-badge">{{ holiday.reason }}</div>

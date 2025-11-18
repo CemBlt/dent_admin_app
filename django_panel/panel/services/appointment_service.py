@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, date, time
 from typing import List
 
 from .json_repository import load_json, save_json
@@ -55,3 +55,46 @@ def get_summary():
     today = datetime.now().date()
     stats["today"] = sum(1 for apt in appointments if apt["date"] == today.isoformat())
     return stats
+
+
+def is_appointment_time_blocked(appointment_date: date, appointment_time: str, hospital_id: str = "1") -> bool:
+    """
+    Belirli bir tarih ve saatte randevu alınıp alınamayacağını kontrol eder.
+    Tüm gün tatillerde True döner (randevu alınamaz).
+    Saatli tatillerde sadece tatil saatleri içinde True döner.
+    """
+    holidays = load_json("holidays")
+    appointment_date_str = appointment_date.isoformat()
+    
+    # Randevu saatini time objesine çevir
+    try:
+        apt_time = datetime.strptime(appointment_time, "%H:%M").time()
+    except (ValueError, TypeError):
+        return False
+    
+    for holiday in holidays:
+        if holiday.get("hospitalId") != hospital_id:
+            continue
+        if holiday.get("doctorId"):  # Doktor tatillerini atla, sadece hastane tatilleri
+            continue
+        if holiday.get("date") != appointment_date_str:
+            continue
+        
+        # Tüm gün tatil
+        if holiday.get("isFullDay", True):
+            return True
+        
+        # Saatli tatil kontrolü
+        start_time_str = holiday.get("startTime")
+        end_time_str = holiday.get("endTime")
+        if start_time_str and end_time_str:
+            try:
+                start_time = datetime.strptime(start_time_str, "%H:%M").time()
+                end_time = datetime.strptime(end_time_str, "%H:%M").time()
+                # Randevu saati tatil saatleri arasındaysa engelle
+                if start_time <= apt_time <= end_time:
+                    return True
+            except (ValueError, TypeError):
+                continue
+    
+    return False

@@ -102,6 +102,11 @@
     color: #1E40AF;
 }
 
+.hours-badge.cancelled {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
 .holiday-badge {
     font-size: 11px;
     padding: 4px 8px;

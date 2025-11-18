@@ -131,9 +131,31 @@ class HospitalSettingsView(View):
         elif action == "holiday_add":
             form = HolidayAddForm(request.POST)
             if form.is_valid():
+                is_full_day = form.cleaned_data.get("is_full_day", True)
+                start_time = form.cleaned_data.get("start_time") if not is_full_day else None
+                end_time = form.cleaned_data.get("end_time") if not is_full_day else None
+                
+                # Saatli tatil için validasyon
+                if not is_full_day:
+                    if not start_time or not end_time:
+                        messages.error(request, "Saatli tatil için başlangıç ve bitiş saatleri zorunludur.")
+                        context = self._build_context()
+                        context["holiday_add_form"] = form
+                        context["active_tab"] = "holidays"
+                        return render(request, self.template_name, context)
+                    if start_time >= end_time:
+                        messages.error(request, "Bitiş saati başlangıç saatinden sonra olmalıdır.")
+                        context = self._build_context()
+                        context["holiday_add_form"] = form
+                        context["active_tab"] = "holidays"
+                        return render(request, self.template_name, context)
+                
                 hospital_service.add_holiday(
                     form.cleaned_data["date"].isoformat(),
                     form.cleaned_data["reason"],
+                    is_full_day=is_full_day,
+                    start_time=start_time,
+                    end_time=end_time,
                 )
                 messages.success(request, "Tatil bilgisi eklendi.")
                 return redirect("hospital_settings")
@@ -197,6 +219,10 @@ class HospitalSettingsView(View):
             })
 
         gallery_list = hospital.get("gallery") or []
+        
+        # JavaScript için hastane çalışma saatlerini JSON olarak geçir
+        import json
+        working_hours_json = json.dumps(hospital.get("workingHours", {}))
 
         context = {
             "page_title": "Hastane Bilgileri",
@@ -211,6 +237,7 @@ class HospitalSettingsView(View):
             "gallery_add_form": GalleryAddForm(),
             "holiday_add_form": HolidayAddForm(),
             "days": DAYS,
+            "working_hours_json": working_hours_json,
         }
         return context
 

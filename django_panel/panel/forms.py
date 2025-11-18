@@ -129,6 +129,19 @@ class GalleryAddForm(forms.Form):
 class HolidayAddForm(forms.Form):
     date = forms.DateField(label="Tarih", widget=forms.DateInput(attrs={"type": "date"}))
     reason = forms.CharField(label="Açıklama", max_length=120)
+    is_full_day = forms.BooleanField(label="Tüm Gün", required=False, initial=True)
+    start_time = forms.ChoiceField(
+        label="Başlangıç Saati",
+        choices=TIME_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={"class": "time-select"})
+    )
+    end_time = forms.ChoiceField(
+        label="Bitiş Saati",
+        choices=TIME_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={"class": "time-select"})
+    )
 
 
 class DoctorForm(forms.Form):

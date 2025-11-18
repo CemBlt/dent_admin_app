@@ -69,7 +69,16 @@ def build_calendar_data(year: int, month: int, selected_doctor_id: str | None = 
                     day_data["doctor_hours"] = f"{doctor_hours.get('start')} - {doctor_hours.get('end')}"
             
             month_holidays = get_holidays_for_month(current.year, current.month, selected_doctor_id)
-            day_data["holidays"] = [h for h in month_holidays if datetime.strptime(h["date"], "%Y-%m-%d").date() == current]
+            day_holidays = [h for h in month_holidays if datetime.strptime(h["date"], "%Y-%m-%d").date() == current]
+            day_data["holidays"] = day_holidays
+            
+            # Tüm gün tatil kontrolü - eğer o günde tüm gün tatil varsa çalışma saatlerini iptal et
+            # Sadece hastane tatilleri kontrol et (doctorId olmayanlar)
+            has_full_day_holiday = any(
+                h.get("isFullDay", True) for h in day_holidays
+                if not h.get("doctorId")  # Sadece hastane tatilleri
+            )
+            day_data["has_full_day_holiday"] = has_full_day_holiday
             
             week.append(day_data)
             current += timedelta(days=1)
