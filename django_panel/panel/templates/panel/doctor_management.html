@@ -215,5 +215,21 @@ document.querySelectorAll('.doctor-accordion details').forEach(detail => {
 </script>
 <!-- Bootstrap 5 JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<script>
+// Mesajların otomatik kapanması
+(function() {
+    const messages = document.querySelectorAll('.message');
+    messages.forEach(message => {
+        // 5 saniye sonra otomatik kapan
+        setTimeout(() => {
+            message.style.opacity = '0';
+            message.style.transform = 'translateY(-20px)';
+            setTimeout(() => {
+                message.remove();
+            }, 400);
+        }, 5000);
+    });
+})();
+</script>
 </body>
 </html>

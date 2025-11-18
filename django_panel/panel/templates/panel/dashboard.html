@@ -51,6 +51,14 @@
         </div>
     </div>
 
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="message {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
     <section class="kpi-grid">
         {% for card in kpi_cards %}
             <article class="kpi-card">
@@ -221,6 +229,21 @@
             themeButtons.forEach(b => b.classList.remove('active'));
             this.classList.add('active');
         });
+    });
+})();
+
+// Mesajların otomatik kapanması
+(function() {
+    const messages = document.querySelectorAll('.message');
+    messages.forEach(message => {
+        // 5 saniye sonra otomatik kapan
+        setTimeout(() => {
+            message.style.opacity = '0';
+            message.style.transform = 'translateY(-20px)';
+            setTimeout(() => {
+                message.remove();
+            }, 400);
+        }, 5000);
     });
 })();
 </script>

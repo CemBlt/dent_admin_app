@@ -587,20 +587,20 @@ class ServiceManagementView(View):
             form = ServiceForm(request.POST)
             if form.is_valid():
                 service_service.update_service(form.cleaned_data["service_id"], form.cleaned_data)
-                messages.success(request, "Hizmet güncellendi")
+                messages.success(request, "Hizmet güncellendi.")
                 return redirect("service_management")
-            messages.error(request, "Hizmet güncellenemedi")
+            messages.error(request, "Hizmet güncellenemedi.")
 
         elif action == "delete_service":
             service_service.delete_service(request.POST.get("service_id"))
-            messages.success(request, "Hizmet silindi")
+            messages.success(request, "Hizmet silindi.")
             return redirect("service_management")
 
         elif action == "update_assignments":
             doctors = request.POST.getlist("doctors")
             service_id = request.POST.get("service_id")
             service_service.update_doctor_assignments(service_id, doctors)
-            messages.success(request, "Atamalar güncellendi")
+            messages.success(request, "Atamalar güncellendi.")
             return redirect("service_management")
 
         context = self._build_context()
@@ -664,7 +664,7 @@ class ReviewManagementView(View):
                 review_id = form.cleaned_data["review_id"]
                 reply_text = form.cleaned_data["reply"]
                 review_service.add_reply(review_id, reply_text)
-                messages.success(request, "Yanıt eklendi")
+                messages.success(request, "Yanıt eklendi.")
                 return redirect("review_management")
 
         elif action == "edit_reply":
@@ -673,14 +673,14 @@ class ReviewManagementView(View):
                 review_id = form.cleaned_data["review_id"]
                 reply_text = form.cleaned_data["reply"]
                 review_service.add_reply(review_id, reply_text)
-                messages.success(request, "Yanıt güncellendi")
+                messages.success(request, "Yanıt güncellendi.")
                 return redirect("review_management")
 
         elif action == "delete_reply":
             review_id = request.POST.get("review_id")
             if review_id:
                 review_service.delete_reply(review_id)
-                messages.success(request, "Yanıt silindi")
+                messages.success(request, "Yanıt silindi.")
                 return redirect("review_management")
 
         context = self._build_context(request)
@@ -793,7 +793,7 @@ class SettingsView(View):
                     "language": form.cleaned_data["language"],
                 }
                 settings_service.update_settings("general", updates)
-                messages.success(request, "Genel ayarlar güncellendi")
+                messages.success(request, "Genel ayarlar güncellendi.")
                 return redirect("settings")
 
         elif action == "notifications":
@@ -807,7 +807,7 @@ class SettingsView(View):
                     "reminder_hours_before": form.cleaned_data["reminder_hours_before"],
                 }
                 settings_service.update_settings("notifications", updates)
-                messages.success(request, "Bildirim ayarları güncellendi")
+                messages.success(request, "Bildirim ayarları güncellendi.")
                 return redirect("settings")
 
         elif action == "data_management":
@@ -818,7 +818,7 @@ class SettingsView(View):
                     "auto_backup_days": form.cleaned_data["auto_backup_days"],
                 }
                 settings_service.update_settings("data_management", updates)
-                messages.success(request, "Veri yönetimi ayarları güncellendi")
+                messages.success(request, "Veri yönetimi ayarları güncellendi.")
                 return redirect("settings")
 
         elif action == "security":
@@ -828,7 +828,7 @@ class SettingsView(View):
                     "session_timeout_minutes": form.cleaned_data["session_timeout_minutes"],
                 }
                 settings_service.update_settings("security", updates)
-                messages.success(request, "Güvenlik ayarları güncellendi")
+                messages.success(request, "Güvenlik ayarları güncellendi.")
                 return redirect("settings")
 
         elif action == "appearance":
@@ -840,7 +840,7 @@ class SettingsView(View):
                     "records_per_page": form.cleaned_data["records_per_page"],
                 }
                 settings_service.update_settings("appearance", updates)
-                messages.success(request, "Görünüm ayarları güncellendi")
+                messages.success(request, "Görünüm ayarları güncellendi.")
                 return redirect("settings")
 
         elif action == "export_data":

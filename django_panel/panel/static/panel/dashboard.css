@@ -933,6 +933,70 @@ body {
     padding: 40px 20px;
 }
 
+/* Messages - Belirgin ve Dikkat Çekici */
+.messages {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+    position: relative;
+    z-index: 100;
+}
+
+.message {
+    padding: 18px 24px;
+    border-radius: 16px;
+    font-weight: 600;
+    font-size: 16px;
+    border-left: 5px solid;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    animation: slideInDown 0.4s ease-out;
+    position: relative;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.message::before {
+    font-family: "bootstrap-icons";
+    font-size: 24px;
+    font-weight: normal;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.message.success {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    color: #FFFFFF;
+    border-color: #047857;
+}
+
+.message.success::before {
+    content: "\F26B"; /* bi-check-circle-fill */
+}
+
+.message.error {
+    background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+    color: #FFFFFF;
+    border-color: #B91C1C;
+}
+
+.message.error::before {
+    content: "\F622"; /* bi-x-circle-fill */
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
     .content {

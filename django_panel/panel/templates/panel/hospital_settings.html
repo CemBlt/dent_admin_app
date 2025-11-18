@@ -562,6 +562,21 @@
         dateInput.addEventListener('change', setEndTimeFromWorkingHours);
     }
 })();
+
+// Mesajların otomatik kapanması
+(function() {
+    const messages = document.querySelectorAll('.message');
+    messages.forEach(message => {
+        // 5 saniye sonra otomatik kapan
+        setTimeout(() => {
+            message.style.opacity = '0';
+            message.style.transform = 'translateY(-20px)';
+            setTimeout(() => {
+                message.remove();
+            }, 400);
+        }, 5000);
+    });
+})();
 </script>
 </body>
 </html>
