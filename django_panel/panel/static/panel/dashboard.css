@@ -787,6 +787,17 @@ body {
     line-height: 1.5;
 }
 
+/* Dark modda pill renklerini düzelt */
+[data-theme="dark"] .kpi-card .pill[style*="color:#1E3A8A"] {
+    color: #93C5FD !important;  /* Toplam Yorum - açık mavi */
+    background: rgba(147, 197, 253, 0.2) !important;  /* Açık mavi arka plan */
+}
+
+[data-theme="dark"] .kpi-card .pill[style*="color:#4338CA"] {
+    color: #A5B4FC !important;  /* Son 30 Gün - açık mor */
+    background: rgba(165, 180, 252, 0.2) !important;  /* Açık mor arka plan */
+}
+
 /* Panel Cards - Belirgin Border ve Shadow */
 .grid-two-columns {
     display: grid;
