@@ -189,7 +189,7 @@
                 {% for image in gallery %}
                     <div class="gallery-card">
                         <img src="{% static image %}" alt="Galeri">
-                        <form method="post">
+                        <form method="post" onsubmit="return confirm('Bu görseli silmek istediğinize emin misiniz?');">
                             {% csrf_token %}
                             <input type="hidden" name="form_type" value="gallery_remove">
                             <input type="hidden" name="index" value="{{ forloop.counter0 }}">
@@ -265,7 +265,7 @@
                                 {% endif %}
                             </p>
                         </div>
-                        <form method="post">
+                        <form method="post" onsubmit="return confirm('Bu tatili silmek istediğinize emin misiniz?');">
                             {% csrf_token %}
                             <input type="hidden" name="form_type" value="holiday_delete">
                             <input type="hidden" name="holiday_id" value="{{ holiday.id }}">

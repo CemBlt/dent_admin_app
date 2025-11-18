@@ -47,7 +47,8 @@
     "createdAt": "2024-01-01T08:30:00Z",
     "services": [
       "1"
-    ]
+    ],
+    "isActive": true
   },
   {
     "id": "2",

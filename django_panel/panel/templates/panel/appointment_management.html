@@ -131,7 +131,7 @@
                                 </form>
                             </td>
                             <td>
-                                <form method="post" class="inline-form">
+                                <form method="post" class="inline-form" onsubmit="return confirm('Bu randevuyu silmek istediğinize emin misiniz?');">
                                     {% csrf_token %}
                                     <input type="hidden" name="form_type" value="delete_appointment">
                                     <input type="hidden" name="appointment_id" value="{{ item.data.id }}">

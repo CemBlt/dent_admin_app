@@ -117,7 +117,7 @@
                             {{ card.general_form.as_p }}
                             <button type="submit" class="primary">Güncelle</button>
                         </form>
-                        <form method="post" class="inline-form">
+                        <form method="post" class="inline-form" onsubmit="return confirm('Bu doktoru silmek istediğinize emin misiniz?');">
                             {% csrf_token %}
                             <input type="hidden" name="form_type" value="delete_doctor">
                             <input type="hidden" name="doctor_id" value="{{ card.data.id }}">
@@ -144,7 +144,7 @@
                                         <strong>{{ holiday.reason }}</strong>
                                         <p>{{ holiday.date }}</p>
                                     </div>
-                                    <form method="post">
+                                    <form method="post" onsubmit="return confirm('Bu tatili silmek istediğinize emin misiniz?');">
                                         {% csrf_token %}
                                         <input type="hidden" name="form_type" value="delete_holiday">
                                         <input type="hidden" name="holiday_id" value="{{ holiday.id }}">

@@ -69,7 +69,7 @@
                         {{ card.general_form.as_p }}
                         <button type="submit" class="primary">Güncelle</button>
                     </form>
-                    <form method="post" class="inline-form">
+                    <form method="post" class="inline-form" onsubmit="return confirm('Bu hizmeti silmek istediğinize emin misiniz?');">
                         {% csrf_token %}
                         <input type="hidden" name="form_type" value="delete_service">
                         <input type="hidden" name="service_id" value="{{ card.data.id }}">
