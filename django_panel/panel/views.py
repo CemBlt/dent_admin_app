@@ -556,15 +556,7 @@ class ServiceManagementView(View):
 
     def post(self, request):
         action = request.POST.get("form_type")
-        if action == "create_service":
-            form = ServiceForm(request.POST)
-            if form.is_valid():
-                service_service.add_service(form.cleaned_data)
-                messages.success(request, "Hizmet oluşturuldu")
-                return redirect("service_management")
-            messages.error(request, "Hizmet oluşturulamadı")
-
-        elif action == "update_service":
+        if action == "update_service":
             form = ServiceForm(request.POST)
             if form.is_valid():
                 service_service.update_service(form.cleaned_data["service_id"], form.cleaned_data)
@@ -604,7 +596,6 @@ class ServiceManagementView(View):
                 "service_id": service["id"],
                 "name": service["name"],
                 "description": service.get("description", ""),
-                "price": service.get("price", 0),
             })
             assigned_doctors = [doc["id"] for doc in doctors if service["id"] in doc.get("services", [])]
             assigned_hospitals = [h["id"] for h in hospitals if service["id"] in h.get("services", [])]
@@ -629,7 +620,6 @@ class ServiceManagementView(View):
             "page_title": "Hizmetler",
             "hospital": hospital,
             "service_cards": service_cards,
-            "create_form": ServiceForm(),
             "doctor_choices": doctor_choices,
             "hospital_choices": hospital_choices,
         }

@@ -38,7 +38,9 @@ def update_service(service_id: str, data: dict) -> dict:
         if service["id"] == service_id:
             service["name"] = data["name"]
             service["description"] = data.get("description", "")
-            service["price"] = float(data["price"])
+            # Price alanı formdan kaldırıldı, mevcut değeri koru
+            if "price" in data:
+                service["price"] = float(data["price"])
             services[idx] = service
             _persist_services(services)
             return service

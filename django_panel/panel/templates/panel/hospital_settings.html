@@ -220,14 +220,6 @@
                 {{ services_form.as_p }}
                 <button type="submit" class="primary">Hizmetleri Kaydet</button>
             </form>
-            <div class="service-info">
-                {% for service in services_catalog %}
-                    <div>
-                        <strong>{{ service.name }}</strong>
-                        <p>{{ service.description }} — {{ service.price }} ₺</p>
-                    </div>
-                {% endfor %}
-            </div>
         </section>
 
         <section id="panel-hours" class="tab-panel">

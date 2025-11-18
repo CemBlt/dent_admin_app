@@ -271,7 +271,6 @@ class ServiceForm(forms.Form):
     service_id = forms.CharField(widget=forms.HiddenInput, required=False)
     name = forms.CharField(label="Hizmet Adı", max_length=120)
     description = forms.CharField(label="Açıklama", widget=forms.Textarea, required=False)
-    price = forms.DecimalField(label="Fiyat (₺)", max_digits=10, decimal_places=2)
 
 
 class ServiceAssignmentForm(forms.Form):

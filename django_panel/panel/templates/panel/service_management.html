@@ -51,16 +51,6 @@
         </div>
     {% endif %}
 
-    <section class="panel-card">
-        <h2>Yeni Hizmet Ekle</h2>
-        <form method="post">
-            {% csrf_token %}
-            <input type="hidden" name="form_type" value="create_service">
-            {{ create_form.as_p }}
-            <button type="submit" class="primary">Kaydet</button>
-        </form>
-    </section>
-
     <section class="service-grid">
         {% for card in service_cards %}
             <article class="service-card">
@@ -69,7 +59,6 @@
                         <h3>{{ card.data.name }}</h3>
                         <p>{{ card.data.description }}</p>
                     </div>
-                    <span class="price">{{ card.data.price }} ₺</span>
                 </header>
 
                 <details open>
