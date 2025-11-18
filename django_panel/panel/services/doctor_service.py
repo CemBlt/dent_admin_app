@@ -128,10 +128,27 @@ def build_working_hours_from_form(cleaned_data: dict) -> dict:
         is_open = cleaned_data.get(f"{key}_is_open")
         start = cleaned_data.get(f"{key}_start")
         end = cleaned_data.get(f"{key}_end")
+        
+        # ChoiceField'den gelen değerler string olarak gelir
+        # Eğer time objesi ise strftime kullan, string ise direkt kullan
+        start_str = None
+        if start:
+            if hasattr(start, 'strftime'):
+                start_str = start.strftime("%H:%M")
+            elif isinstance(start, str):
+                start_str = start
+        
+        end_str = None
+        if end:
+            if hasattr(end, 'strftime'):
+                end_str = end.strftime("%H:%M")
+            elif isinstance(end, str):
+                end_str = end
+        
         working_hours[key] = {
             "isAvailable": bool(is_open),
-            "start": start.strftime("%H:%M") if start else None,
-            "end": end.strftime("%H:%M") if end else None,
+            "start": start_str,
+            "end": end_str,
         }
     return working_hours
 

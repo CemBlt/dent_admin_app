@@ -13,8 +13,7 @@
       "assets/images/hospital_1_1.jpg",
       "assets/images/hospital_1_2.jpg",
       "assets/images/hospital_1_3.jpg",
-      "assets/images/hospital_1_4.jpg",
-      "assets/images/hospital_1_5.jpg"
+      "assets/images/hospital_1_4.jpg"
     ],
     "services": [
       "1",
@@ -23,39 +22,39 @@
     ],
     "workingHours": {
       "monday": {
+        "isAvailable": true,
         "start": "09:00",
-        "end": "18:00",
-        "isAvailable": true
+        "end": "19:00"
       },
       "tuesday": {
+        "isAvailable": true,
         "start": "09:00",
-        "end": "18:00",
-        "isAvailable": true
+        "end": "22:00"
       },
       "wednesday": {
+        "isAvailable": true,
         "start": "09:00",
-        "end": "18:00",
-        "isAvailable": true
+        "end": "20:30"
       },
       "thursday": {
+        "isAvailable": true,
         "start": "09:00",
-        "end": "18:00",
-        "isAvailable": true
+        "end": "21:30"
       },
       "friday": {
+        "isAvailable": true,
         "start": "09:00",
-        "end": "18:00",
-        "isAvailable": true
+        "end": "22:30"
       },
       "saturday": {
-        "start": "10:00",
-        "end": "16:00",
-        "isAvailable": true
+        "isAvailable": true,
+        "start": "09:00",
+        "end": "21:30"
       },
       "sunday": {
+        "isAvailable": false,
         "start": null,
-        "end": null,
-        "isAvailable": false
+        "end": null
       }
     },
     "createdAt": "2024-01-01T08:00:00Z",

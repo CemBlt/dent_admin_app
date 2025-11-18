@@ -79,21 +79,46 @@ class HospitalServicesForm(forms.Form):
 
 class WorkingHoursForm(forms.Form):
     def __init__(self, *args, **kwargs):
+        initial = kwargs.pop('initial', {})
         super().__init__(*args, **kwargs)
         for key, label in DAYS:
+            # Checkbox için initial değer
+            is_open_initial = initial.get(f"{key}_is_open", False)
+            
             self.fields[f"{key}_is_open"] = forms.BooleanField(
                 label=f"{label} açık mı?",
                 required=False,
+                initial=is_open_initial,
             )
-            self.fields[f"{key}_start"] = forms.TimeField(
+            
+            # Saat alanları için initial değerleri time objesinden string'e çevir
+            start_initial = initial.get(f"{key}_start")
+            end_initial = initial.get(f"{key}_end")
+            
+            # time objesi ise "HH:MM" formatına çevir
+            if start_initial and hasattr(start_initial, 'strftime'):
+                start_initial = start_initial.strftime("%H:%M")
+            elif start_initial is None:
+                start_initial = ""
+            
+            if end_initial and hasattr(end_initial, 'strftime'):
+                end_initial = end_initial.strftime("%H:%M")
+            elif end_initial is None:
+                end_initial = ""
+            
+            self.fields[f"{key}_start"] = forms.ChoiceField(
                 label=f"{label} başlangıç",
                 required=False,
-                widget=forms.Select(choices=TIME_CHOICES, attrs={"class": "time-select"}),
+                choices=TIME_CHOICES,
+                initial=start_initial,
+                widget=forms.Select(attrs={"class": "time-select"}),
             )
-            self.fields[f"{key}_end"] = forms.TimeField(
+            self.fields[f"{key}_end"] = forms.ChoiceField(
                 label=f"{label} bitiş",
                 required=False,
-                widget=forms.Select(choices=TIME_CHOICES, attrs={"class": "time-select"}),
+                choices=TIME_CHOICES,
+                initial=end_initial,
+                widget=forms.Select(attrs={"class": "time-select"}),
             )
 
 
@@ -131,21 +156,46 @@ class DoctorWorkingHoursForm(forms.Form):
     doctor_id = forms.CharField(widget=forms.HiddenInput)
 
     def __init__(self, *args, **kwargs):
+        initial = kwargs.pop('initial', {})
         super().__init__(*args, **kwargs)
         for key, label in DAYS:
+            # Checkbox için initial değer
+            is_open_initial = initial.get(f"{key}_is_open", False)
+            
             self.fields[f"{key}_is_open"] = forms.BooleanField(
                 label=f"{label} açık mı?",
                 required=False,
+                initial=is_open_initial,
             )
-            self.fields[f"{key}_start"] = forms.TimeField(
+            
+            # Saat alanları için initial değerleri time objesinden string'e çevir
+            start_initial = initial.get(f"{key}_start")
+            end_initial = initial.get(f"{key}_end")
+            
+            # time objesi ise "HH:MM" formatına çevir
+            if start_initial and hasattr(start_initial, 'strftime'):
+                start_initial = start_initial.strftime("%H:%M")
+            elif start_initial is None:
+                start_initial = ""
+            
+            if end_initial and hasattr(end_initial, 'strftime'):
+                end_initial = end_initial.strftime("%H:%M")
+            elif end_initial is None:
+                end_initial = ""
+            
+            self.fields[f"{key}_start"] = forms.ChoiceField(
                 label=f"{label} başlangıç",
                 required=False,
-                widget=forms.Select(choices=TIME_CHOICES, attrs={"class": "time-select"}),
+                choices=TIME_CHOICES,
+                initial=start_initial,
+                widget=forms.Select(attrs={"class": "time-select"}),
             )
-            self.fields[f"{key}_end"] = forms.TimeField(
+            self.fields[f"{key}_end"] = forms.ChoiceField(
                 label=f"{label} bitiş",
                 required=False,
-                widget=forms.Select(choices=TIME_CHOICES, attrs={"class": "time-select"}),
+                choices=TIME_CHOICES,
+                initial=end_initial,
+                widget=forms.Select(attrs={"class": "time-select"}),
             )
 
 
