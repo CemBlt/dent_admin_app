@@ -79,6 +79,8 @@ def load_dashboard_context() -> dict[str, Any]:
 
     upcoming_holidays = _build_upcoming_holidays(holidays, today)
 
+    doctor_ratings = _build_doctor_ratings(doctors, ratings)
+
     return {
         'hospital': hospital,
         'kpi_cards': kpi_cards,
@@ -87,6 +89,7 @@ def load_dashboard_context() -> dict[str, Any]:
         'service_stats': service_stats,
         'latest_reviews': latest_reviews,
         'upcoming_holidays': upcoming_holidays,
+        'doctor_ratings': doctor_ratings,
     }
 
 
@@ -156,3 +159,39 @@ def _build_upcoming_holidays(holidays, today):
             })
     parsed.sort(key=lambda h: h['date'])
     return parsed[:4]
+
+
+def _build_doctor_ratings(doctors, ratings):
+    """
+    Her doktor için ortalama puanı hesaplar.
+    Sadece aktif hastanenin doktorları için puanları döndürür.
+    """
+    doctor_ratings_list = []
+    
+    for doctor in doctors:
+        # Bu doktora ait tüm puanları filtrele
+        doctor_ratings_data = [
+            r['doctorRating'] for r in ratings
+            if r.get('doctorId') == doctor['id']
+        ]
+        
+        # Ortalama puanı hesapla
+        if doctor_ratings_data:
+            avg_rating = sum(doctor_ratings_data) / len(doctor_ratings_data)
+            rating_count = len(doctor_ratings_data)
+        else:
+            avg_rating = 0.0
+            rating_count = 0
+        
+        doctor_ratings_list.append({
+            'id': doctor['id'],
+            'name': f"{doctor['name']} {doctor['surname']}",
+            'specialty': doctor.get('specialty', ''),
+            'rating': round(avg_rating, 1),
+            'rating_count': rating_count,
+        })
+    
+    # Puanına göre sırala (yüksekten düşüğe)
+    doctor_ratings_list.sort(key=lambda d: d['rating'], reverse=True)
+    
+    return doctor_ratings_list

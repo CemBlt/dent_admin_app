@@ -125,6 +125,55 @@
             {% endif %}
         </article>
         <article class="panel-card">
+            <h2><i class="bi bi-star-fill"></i> Doktor Puanları</h2>
+            {% if doctor_ratings %}
+                <ul class="doctor-ratings-list">
+                    {% for doctor in doctor_ratings %}
+                        <li class="doctor-rating-item">
+                            <div style="flex: 1;">
+                                <strong>{{ doctor.name }}</strong>
+                                <p style="margin:2px 0 0; font-size:12px;" class="muted-text">{{ doctor.specialty }}</p>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <i class="bi bi-star-fill" style="color: #FBBF24;"></i>
+                                    <span style="font-weight: 600; font-size: 16px;">{{ doctor.rating }}</span>
+                                </div>
+                                {% if doctor.rating_count > 0 %}
+                                    <span style="font-size: 12px; color: var(--text-secondary);">({{ doctor.rating_count }})</span>
+                                {% else %}
+                                    <span style="font-size: 12px; color: var(--text-secondary);">(Puan yok)</span>
+                                {% endif %}
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="empty-state">Doktor bulunamadı.</p>
+            {% endif %}
+        </article>
+    </section>
+
+    <section class="grid-two-columns">
+        <article class="panel-card">
+            <h2><i class="bi bi-chat-dots"></i> Son Yorumlar</h2>
+            {% if latest_reviews %}
+                <ul class="review-list">
+                    {% for review in latest_reviews %}
+                        <li class="review-item">
+                            <div>
+                                <strong>{{ review.patient }}</strong>
+                                <p style="margin:2px 0 4px; font-size:12px;" class="muted-text">{{ review.date }}</p>
+                                <p style="margin:0; font-size:13px;">{{ review.comment }}</p>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="empty-state">Henüz yorum bulunmuyor.</p>
+            {% endif %}
+        </article>
+        <article class="panel-card">
             <h2><i class="bi bi-calendar-event"></i> Yaklaşan Tatiller</h2>
             {% if upcoming_holidays %}
                 <ul class="holiday-list">
@@ -142,25 +191,6 @@
             {% endif %}
         </article>
     </section>
-
-    <article class="panel-card">
-        <h2><i class="bi bi-chat-dots"></i> Son Yorumlar</h2>
-        {% if latest_reviews %}
-            <ul class="review-list">
-                {% for review in latest_reviews %}
-                    <li class="review-item">
-                        <div>
-                            <strong>{{ review.patient }}</strong>
-                            <p style="margin:2px 0 4px; font-size:12px;" class="muted-text">{{ review.date }}</p>
-                            <p style="margin:0; font-size:13px;">{{ review.comment }}</p>
-                        </div>
-                    </li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p class="empty-state">Henüz yorum bulunmuyor.</p>
-        {% endif %}
-    </article>
 </div>
 
 <script>

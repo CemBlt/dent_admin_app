@@ -834,6 +834,7 @@ body {
 .appointments-list,
 .doctor-list,
 .review-list,
+.doctor-ratings-list,
 .service-list,
 .holiday-list {
     list-style: none;
@@ -847,6 +848,7 @@ body {
 .appointment-item,
 .doctor-item,
 .review-item,
+.doctor-rating-item,
 .service-item,
 .holiday-item {
     display: flex;
@@ -863,6 +865,7 @@ body {
 .appointment-item:hover,
 .doctor-item:hover,
 .review-item:hover,
+.doctor-rating-item:hover,
 .service-item:hover,
 .holiday-item:hover {
     background: var(--primary-light);
