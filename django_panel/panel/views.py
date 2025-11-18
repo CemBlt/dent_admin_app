@@ -414,17 +414,6 @@ class AppointmentManagementView(View):
                 return redirect("appointment_management")
             messages.error(request, "Durum güncellenemedi.")
 
-        elif action == "update_note":
-            form = AppointmentNoteForm(request.POST)
-            if form.is_valid():
-                appointment_service.update_appointment(
-                    form.cleaned_data["appointment_id"],
-                    notes=form.cleaned_data["notes"],
-                )
-                messages.success(request, "Randevu notu kaydedildi.")
-                return redirect("appointment_management")
-            messages.error(request, "Not kaydedilemedi.")
-
         elif action == "delete_appointment":
             appointment_service.delete_appointment(request.POST.get("appointment_id"))
             messages.success(request, "Randevu silindi.")
@@ -488,12 +477,6 @@ class AppointmentManagementView(View):
                     "service": service["name"] if service else "Hizmet",
                     "status_label": status_label,
                     "status_class": status_class,
-                    "note_form": AppointmentNoteForm(
-                        initial={
-                            "appointment_id": apt["id"],
-                            "notes": apt.get("notes", ""),
-                        }
-                    ),
                     "status_form": AppointmentStatusForm(
                         initial={
                             "appointment_id": apt["id"],

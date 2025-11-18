@@ -111,15 +111,13 @@
                             </td>
                             <td>{{ item.doctor }}</td>
                             <td>
-                                <details>
-                                    <summary>{{ item.data.notes|default:'Not yok' }}</summary>
-                                    <form method="post">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="form_type" value="update_note">
-                                        {{ item.note_form.as_p }}
-                                        <button type="submit" class="primary">Kaydet</button>
-                                    </form>
-                                </details>
+                                {% if item.data.notes %}
+                                    <div style="max-width: 200px; word-wrap: break-word; font-size: 13px; color: var(--text);">
+                                        {{ item.data.notes }}
+                                    </div>
+                                {% else %}
+                                    <span style="color: var(--text-secondary); font-size: 13px; font-style: italic;">Not yok</span>
+                                {% endif %}
                             </td>
                             <td>
                                 <span class="status-chip status-{{ item.status_class }}">{{ item.status_label }}</span>
