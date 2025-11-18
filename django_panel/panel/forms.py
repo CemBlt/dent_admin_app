@@ -272,7 +272,23 @@ class AppointmentStatusForm(forms.Form):
 class ScheduleFilterForm(forms.Form):
     doctor = forms.ChoiceField(label="Doktor", required=False)
     year = forms.IntegerField(label="Yıl", min_value=2020, max_value=2100)
-    month = forms.IntegerField(label="Ay", min_value=1, max_value=12)
+    month = forms.ChoiceField(
+        label="Ay",
+        choices=[
+            ("1", "Ocak"),
+            ("2", "Şubat"),
+            ("3", "Mart"),
+            ("4", "Nisan"),
+            ("5", "Mayıs"),
+            ("6", "Haziran"),
+            ("7", "Temmuz"),
+            ("8", "Ağustos"),
+            ("9", "Eylül"),
+            ("10", "Ekim"),
+            ("11", "Kasım"),
+            ("12", "Aralık"),
+        ],
+    )
 
     def __init__(self, *args, **kwargs):
         doctor_choices = kwargs.pop("doctor_choices", [])

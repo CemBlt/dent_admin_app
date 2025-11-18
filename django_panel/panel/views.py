@@ -531,6 +531,15 @@ class AppointmentManagementView(View):
             status_label, status_class = self.STATUS_LABELS.get(
                 apt["status"], (apt["status"], "pending")
             )
+            
+            # Tarihi formatla (gün.ay.yıl)
+            formatted_date = apt.get("date", "")
+            try:
+                date_obj = datetime.strptime(apt.get("date", ""), "%Y-%m-%d").date()
+                formatted_date = date_obj.strftime("%d.%m.%Y")
+            except (ValueError, TypeError):
+                pass  # Formatlanamazsa orijinal değeri kullan
+            
             enriched.append(
                 {
                     "data": apt,
@@ -539,6 +548,7 @@ class AppointmentManagementView(View):
                     "service": service["name"] if service else "Hizmet",
                     "status_label": status_label,
                     "status_class": status_class,
+                    "formatted_date": formatted_date,
                     "status_form": AppointmentStatusForm(
                         initial={
                             "appointment_id": apt["id"],
@@ -558,14 +568,16 @@ class ScheduleManagementView(View):
 
         today = date.today()
         year = int(request.GET.get("year", today.year))
-        month = int(request.GET.get("month", today.month))
+        # Ay değeri artık string olarak gelebilir (form'dan) veya int olarak (URL'den)
+        month_param = request.GET.get("month", str(today.month))
+        month = int(month_param) if month_param else today.month
         selected_doctor_id = request.GET.get("doctor", "")
 
         doctors = doctor_service.get_doctors()
         doctor_choices = [(doc["id"], f"{doc['name']} {doc['surname']}") for doc in doctors]
 
         filter_form = ScheduleFilterForm(
-            initial={"year": year, "month": month, "doctor": selected_doctor_id},
+            initial={"year": year, "month": str(month), "doctor": selected_doctor_id},
             doctor_choices=doctor_choices,
         )
 
