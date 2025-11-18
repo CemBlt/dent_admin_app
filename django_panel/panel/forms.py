@@ -12,14 +12,55 @@ DAYS = [
     ("sunday", "Pazar"),
 ]
 
+TIME_CHOICES = [("", "Saat seçin")]
+for hour in range(0, 24):
+    for minute in (0, 30):
+        label = f"{hour:02d}:{minute:02d}"
+        TIME_CHOICES.append((label, label))
+
 
 class HospitalGeneralForm(forms.Form):
     name = forms.CharField(label="Hastane Adı", max_length=120)
-    address = forms.CharField(label="Adres", max_length=200)
+    address = forms.CharField(label="Adres Açıklaması", max_length=200, required=False)
+    province = forms.ChoiceField(label="İl", choices=[])
+    district = forms.ChoiceField(label="İlçe", choices=[])
+    neighborhood = forms.ChoiceField(label="Mahalle", choices=[])
+    latitude = forms.DecimalField(label="Enlem (Latitude)", max_digits=10, decimal_places=6)
+    longitude = forms.DecimalField(label="Boylam (Longitude)", max_digits=10, decimal_places=6)
     phone = forms.CharField(label="Telefon", max_length=20)
     email = forms.EmailField(label="E-posta", max_length=120)
     description = forms.CharField(label="Açıklama", widget=forms.Textarea, required=False)
     logo = forms.FileField(label="Logo", required=False)
+
+    def __init__(self, *args, **kwargs):
+        province_choices = kwargs.pop("province_choices", [])
+        district_choices = kwargs.pop("district_choices", [])
+        neighborhood_choices = kwargs.pop("neighborhood_choices", [])
+        super().__init__(*args, **kwargs)
+
+        self.fields["province"].choices = [("", "İl seçin")] + province_choices
+
+        if district_choices:
+            self.fields["district"].choices = [("", "İlçe seçin")] + district_choices
+            self.fields["district"].widget.attrs.pop("disabled", None)
+        else:
+            self.fields["district"].choices = [("", "Önce il seçin")]
+            self.fields["district"].widget.attrs["disabled"] = "disabled"
+
+        if neighborhood_choices:
+            self.fields["neighborhood"].choices = [("", "Mahalle seçin")] + neighborhood_choices
+            self.fields["neighborhood"].widget.attrs.pop("disabled", None)
+        else:
+            self.fields["neighborhood"].choices = [("", "Önce ilçe seçin")]
+            self.fields["neighborhood"].widget.attrs["disabled"] = "disabled"
+
+        self.fields["province"].widget.attrs.setdefault("data-initial", self.initial.get("province", ""))
+        self.fields["district"].widget.attrs.setdefault("data-initial", self.initial.get("district", ""))
+        self.fields["neighborhood"].widget.attrs.setdefault("data-initial", self.initial.get("neighborhood", ""))
+
+        numeric_attrs = {"step": "0.000001", "placeholder": "00.000000"}
+        self.fields["latitude"].widget.attrs.update(numeric_attrs)
+        self.fields["longitude"].widget.attrs.update({**numeric_attrs, "placeholder": "000.000000"})
 
 
 class HospitalServicesForm(forms.Form):
@@ -47,12 +88,12 @@ class WorkingHoursForm(forms.Form):
             self.fields[f"{key}_start"] = forms.TimeField(
                 label=f"{label} başlangıç",
                 required=False,
-                widget=forms.TimeInput(format="%H:%M"),
+                widget=forms.Select(choices=TIME_CHOICES, attrs={"class": "time-select"}),
             )
             self.fields[f"{key}_end"] = forms.TimeField(
                 label=f"{label} bitiş",
                 required=False,
-                widget=forms.TimeInput(format="%H:%M"),
+                widget=forms.Select(choices=TIME_CHOICES, attrs={"class": "time-select"}),
             )
 
 
@@ -99,12 +140,12 @@ class DoctorWorkingHoursForm(forms.Form):
             self.fields[f"{key}_start"] = forms.TimeField(
                 label=f"{label} başlangıç",
                 required=False,
-                widget=forms.TimeInput(format="%H:%M"),
+                widget=forms.Select(choices=TIME_CHOICES, attrs={"class": "time-select"}),
             )
             self.fields[f"{key}_end"] = forms.TimeField(
                 label=f"{label} bitiş",
                 required=False,
-                widget=forms.TimeInput(format="%H:%M"),
+                widget=forms.Select(choices=TIME_CHOICES, attrs={"class": "time-select"}),
             )
 
 

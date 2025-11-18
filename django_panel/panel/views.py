@@ -1,9 +1,10 @@
 from datetime import datetime
 
 from django.contrib import messages
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.views import View
+from django.views.decorators.http import require_GET
 
 from .forms import (
     AppearanceSettingsForm,
@@ -30,7 +31,13 @@ from .forms import (
     WorkingHoursForm,
     DAYS,
 )
-from .services import appointment_service, doctor_service, hospital_service, user_service
+from .services import (
+    appointment_service,
+    doctor_service,
+    hospital_service,
+    user_service,
+    location_service,
+)
 from .services.dashboard_service import load_dashboard_context
 from .services import schedule_service, service_service, review_service, settings_service
 
@@ -55,12 +62,35 @@ class HospitalSettingsView(View):
         services = hospital_service.get_services()
 
         if action == "general":
-            form = HospitalGeneralForm(request.POST, request.FILES)
+            province_choices = location_service.as_choice_tuples(location_service.get_provinces())
+            province_id = request.POST.get("province")
+            district_id = request.POST.get("district")
+            district_choices = location_service.as_choice_tuples(location_service.get_districts(province_id))
+            neighborhood_choices = location_service.as_choice_tuples(location_service.get_neighborhoods(district_id))
+            form = HospitalGeneralForm(
+                request.POST,
+                request.FILES,
+                province_choices=province_choices,
+                district_choices=district_choices,
+                neighborhood_choices=neighborhood_choices,
+            )
             if form.is_valid():
-                hospital_service.update_general_info(hospital, form.cleaned_data, request.FILES.get("logo"))
-                messages.success(request, "Genel bilgiler güncellendi.")
-                return redirect("hospital_settings")
-            messages.error(request, "Genel bilgiler güncellenemedi. Lütfen formu kontrol edin.")
+                try:
+                    hospital_service.update_general_info(
+                        hospital,
+                        form.cleaned_data,
+                        request.FILES.get("logo"),
+                    )
+                except ValueError as exc:
+                    messages.error(request, str(exc))
+                else:
+                    messages.success(request, "Genel bilgiler güncellendi.")
+                    return redirect("hospital_settings")
+            else:
+                messages.error(request, "Genel bilgiler güncellenemedi. Lütfen formu kontrol edin.")
+            context = self._build_context(general_form=form)
+            context["active_tab"] = "general"
+            return render(request, self.template_name, context)
 
         elif action == "services":
             form = HospitalServicesForm(request.POST, service_choices=[(s["id"], s["name"]) for s in services])
@@ -119,18 +149,34 @@ class HospitalSettingsView(View):
         context["active_tab"] = action
         return render(request, self.template_name, context)
 
-    def _build_context(self):
+    def _build_context(self, general_form: HospitalGeneralForm | None = None):
         hospital = hospital_service.get_hospital()
         services = hospital_service.get_services()
         holidays = hospital_service.get_holidays()
+        province_choices = location_service.as_choice_tuples(location_service.get_provinces())
+        selected_province = hospital.get("provinceId")
+        selected_district = hospital.get("districtId")
+        district_choices = location_service.as_choice_tuples(location_service.get_districts(selected_province))
+        neighborhood_choices = location_service.as_choice_tuples(location_service.get_neighborhoods(selected_district))
 
-        general_form = HospitalGeneralForm(initial={
-            "name": hospital.get("name"),
-            "address": hospital.get("address"),
-            "phone": hospital.get("phone"),
-            "email": hospital.get("email"),
-            "description": hospital.get("description"),
-        })
+        if general_form is None:
+            general_form = HospitalGeneralForm(
+                initial={
+                    "name": hospital.get("name"),
+                    "address": hospital.get("address"),
+                    "province": hospital.get("provinceId"),
+                    "district": hospital.get("districtId"),
+                    "neighborhood": hospital.get("neighborhoodId"),
+                    "latitude": hospital.get("latitude"),
+                    "longitude": hospital.get("longitude"),
+                    "phone": hospital.get("phone"),
+                    "email": hospital.get("email"),
+                    "description": hospital.get("description"),
+                },
+                province_choices=province_choices,
+                district_choices=district_choices,
+                neighborhood_choices=neighborhood_choices,
+            )
 
         services_form = HospitalServicesForm(
             initial={"services": hospital.get("services", [])},
@@ -830,3 +876,18 @@ class SettingsView(View):
             "data_statistics": data_stats,
         }
         return context
+
+
+@require_GET
+def location_provinces(request):
+    return JsonResponse({"results": location_service.get_provinces()})
+
+
+@require_GET
+def location_districts(request, province_id: str):
+    return JsonResponse({"results": location_service.get_districts(province_id)})
+
+
+@require_GET
+def location_neighborhoods(request, district_id: str):
+    return JsonResponse({"results": location_service.get_neighborhoods(district_id)})

@@ -9,6 +9,7 @@ from pathlib import Path
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 
+from . import location_service
 from .json_repository import (
     append_to_collection,
     load_json,
@@ -90,12 +91,46 @@ def delete_file_if_exists(relative_path: str) -> None:
             pass
 
 
+def _resolve_location_snapshot(province_id: str, district_id: str, neighborhood_id: str) -> dict:
+    province = location_service.get_province(province_id)
+    if not province:
+        raise ValueError("Geçersiz il seçimi.")
+
+    district = location_service.get_district(district_id)
+    if not district or district["provinceId"] != province["id"]:
+        raise ValueError("Geçersiz ilçe seçimi.")
+
+    neighborhood = location_service.get_neighborhood(neighborhood_id)
+    if not neighborhood or neighborhood["districtId"] != district["id"]:
+        raise ValueError("Geçersiz mahalle seçimi.")
+
+    return {
+        "province": province,
+        "district": district,
+        "neighborhood": neighborhood,
+    }
+
+
 def update_general_info(hospital: dict, data: dict, logo_file=None) -> dict:
     hospital["name"] = data["name"]
-    hospital["address"] = data["address"]
+    hospital["address"] = data.get("address", "")
     hospital["phone"] = data["phone"]
     hospital["email"] = data["email"]
     hospital["description"] = data.get("description", "")
+    hospital["latitude"] = float(data["latitude"])
+    hospital["longitude"] = float(data["longitude"])
+
+    location_snapshot = _resolve_location_snapshot(
+        data["province"],
+        data["district"],
+        data["neighborhood"],
+    )
+    hospital["provinceId"] = location_snapshot["province"]["id"]
+    hospital["provinceName"] = location_snapshot["province"]["name"]
+    hospital["districtId"] = location_snapshot["district"]["id"]
+    hospital["districtName"] = location_snapshot["district"]["name"]
+    hospital["neighborhoodId"] = location_snapshot["neighborhood"]["id"]
+    hospital["neighborhoodName"] = location_snapshot["neighborhood"]["name"]
 
     if logo_file:
         delete_file_if_exists(hospital.get("image"))

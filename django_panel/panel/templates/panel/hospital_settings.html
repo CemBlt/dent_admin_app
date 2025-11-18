@@ -68,11 +68,118 @@
         <label for="tab-holidays">Tatiller</label>
 
         <section id="panel-general" class="tab-panel">
-            <form method="post" enctype="multipart/form-data">
+            <form id="general-info-form"
+                  method="post"
+                  enctype="multipart/form-data"
+                  data-provinces-url="{% url 'location_provinces' %}"
+                  data-districts-url="{% url 'location_districts' '__PROVINCE__' %}"
+                  data-neighborhoods-url="{% url 'location_neighborhoods' '__DISTRICT__' %}">
                 {% csrf_token %}
                 <input type="hidden" name="form_type" value="general">
-                {{ general_form.as_p }}
-                <button type="submit" class="primary">Kaydet</button>
+                
+                {% if general_form.non_field_errors %}
+                    <div class="form-errors">
+                        {% for error in general_form.non_field_errors %}
+                            <span>{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="form-grid two">
+                    <div class="form-field">
+                        {{ general_form.name.label_tag }}
+                        {{ general_form.name }}
+                        {% for error in general_form.name.errors %}
+                            <span class="field-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                    <div class="form-field">
+                        {{ general_form.phone.label_tag }}
+                        {{ general_form.phone }}
+                        {% for error in general_form.phone.errors %}
+                            <span class="field-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                    <div class="form-field">
+                        {{ general_form.email.label_tag }}
+                        {{ general_form.email }}
+                        {% for error in general_form.email.errors %}
+                            <span class="field-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-grid three location-grid">
+                    <div class="form-field">
+                        {{ general_form.province.label_tag }}
+                        {{ general_form.province }}
+                        {% for error in general_form.province.errors %}
+                            <span class="field-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                    <div class="form-field">
+                        {{ general_form.district.label_tag }}
+                        {{ general_form.district }}
+                        {% for error in general_form.district.errors %}
+                            <span class="field-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                    <div class="form-field">
+                        {{ general_form.neighborhood.label_tag }}
+                        {{ general_form.neighborhood }}
+                        {% for error in general_form.neighborhood.errors %}
+                            <span class="field-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-field full">
+                    {{ general_form.address.label_tag }}
+                    {{ general_form.address }}
+                    <small class="muted-text">İl ve ilçe seçimini yaptıktan sonra detaylı adres açıklamasını giriniz.</small>
+                    {% for error in general_form.address.errors %}
+                        <span class="field-error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+                <div class="form-grid two coordinate-grid">
+                    <div class="form-field">
+                        {{ general_form.latitude.label_tag }}
+                        {{ general_form.latitude }}
+                        {% for error in general_form.latitude.errors %}
+                            <span class="field-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                    <div class="form-field">
+                        {{ general_form.longitude.label_tag }}
+                        {{ general_form.longitude }}
+                        {% for error in general_form.longitude.errors %}
+                            <span class="field-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-field full">
+                    {{ general_form.description.label_tag }}
+                    {{ general_form.description }}
+                    {% for error in general_form.description.errors %}
+                        <span class="field-error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+                <div class="form-field full">
+                    {{ general_form.logo.label_tag }}
+                    {{ general_form.logo }}
+                    {% for error in general_form.logo.errors %}
+                        <span class="field-error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="primary">
+                        <i class="bi bi-check2-circle"></i> Kaydet
+                    </button>
+                </div>
             </form>
         </section>
 
@@ -234,6 +341,134 @@
             }
         });
     });
+})();
+
+// İl / İlçe / Mahalle Yönetimi
+(function() {
+    const form = document.getElementById('general-info-form');
+    if (!form) return;
+
+    const provinceSelect = document.getElementById('id_province');
+    const districtSelect = document.getElementById('id_district');
+    const neighborhoodSelect = document.getElementById('id_neighborhood');
+
+    if (!provinceSelect || !districtSelect || !neighborhoodSelect) return;
+
+    const endpoints = {
+        provinces: form.dataset.provincesUrl,
+        districts: form.dataset.districtsUrl || '',
+        neighborhoods: form.dataset.neighborhoodsUrl || '',
+    };
+
+    const initialState = {
+        province: provinceSelect.dataset.initial || '',
+        district: districtSelect.dataset.initial || '',
+        neighborhood: neighborhoodSelect.dataset.initial || '',
+    };
+
+    const disableSelect = (select, placeholder) => {
+        if (!select) return;
+        select.innerHTML = `<option value="">${placeholder}</option>`;
+        select.value = '';
+        select.setAttribute('disabled', 'disabled');
+    };
+
+    const populateSelect = (select, items, placeholder) => {
+        select.removeAttribute('disabled');
+        const options = [`<option value="">${placeholder}</option>`];
+        items.forEach(item => {
+            options.push(`<option value="${item.id}">${item.name}</option>`);
+        });
+        select.innerHTML = options.join('');
+    };
+
+    const fetchJSON = async (url) => {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error('Veri alınamadı');
+        }
+        const payload = await response.json();
+        return payload.results || [];
+    };
+
+    const buildUrl = (template, value) => template.replace('__PROVINCE__', value).replace('__DISTRICT__', value);
+
+    const loadNeighborhoods = async (districtId, preserveInitial = false) => {
+        if (!districtId) {
+            disableSelect(neighborhoodSelect, 'Önce ilçe seçin');
+            return;
+        }
+        try {
+            const url = buildUrl(endpoints.neighborhoods, districtId);
+            const neighborhoods = await fetchJSON(url);
+            populateSelect(neighborhoodSelect, neighborhoods, 'Mahalle seçin');
+            if (preserveInitial && initialState.neighborhood) {
+                neighborhoodSelect.value = initialState.neighborhood;
+                initialState.neighborhood = '';
+            }
+        } catch (error) {
+            console.error('Mahalle listesi yüklenemedi', error);
+            disableSelect(neighborhoodSelect, 'Mahalle yüklenemedi');
+        }
+    };
+
+    const loadDistricts = async (provinceId, preserveInitial = false) => {
+        if (!provinceId) {
+            disableSelect(districtSelect, 'Önce il seçin');
+            disableSelect(neighborhoodSelect, 'Önce ilçe seçin');
+            return;
+        }
+        try {
+            const url = buildUrl(endpoints.districts, provinceId);
+            const districts = await fetchJSON(url);
+            populateSelect(districtSelect, districts, 'İlçe seçin');
+            if (preserveInitial && initialState.district) {
+                districtSelect.value = initialState.district;
+                const nextDistrict = initialState.district;
+                initialState.district = '';
+                await loadNeighborhoods(nextDistrict, true);
+            } else {
+                disableSelect(neighborhoodSelect, 'Önce ilçe seçin');
+            }
+        } catch (error) {
+            console.error('İlçe listesi yüklenemedi', error);
+            disableSelect(districtSelect, 'İlçe yüklenemedi');
+            disableSelect(neighborhoodSelect, 'Önce ilçe seçin');
+        }
+    };
+
+    const loadProvinces = async () => {
+        try {
+            const provinces = await fetchJSON(endpoints.provinces);
+            populateSelect(provinceSelect, provinces, 'İl seçin');
+            if (initialState.province) {
+                provinceSelect.value = initialState.province;
+                const nextProvince = initialState.province;
+                initialState.province = '';
+                await loadDistricts(nextProvince, true);
+            } else {
+                disableSelect(districtSelect, 'Önce il seçin');
+                disableSelect(neighborhoodSelect, 'Önce ilçe seçin');
+            }
+        } catch (error) {
+            console.error('İl listesi yüklenemedi', error);
+            disableSelect(provinceSelect, 'İl yüklenemedi');
+            disableSelect(districtSelect, 'Önce il seçin');
+            disableSelect(neighborhoodSelect, 'Önce ilçe seçin');
+        }
+    };
+
+    provinceSelect.addEventListener('change', (event) => {
+        const provinceId = event.target.value;
+        loadDistricts(provinceId);
+    });
+
+    districtSelect.addEventListener('change', (event) => {
+        const districtId = event.target.value;
+        loadNeighborhoods(districtId);
+    });
+
+    loadProvinces();
 })();
 </script>
 </body>
