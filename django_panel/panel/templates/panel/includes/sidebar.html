@@ -1,0 +1,20 @@
+{% load static %}
+<aside class="sidebar">
+    <div>
+        <div class="brand">{{ hospital.name }}</div>
+        <p style="margin:4px 0 0; font-size:13px;" class="muted-text">{{ hospital.address }}</p>
+    </div>
+    <ul class="nav-links">
+        <li><a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}><i class="bi bi-speedometer2"></i> Genel Bakış</a></li>
+        <li><a href="{% url 'hospital_settings' %}" {% if request.resolver_match.url_name == 'hospital_settings' %}class="active"{% endif %}><i class="bi bi-building"></i> Hastane Bilgileri</a></li>
+        <li><a href="{% url 'doctor_management' %}" {% if request.resolver_match.url_name == 'doctor_management' %}class="active"{% endif %}><i class="bi bi-person-badge"></i> Doktorlar</a></li>
+        <li><a href="{% url 'appointment_management' %}" {% if request.resolver_match.url_name == 'appointment_management' %}class="active"{% endif %}><i class="bi bi-calendar-check"></i> Randevular</a></li>
+        <li><a href="{% url 'schedule_management' %}" {% if request.resolver_match.url_name == 'schedule_management' %}class="active"{% endif %}><i class="bi bi-calendar3"></i> Çalışma Takvimi</a></li>
+        <li><a href="{% url 'service_management' %}" {% if request.resolver_match.url_name == 'service_management' %}class="active"{% endif %}><i class="bi bi-briefcase"></i> Hizmetler</a></li>
+        <li><a href="{% url 'review_management' %}" {% if request.resolver_match.url_name == 'review_management' %}class="active"{% endif %}><i class="bi bi-chat-left-text"></i> Yorumlar</a></li>
+        <li><a href="{% url 'settings' %}" {% if request.resolver_match.url_name == 'settings' %}class="active"{% endif %}><i class="bi bi-gear"></i> Ayarlar</a></li>
+    </ul>
+    
+    {% include 'panel/includes/theme_toggle.html' %}
+</aside>
+

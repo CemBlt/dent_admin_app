@@ -1,64 +1,8 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <title>{{ page_title }} • {{ hospital.name }}</title>
-    <link rel="stylesheet" href="{% static 'panel/dashboard.css' %}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-</head>
-<body>
-<aside class="sidebar">
-    <div>
-        <div class="brand">{{ hospital.name }}</div>
-        <p style="margin:4px 0 0; font-size:13px;" class="muted-text">{{ hospital.address }}</p>
-    </div>
-    <ul class="nav-links">
-        <li><a class="active" href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i> Genel Bakış</a></li>
-        <li><a href="{% url 'hospital_settings' %}"><i class="bi bi-building"></i> Hastane Bilgileri</a></li>
-        <li><a href="{% url 'doctor_management' %}"><i class="bi bi-person-badge"></i> Doktorlar</a></li>
-        <li><a href="{% url 'appointment_management' %}"><i class="bi bi-calendar-check"></i> Randevular</a></li>
-        <li><a href="{% url 'schedule_management' %}"><i class="bi bi-calendar3"></i> Çalışma Takvimi</a></li>
-        <li><a href="{% url 'service_management' %}"><i class="bi bi-briefcase"></i> Hizmetler</a></li>
-        <li><a href="{% url 'review_management' %}"><i class="bi bi-chat-left-text"></i> Yorumlar</a></li>
-        <li><a href="{% url 'settings' %}"><i class="bi bi-gear"></i> Ayarlar</a></li>
-    </ul>
-    
-    <!-- Tema Değiştirme -->
-    <div class="theme-toggle">
-        <button class="theme-btn" data-theme="light" title="Açık Tema">
-            <i class="bi bi-sun-fill"></i>
-        </button>
-        <button class="theme-btn active" data-theme="dark" title="Koyu Tema">
-            <i class="bi bi-moon-fill"></i>
-        </button>
-    </div>
-</aside>
-<div class="content">
-    <div class="top-bar">
-        <div>
-            <p style="margin:0; font-size:13px;" class="muted-text">Merhaba, yönetici</p>
-            <h1>{{ page_title }}</h1>
-        </div>
-        <div class="user-chip">
-            <div class="avatar">H</div>
-            <div>
-                <strong>{{ hospital.name }}</strong>
-                <p style="margin:0; font-size:12px;" class="muted-text">Kontrol Paneli</p>
-            </div>
-        </div>
-    </div>
+{% extends 'panel/base.html' %}
 
-    {% if messages %}
-        <div class="messages">
-            {% for message in messages %}
-                <div class="message {{ message.tags }}">{{ message }}</div>
-            {% endfor %}
-        </div>
-    {% endif %}
+{% block top_bar_subtitle %}Merhaba, yönetici{% endblock %}
 
+{% block content %}
     <section class="kpi-grid">
         {% for card in kpi_cards %}
             <article class="kpi-card">
@@ -199,53 +143,4 @@
             {% endif %}
         </article>
     </section>
-</div>
-
-<script>
-// Tema Yönetimi
-(function() {
-    // localStorage'dan tema tercihini oku (default: dark)
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    
-    // Aktif butonu güncelle
-    const themeButtons = document.querySelectorAll('.theme-btn');
-    themeButtons.forEach(btn => {
-        if (btn.dataset.theme === savedTheme) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
-    });
-    
-    // Tema değiştirme
-    themeButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const theme = this.dataset.theme;
-            document.documentElement.setAttribute('data-theme', theme);
-            localStorage.setItem('theme', theme);
-            
-            // Aktif butonu güncelle
-            themeButtons.forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-        });
-    });
-})();
-
-// Mesajların otomatik kapanması
-(function() {
-    const messages = document.querySelectorAll('.message');
-    messages.forEach(message => {
-        // 5 saniye sonra otomatik kapan
-        setTimeout(() => {
-            message.style.opacity = '0';
-            message.style.transform = 'translateY(-20px)';
-            setTimeout(() => {
-                message.remove();
-            }, 400);
-        }, 5000);
-    });
-})();
-</script>
-</body>
-</html>
+{% endblock %}

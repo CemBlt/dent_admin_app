@@ -1,0 +1,16 @@
+<div class="top-bar">
+    <div>
+        <p style="margin:0; font-size:13px;" class="muted-text">{% block top_bar_subtitle %}Merhaba, yönetici{% endblock %}</p>
+        <h1>{% block top_bar_title %}{{ page_title }}{% endblock %}</h1>
+    </div>
+    {% block top_bar_actions %}
+        <div class="user-chip">
+            <div class="avatar">H</div>
+            <div>
+                <strong>{{ hospital.name }}</strong>
+                <p style="margin:0; font-size:12px;" class="muted-text">Kontrol Paneli</p>
+            </div>
+        </div>
+    {% endblock %}
+</div>
+

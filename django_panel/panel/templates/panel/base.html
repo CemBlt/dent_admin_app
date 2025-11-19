@@ -1,0 +1,37 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ page_title }} • {{ hospital.name }}{% endblock %}</title>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="{% static 'panel/dashboard.css' %}">
+    {% block extra_css %}{% endblock %}
+    
+    <!-- External CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    {% block external_css %}{% endblock %}
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+</head>
+<body>
+    {% include 'panel/includes/sidebar.html' %}
+    
+    <div class="content">
+        {% include 'panel/includes/top_bar.html' %}
+        {% include 'panel/includes/messages.html' %}
+        
+        {% block content %}{% endblock %}
+    </div>
+    
+    <!-- JavaScript Files -->
+    <script src="{% static 'panel/js/theme.js' %}"></script>
+    <script src="{% static 'panel/js/messages.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+

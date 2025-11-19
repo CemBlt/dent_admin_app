@@ -1,4 +1,4 @@
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 
 from django.contrib import messages
 from django.core.paginator import Paginator
@@ -10,7 +10,6 @@ from django.views.decorators.http import require_GET
 from .forms import (
     AppearanceSettingsForm,
     AppointmentFilterForm,
-    AppointmentNoteForm,
     AppointmentStatusForm,
     DataManagementForm,
     DoctorForm,
@@ -32,6 +31,12 @@ from .forms import (
     WorkingHoursForm,
     DAYS,
 )
+from .utils import (
+    build_doctor_choices,
+    build_service_choices,
+    format_date,
+    validate_working_hours_form,
+)
 from .services import (
     appointment_service,
     doctor_service,
@@ -47,6 +52,7 @@ def dashboard(request):
     """Panel ana sayfası: JSON verilerinden özet metrikleri oluşturur."""
     context = load_dashboard_context()
     context["page_title"] = "Genel Bakış"
+    # hospital context processor tarafından otomatik ekleniyor
     return render(request, "panel/dashboard.html", context)
 
 
@@ -94,7 +100,7 @@ class HospitalSettingsView(View):
             return render(request, self.template_name, context)
 
         elif action == "services":
-            form = HospitalServicesForm(request.POST, service_choices=[(s["id"], s["name"]) for s in services])
+            form = HospitalServicesForm(request.POST, service_choices=build_service_choices(services))
             if form.is_valid():
                 hospital_service.update_services(hospital, form.cleaned_data.get("services", []))
                 messages.success(request, "Hizmet listesi güncellendi.")
@@ -203,7 +209,7 @@ class HospitalSettingsView(View):
 
         services_form = HospitalServicesForm(
             initial={"services": hospital.get("services", [])},
-            service_choices=[(s["id"], s["name"]) for s in services],
+            service_choices=build_service_choices(services),
         )
 
         working_hours_form = WorkingHoursForm(
@@ -227,7 +233,7 @@ class HospitalSettingsView(View):
 
         context = {
             "page_title": "Hastane Bilgileri",
-            "hospital": hospital,
+            # hospital context processor tarafından otomatik ekleniyor
             "gallery_list": gallery_list,
             "services_catalog": services,
             "holidays": holidays,
@@ -268,7 +274,7 @@ class DoctorManagementView(View):
     def post(self, request):
         action = request.POST.get("form_type")
         services = hospital_service.get_services()
-        service_choices = [(s["id"], s["name"]) for s in services]
+        service_choices = build_service_choices(services)
 
         if action == "create_doctor":
             form = DoctorForm(request.POST, request.FILES, service_choices=service_choices)
@@ -329,9 +335,9 @@ class DoctorManagementView(View):
         return render(request, self.template_name, context)
 
     def _build_context(self):
-        hospital = hospital_service.get_hospital()
+        # hospital context processor tarafından otomatik ekleniyor
         services = hospital_service.get_services()
-        service_choices = [(s["id"], s["name"]) for s in services]
+        service_choices = build_service_choices(services)
         doctors = doctor_service.get_doctors()
         holidays_map = doctor_service.get_doctor_holidays()
 
@@ -367,27 +373,15 @@ class DoctorManagementView(View):
 
         context = {
             "page_title": "Doktor Yönetimi",
-            "hospital": hospital,
+            # hospital context processor tarafından otomatik ekleniyor
             "doctor_cards": doctor_cards,
             "doctor_create_form": DoctorForm(service_choices=service_choices),
         }
         return context
 
     def _validate_working_hours(self, form, request) -> bool:
-        valid = True
-        for key, label in DAYS:
-            is_open = form.cleaned_data.get(f"{key}_is_open")
-            start = form.cleaned_data.get(f"{key}_start")
-            end = form.cleaned_data.get(f"{key}_end")
-            if is_open and (not start or not end):
-                form.add_error(f"{key}_start", f"{label} için başlangıç/bitiş saatlerini giriniz.")
-                valid = False
-            if start and end and start >= end:
-                form.add_error(f"{key}_start", f"{label} için başlangıç saati bitişten küçük olmalıdır.")
-                valid = False
-        if not valid:
-            messages.error(request, "Çalışma saatleri doğrulaması başarısız.")
-        return valid
+        """Çalışma saatleri formunu validate eder."""
+        return validate_working_hours_form(form, DAYS, request)
 
 
 class AppointmentManagementView(View):
@@ -429,11 +423,11 @@ class AppointmentManagementView(View):
         if cancelled_count > 0:
             messages.info(request, f"{cancelled_count} randevu otomatik olarak iptal edildi (5 gün geçmiş).")
         
-        hospital = hospital_service.get_hospital()
+        # hospital context processor tarafından otomatik ekleniyor
         doctors = doctor_service.get_doctors()
         services = hospital_service.get_services()
-        doctor_choices = [(doc["id"], f"{doc['name']} {doc['surname']}") for doc in doctors]
-        service_choices = [(svc["id"], svc["name"]) for svc in services]
+        doctor_choices = build_doctor_choices(doctors)
+        service_choices = build_service_choices(services)
 
         filter_form = AppointmentFilterForm(
             request.GET or None,
@@ -476,7 +470,7 @@ class AppointmentManagementView(View):
         
         context = {
             "page_title": "Randevu Yönetimi",
-            "hospital": hospital,
+            # hospital context processor tarafından otomatik ekleniyor
             "filter_form": filter_form,
             "appointments": page_obj,
             "summary": appointment_service.get_summary(),
@@ -533,12 +527,7 @@ class AppointmentManagementView(View):
             )
             
             # Tarihi formatla (gün.ay.yıl)
-            formatted_date = apt.get("date", "")
-            try:
-                date_obj = datetime.strptime(apt.get("date", ""), "%Y-%m-%d").date()
-                formatted_date = date_obj.strftime("%d.%m.%Y")
-            except (ValueError, TypeError):
-                pass  # Formatlanamazsa orijinal değeri kullan
+            formatted_date = format_date(apt.get("date", ""), "%d.%m.%Y")
             
             enriched.append(
                 {
@@ -574,7 +563,7 @@ class ScheduleManagementView(View):
         selected_doctor_id = request.GET.get("doctor", "")
 
         doctors = doctor_service.get_doctors()
-        doctor_choices = [(doc["id"], f"{doc['name']} {doc['surname']}") for doc in doctors]
+        doctor_choices = build_doctor_choices(doctors)
 
         filter_form = ScheduleFilterForm(
             initial={"year": year, "month": str(month), "doctor": selected_doctor_id},
@@ -585,12 +574,12 @@ class ScheduleManagementView(View):
             year, month, selected_doctor_id if selected_doctor_id else None
         )
 
-        hospital = hospital_service.get_hospital()
+        # hospital context processor tarafından otomatik ekleniyor
         holiday_form = ScheduleHolidayForm(doctor_choices=doctor_choices)
 
         context = {
             "page_title": "Çalışma Takvimi",
-            "hospital": hospital,
+            # hospital context processor tarafından otomatik ekleniyor
             "calendar": calendar_data,
             "filter_form": filter_form,
             "holiday_form": holiday_form,
@@ -666,13 +655,14 @@ class ServiceManagementView(View):
     def _build_context(self):
         all_services = service_service.get_services()
         doctors = doctor_service.get_doctors()
+        # hospital iş mantığı için gerekli (services listesini filtrelemek için)
         hospital = hospital_service.get_hospital()
         
         # Sadece hastanenin seçtiği hizmetleri göster
         selected_service_ids = set(hospital.get("services", []))
         services = [s for s in all_services if s["id"] in selected_service_ids]
 
-        doctor_choices = [(doc["id"], f"{doc['name']} {doc['surname']}") for doc in doctors]
+        doctor_choices = build_doctor_choices(doctors)
 
         service_cards = []
         for service in services:
@@ -698,7 +688,7 @@ class ServiceManagementView(View):
 
         context = {
             "page_title": "Hizmetler",
-            "hospital": hospital,
+            # hospital context processor tarafından otomatik ekleniyor
             "service_cards": service_cards,
             "doctor_choices": doctor_choices,
         }
@@ -745,7 +735,7 @@ class ReviewManagementView(View):
 
     def _build_context(self, request):
         doctors = doctor_service.get_doctors()
-        doctor_choices = [(doc["id"], f"{doc['name']} {doc['surname']}") for doc in doctors]
+        doctor_choices = build_doctor_choices(doctors)
 
         # Filtre formu
         filter_form = ReviewFilterForm(
@@ -780,15 +770,15 @@ class ReviewManagementView(View):
         stats = review_service.get_review_statistics()
 
         # Her yorum için yanıt formu ve tarih formatını düzelt
+        from datetime import datetime
         review_cards = []
         for review in reviews:
             # Tarih formatını düzelt (ISO string'den datetime'a)
             created_at = review.get("createdAt", "")
             if created_at:
                 try:
-                    from datetime import datetime
-                    dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-                    review["created_at_dt"] = dt
+                    dt_str = created_at.replace("Z", "+00:00")
+                    review["created_at_dt"] = datetime.fromisoformat(dt_str)
                 except (ValueError, AttributeError):
                     review["created_at_dt"] = None
             else:
@@ -797,9 +787,8 @@ class ReviewManagementView(View):
             replied_at = review.get("repliedAt", "")
             if replied_at:
                 try:
-                    from datetime import datetime
-                    dt = datetime.fromisoformat(replied_at.replace("Z", "+00:00"))
-                    review["replied_at_dt"] = dt
+                    dt_str = replied_at.replace("Z", "+00:00")
+                    review["replied_at_dt"] = datetime.fromisoformat(dt_str)
                 except (ValueError, AttributeError):
                     review["replied_at_dt"] = None
             else:
@@ -814,11 +803,11 @@ class ReviewManagementView(View):
                 "reply_form": reply_form,
             })
 
-        hospital = hospital_service.get_hospital()
+        # hospital context processor tarafından otomatik ekleniyor
 
         context = {
             "page_title": "Yorumlar & Yanıtlar",
-            "hospital": hospital,
+            # hospital context processor tarafından otomatik ekleniyor
             "filter_form": filter_form,
             "review_cards": review_cards,
             "statistics": stats,
@@ -914,7 +903,7 @@ class SettingsView(View):
         settings_data = settings_service.get_settings()
         hospital_choices = settings_service.get_hospital_choices()
         data_stats = settings_service.get_data_statistics()
-        hospital = hospital_service.get_hospital()
+        # hospital context processor tarafından otomatik ekleniyor
 
         # Formları mevcut ayarlarla doldur
         general_form = GeneralSettingsForm(
@@ -936,7 +925,7 @@ class SettingsView(View):
 
         context = {
             "page_title": "Ayarlar",
-            "hospital": hospital,
+            # hospital context processor tarafından otomatik ekleniyor
             "general_form": general_form,
             "notification_form": notification_form,
             "data_management_form": data_management_form,
