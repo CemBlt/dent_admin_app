@@ -10,7 +10,7 @@ from .doctor_service import get_doctors
 from .hospital_service import get_hospital
 from .user_service import get_user_map
 
-ACTIVE_HOSPITAL_ID = "1"  # TODO: UUID'ye çevrilecek
+from .hospital_service import _get_active_hospital_id
 
 
 def _load_reviews() -> list[dict]:
@@ -48,7 +48,8 @@ def get_reviews_with_details(
     result = []
     for review in reviews:
         # Sadece aktif hastaneye ait yorumları al
-        if str(review.get("hospital_id", "")) != ACTIVE_HOSPITAL_ID:
+        hospital_id = _get_active_hospital_id()
+        if str(review.get("hospital_id", "")) != hospital_id:
             continue
 
         # Filtreleme
@@ -114,10 +115,11 @@ def get_review_statistics() -> dict:
     """Yorum istatistiklerini hesaplar."""
     reviews = get_reviews_with_details()
     ratings = _load_ratings()
+    hospital_id = _get_active_hospital_id()
     hospital_ratings = [
         r.get("hospital_rating", 0) or 0
         for r in ratings
-        if str(r.get("hospital_id", "")) == ACTIVE_HOSPITAL_ID
+        if str(r.get("hospital_id", "")) == hospital_id
     ]
 
     now = datetime.now()

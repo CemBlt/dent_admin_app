@@ -10,7 +10,7 @@ from django.core.files.storage import FileSystemStorage
 
 from .supabase_client import get_supabase_client
 
-ACTIVE_HOSPITAL_ID = "1"  # TODO: UUID'ye çevrilecek
+from .hospital_service import _get_active_hospital_id
 UPLOAD_ROOT = Path(settings.BASE_DIR, "panel", "static", "uploads", "doctors")
 UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
 storage = FileSystemStorage(location=UPLOAD_ROOT, base_url="/static/uploads/doctors/")
@@ -19,7 +19,8 @@ storage = FileSystemStorage(location=UPLOAD_ROOT, base_url="/static/uploads/doct
 def get_doctors() -> list[dict]:
     """Aktif hastaneye ait doktorları Supabase'den getirir."""
     supabase = get_supabase_client()
-    result = supabase.table("doctors").select("*").eq("hospital_id", ACTIVE_HOSPITAL_ID).execute()
+    hospital_id = _get_active_hospital_id()
+    result = supabase.table("doctors").select("*").eq("hospital_id", hospital_id).execute()
     
     if not result.data:
         return []
@@ -42,8 +43,9 @@ def add_doctor(data: dict, image_file=None) -> dict:
     """Yeni doktor ekler."""
     supabase = get_supabase_client()
     
+    hospital_id = _get_active_hospital_id()
     doctor_data = {
-        "hospital_id": ACTIVE_HOSPITAL_ID,
+        "hospital_id": hospital_id,
         "name": data["name"],
         "surname": data["surname"],
         "specialty": data["specialty"],
@@ -186,8 +188,9 @@ def get_doctor_holidays() -> dict[str, list[dict]]:
 def add_doctor_holiday(doctor_id: str, date_str: str, reason: str) -> None:
     """Doktor tatili ekler."""
     supabase = get_supabase_client()
+    hospital_id = _get_active_hospital_id()
     payload = {
-        "hospital_id": ACTIVE_HOSPITAL_ID,
+        "hospital_id": hospital_id,
         "doctor_id": doctor_id,
         "date": date_str,
         "reason": reason,

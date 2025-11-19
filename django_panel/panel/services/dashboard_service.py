@@ -5,9 +5,13 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
 
-from .json_repository import load_json
-
-ACTIVE_HOSPITAL_ID = "1"
+from .supabase_client import get_supabase_client
+from .hospital_service import _get_active_hospital_id, _format_hospital_from_db
+from .appointment_service import get_appointments, _format_appointment_from_db
+from .doctor_service import get_doctors, _format_doctor_from_db
+from .service_service import get_services
+from .review_service import _load_reviews, _load_ratings
+from .user_service import get_user_map
 
 
 @dataclass
@@ -31,36 +35,59 @@ def _today() -> date:
 
 
 def load_dashboard_context() -> dict[str, Any]:
-    hospitals = load_json('hospitals')
-    doctors = [d for d in load_json('doctors') if d['hospitalId'] == ACTIVE_HOSPITAL_ID]
-    appointments = [
-        apt for apt in load_json('appointments')
-        if apt['hospitalId'] == ACTIVE_HOSPITAL_ID
-    ]
-    services = load_json('services')
-    ratings = [r for r in load_json('ratings') if r['hospitalId'] == ACTIVE_HOSPITAL_ID]
-    reviews = [r for r in load_json('reviews') if r['hospitalId'] == ACTIVE_HOSPITAL_ID]
-    users = {u['id']: u for u in load_json('users')}
-    holidays = [h for h in load_json('holidays') if h['hospitalId'] == ACTIVE_HOSPITAL_ID]
-
-    hospital = next((h for h in hospitals if h['id'] == ACTIVE_HOSPITAL_ID), hospitals[0])
-
+    """Dashboard için gerekli tüm verileri Supabase'den getirir."""
+    supabase = get_supabase_client()
+    hospital_id = _get_active_hospital_id()
+    
+    # Hastane bilgisi
+    hospital_result = supabase.table("hospitals").select("*").eq("id", hospital_id).single().execute()
+    hospital = _format_hospital_from_db(hospital_result.data)
+    
+    # Doktorlar
+    doctors_result = supabase.table("doctors").select("*").eq("hospital_id", hospital_id).execute()
+    doctors = [_format_doctor_from_db(d) for d in doctors_result.data] if doctors_result.data else []
+    
+    # Randevular
+    appointments_result = supabase.table("appointments").select("*").eq("hospital_id", hospital_id).execute()
+    appointments = [_format_appointment_from_db(a) for a in appointments_result.data] if appointments_result.data else []
+    
+    # Hizmetler
+    services_result = supabase.table("services").select("*").execute()
+    services = services_result.data if services_result.data else []
+    
+    # Puanlamalar
+    ratings_result = supabase.table("ratings").select("*").eq("hospital_id", hospital_id).execute()
+    ratings = ratings_result.data if ratings_result.data else []
+    
+    # Yorumlar
+    reviews_result = supabase.table("reviews").select("*").eq("hospital_id", hospital_id).execute()
+    reviews = reviews_result.data if reviews_result.data else []
+    
+    # Kullanıcılar
+    users = get_user_map()
+    
+    # Tatiller
+    holidays_result = supabase.table("holidays").select("*").eq("hospital_id", hospital_id).execute()
+    holidays = holidays_result.data if holidays_result.data else []
+    
+    # KPI hesaplamaları
     today = _today()
     pending_count = sum(1 for apt in appointments if apt['status'] == 'pending')
     today_count = sum(1 for apt in appointments if _parse_date(apt['date']) == today)
     doctor_count = len(doctors)
-    avg_rating = (
-        sum(r['hospitalRating'] for r in ratings) / len(ratings)
-        if ratings else 0
-    )
-
+    
+    # Ortalama puan hesapla
+    hospital_ratings = [r.get('hospital_rating', 0) or 0 for r in ratings]
+    avg_rating = sum(hospital_ratings) / len(hospital_ratings) if hospital_ratings else 0
+    
     kpi_cards = [
         KPI("Bekleyen Randevu", str(pending_count), "Onay bekleyen randevular", "schedule", "#FDE68A"),
         KPI("Bugünkü Randevu", str(today_count), "Günün toplam randevusu", "today", "#A5F3FC"),
         KPI("Aktif Doktor", str(doctor_count), "Paneldeki toplam doktor", "medical_services", "#C7D2FE"),
         KPI("Ortalama Puan", f"{avg_rating:.1f}", "Hastane ortalaması", "star", "#FBCFE8"),
     ]
-
+    
+    # Bugünkü randevular
     upcoming_appointments = sorted(
         appointments,
         key=lambda a: (a['date'], a['time'])
@@ -70,17 +97,22 @@ def load_dashboard_context() -> dict[str, Any]:
         for apt in upcoming_appointments
         if _parse_date(apt['date']) == today
     ][:6]
-
+    
+    # Doktor durumları
     doctor_status = [_build_doctor_status(doc, today) for doc in doctors]
-
+    
+    # Hizmet istatistikleri
     service_stats = _build_service_stats(appointments, services)
-
+    
+    # Son yorumlar
     latest_reviews = _build_reviews(reviews, users)
-
+    
+    # Yaklaşan tatiller
     upcoming_holidays = _build_upcoming_holidays(holidays, today)
-
+    
+    # Doktor puanlamaları
     doctor_ratings = _build_doctor_ratings(doctors, ratings)
-
+    
     return {
         'hospital': hospital,
         'kpi_cards': kpi_cards,
@@ -95,7 +127,7 @@ def load_dashboard_context() -> dict[str, Any]:
 
 def _build_appointment_card(apt, doctors, services, users):
     doctor = next((d for d in doctors if d['id'] == apt['doctorId']), None)
-    service = next((s for s in services if s['id'] == apt['service']), None)
+    service = next((s for s in services if str(s['id']) == apt['service']), None)
     user = users.get(apt['userId'])
     return {
         'time': apt['time'],
@@ -124,7 +156,8 @@ def _build_service_stats(appointments, services):
     total = sum(counts.values()) or 1
     stats = []
     for service in services:
-        count = counts.get(service['id'], 0)
+        service_id = str(service['id'])
+        count = counts.get(service_id, 0)
         percent = round((count / total) * 100)
         stats.append({
             'name': service['name'],
@@ -136,14 +169,15 @@ def _build_service_stats(appointments, services):
 
 
 def _build_reviews(reviews, users):
-    sorted_reviews = sorted(reviews, key=lambda r: r['createdAt'], reverse=True)
+    sorted_reviews = sorted(reviews, key=lambda r: r.get('created_at', ''), reverse=True)
     latest = []
     for rev in sorted_reviews[:3]:
-        user = users.get(rev['userId'])
+        user_id = str(rev.get('user_id', ''))
+        user = users.get(user_id)
         latest.append({
             'patient': f"{user['name']} {user['surname']}" if user else 'Hasta',
-            'comment': rev['comment'],
-            'date': rev['createdAt'][:10],
+            'comment': rev.get('comment', ''),
+            'date': rev.get('created_at', '')[:10] if rev.get('created_at') else '',
         })
     return latest
 
@@ -151,12 +185,14 @@ def _build_reviews(reviews, users):
 def _build_upcoming_holidays(holidays, today):
     parsed = []
     for holiday in holidays:
-        h_date = _parse_date(holiday['date'])
-        if h_date and h_date >= today:
-            parsed.append({
-                'date': h_date.strftime('%d %B %Y'),
-                'reason': holiday['reason'],
-            })
+        h_date_str = holiday.get('date')
+        if h_date_str:
+            h_date = _parse_date(h_date_str)
+            if h_date and h_date >= today:
+                parsed.append({
+                    'date': h_date.strftime('%d %B %Y'),
+                    'reason': holiday.get('reason', ''),
+                })
     parsed.sort(key=lambda h: h['date'])
     return parsed[:4]
 
@@ -169,10 +205,11 @@ def _build_doctor_ratings(doctors, ratings):
     doctor_ratings_list = []
     
     for doctor in doctors:
+        doctor_id = str(doctor['id'])
         # Bu doktora ait tüm puanları filtrele
         doctor_ratings_data = [
-            r['doctorRating'] for r in ratings
-            if r.get('doctorId') == doctor['id']
+            r.get('doctor_rating', 0) or 0 for r in ratings
+            if str(r.get('doctor_id', '')) == doctor_id and r.get('doctor_rating')
         ]
         
         # Ortalama puanı hesapla
