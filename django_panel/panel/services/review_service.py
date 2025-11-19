@@ -5,20 +5,26 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Optional
 
-from .json_repository import load_json, update_collection
+from .supabase_client import get_supabase_client
 from .doctor_service import get_doctors
 from .hospital_service import get_hospital
 from .user_service import get_user_map
 
-ACTIVE_HOSPITAL_ID = "1"
+ACTIVE_HOSPITAL_ID = "1"  # TODO: UUID'ye çevrilecek
 
 
 def _load_reviews() -> list[dict]:
-    return load_json("reviews")
+    """Tüm yorumları Supabase'den getirir."""
+    supabase = get_supabase_client()
+    result = supabase.table("reviews").select("*").execute()
+    return result.data if result.data else []
 
 
 def _load_ratings() -> list[dict]:
-    return load_json("ratings")
+    """Tüm puanlamaları Supabase'den getirir."""
+    supabase = get_supabase_client()
+    result = supabase.table("ratings").select("*").execute()
+    return result.data if result.data else []
 
 
 def get_reviews_with_details(
@@ -36,23 +42,23 @@ def get_reviews_with_details(
     doctors = {d["id"]: d for d in get_doctors()}
     hospital = get_hospital()
 
-    # Rating'leri appointmentId'ye göre map'le
-    rating_map = {r["appointmentId"]: r for r in ratings}
+    # Rating'leri appointment_id'ye göre map'le
+    rating_map = {str(r.get("appointment_id", "")): r for r in ratings}
 
     result = []
     for review in reviews:
         # Sadece aktif hastaneye ait yorumları al
-        if review.get("hospitalId") != ACTIVE_HOSPITAL_ID:
+        if str(review.get("hospital_id", "")) != ACTIVE_HOSPITAL_ID:
             continue
 
         # Filtreleme
-        if doctor_id and review.get("doctorId") != doctor_id:
+        if doctor_id and str(review.get("doctor_id", "")) != doctor_id:
             continue
 
-        rating = rating_map.get(review.get("appointmentId"))
+        rating = rating_map.get(str(review.get("appointment_id", "")))
         if rating:
-            doctor_rating = rating.get("doctorRating", 0)
-            hospital_rating = rating.get("hospitalRating", 0)
+            doctor_rating = rating.get("doctor_rating", 0) or 0
+            hospital_rating = rating.get("hospital_rating", 0) or 0
             avg_rating = (doctor_rating + hospital_rating) / 2
 
             if min_rating and avg_rating < min_rating:
@@ -63,7 +69,7 @@ def get_reviews_with_details(
             avg_rating = 0
 
         # Tarih filtresi (ISO format string karşılaştırması)
-        created_at = review.get("createdAt", "")
+        created_at = review.get("created_at", "")
         if date_from:
             # date_from "YYYY-MM-DD" formatında gelir, ISO string ile karşılaştır
             date_from_str = str(date_from) if date_from else ""
@@ -81,20 +87,23 @@ def get_reviews_with_details(
             continue
 
         # Detaylı bilgileri ekle
-        user = user_map.get(review.get("userId", ""))
-        doctor = doctors.get(review.get("doctorId", ""))
+        user = user_map.get(str(review.get("user_id", "")))
+        doctor = doctors.get(str(review.get("doctor_id", "")))
 
-        result.append({
-            **review,
+        # Review'ı mevcut formata çevir
+        formatted_review = _format_review_from_db(review)
+        formatted_review.update({
             "user": user,
             "doctor": doctor,
             "hospital": hospital,
             "rating": rating,
-            "doctor_rating": rating.get("doctorRating", 0) if rating else 0,
-            "hospital_rating": rating.get("hospitalRating", 0) if rating else 0,
+            "doctor_rating": rating.get("doctor_rating", 0) if rating else 0,
+            "hospital_rating": rating.get("hospital_rating", 0) if rating else 0,
             "avg_rating": avg_rating,
             "has_reply": has_reply_value,
         })
+        
+        result.append(formatted_review)
 
     # Tarihe göre sırala (en yeni önce)
     result.sort(key=lambda x: x.get("createdAt", ""), reverse=True)
@@ -106,9 +115,9 @@ def get_review_statistics() -> dict:
     reviews = get_reviews_with_details()
     ratings = _load_ratings()
     hospital_ratings = [
-        r.get("hospitalRating", 0)
+        r.get("hospital_rating", 0) or 0
         for r in ratings
-        if r.get("hospitalId") == ACTIVE_HOSPITAL_ID
+        if str(r.get("hospital_id", "")) == ACTIVE_HOSPITAL_ID
     ]
 
     now = datetime.now()
@@ -138,28 +147,43 @@ def get_review_statistics() -> dict:
 
 def add_reply(review_id: str, reply_text: str) -> dict:
     """Yoruma yanıt ekler veya günceller."""
-    def update_fn(review: dict) -> dict:
-        review["reply"] = reply_text
-        review["repliedAt"] = datetime.now().isoformat() + "Z"
-        return review
-
-    return update_collection(
-        "reviews",
-        lambda r: r.get("id") == review_id,
-        update_fn,
-    )
+    supabase = get_supabase_client()
+    result = supabase.table("reviews").update({
+        "reply": reply_text,
+        "replied_at": datetime.now().isoformat() + "Z"
+    }).eq("id", review_id).execute()
+    
+    if not result.data:
+        raise ValueError("Yorum bulunamadı veya güncellenemedi")
+    
+    return _format_review_from_db(result.data[0])
 
 
 def delete_reply(review_id: str) -> dict:
     """Yorumdan yanıtı siler."""
-    def update_fn(review: dict) -> dict:
-        review.pop("reply", None)
-        review.pop("repliedAt", None)
-        return review
+    supabase = get_supabase_client()
+    result = supabase.table("reviews").update({
+        "reply": None,
+        "replied_at": None
+    }).eq("id", review_id).execute()
+    
+    if not result.data:
+        raise ValueError("Yorum bulunamadı veya güncellenemedi")
+    
+    return _format_review_from_db(result.data[0])
 
-    return update_collection(
-        "reviews",
-        lambda r: r.get("id") == review_id,
-        update_fn,
-    )
+
+def _format_review_from_db(db_review: dict) -> dict:
+    """Supabase'den gelen yorum verisini mevcut formata çevirir."""
+    return {
+        "id": str(db_review.get("id", "")),
+        "userId": str(db_review.get("user_id", "")),
+        "hospitalId": str(db_review.get("hospital_id", "")),
+        "doctorId": str(db_review.get("doctor_id", "")) if db_review.get("doctor_id") else None,
+        "appointmentId": str(db_review.get("appointment_id", "")),
+        "comment": db_review.get("comment", ""),
+        "reply": db_review.get("reply"),
+        "repliedAt": db_review.get("replied_at"),
+        "createdAt": db_review.get("created_at", ""),
+    }
 

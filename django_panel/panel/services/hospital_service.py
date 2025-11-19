@@ -10,63 +10,77 @@ from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 
 from . import location_service
-from .json_repository import (
-    append_to_collection,
-    load_json,
-    save_json,
-    update_collection,
-)
+from .supabase_client import get_supabase_client
 
-ACTIVE_HOSPITAL_ID = "1"
+ACTIVE_HOSPITAL_ID = "1"  # TODO: UUID'ye çevrilecek
 UPLOAD_DIR = Path(settings.BASE_DIR, "panel", "static", "uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 upload_storage = FileSystemStorage(location=UPLOAD_DIR, base_url="/static/uploads/")
 
 
 def get_hospital() -> dict:
-    hospitals = load_json("hospitals")
-    for hospital in hospitals:
-        if hospital["id"] == ACTIVE_HOSPITAL_ID:
-            return deepcopy(hospital)
-    raise ValueError("Aktif hastane bulunamadı")
+    """Aktif hastaneyi Supabase'den getirir."""
+    supabase = get_supabase_client()
+    result = supabase.table("hospitals").select("*").eq("id", ACTIVE_HOSPITAL_ID).execute()
+    
+    if not result.data:
+        raise ValueError("Aktif hastane bulunamadı")
+    
+    hospital = result.data[0]
+    # Supabase'den gelen veriyi mevcut format'a çevir
+    return _format_hospital_from_db(hospital)
 
 
 def save_hospital(updated: dict) -> None:
-    update_collection(
-        "hospitals",
-        lambda h: h["id"] == ACTIVE_HOSPITAL_ID,
-        lambda _: updated,
-    )
+    """Hastane bilgilerini Supabase'e kaydeder."""
+    supabase = get_supabase_client()
+    # Veriyi Supabase formatına çevir
+    db_data = _format_hospital_to_db(updated)
+    
+    result = supabase.table("hospitals").update(db_data).eq("id", ACTIVE_HOSPITAL_ID).execute()
+    
+    if not result.data:
+        raise ValueError("Hastane güncellenemedi")
 
 
 def get_services() -> list[dict]:
-    return load_json("services")
+    """Tüm hizmetleri Supabase'den getirir."""
+    supabase = get_supabase_client()
+    result = supabase.table("services").select("*").execute()
+    return result.data if result.data else []
 
 
 def get_holidays() -> list[dict]:
-    return [
-        holiday
-        for holiday in load_json("holidays")
-        if holiday["hospitalId"] == ACTIVE_HOSPITAL_ID
-    ]
+    """Aktif hastaneye ait tatilleri Supabase'den getirir."""
+    supabase = get_supabase_client()
+    result = supabase.table("holidays").select("*").eq("hospital_id", ACTIVE_HOSPITAL_ID).is_("doctor_id", "null").execute()
+    
+    if not result.data:
+        return []
+    
+    # Supabase formatından mevcut formata çevir
+    return [_format_holiday_from_db(h) for h in result.data]
 
 
 def add_holiday(date_str: str, reason: str, is_full_day: bool = True, start_time: str | None = None, end_time: str | None = None) -> None:
+    """Yeni tatil ekler."""
     from datetime import datetime, date
     
-    existing = load_json("holidays")
-    new_id = str(max((int(item["id"]) for item in existing), default=0) + 1)
+    supabase = get_supabase_client()
     payload = {
-        "id": new_id,
-        "hospitalId": ACTIVE_HOSPITAL_ID,
-        "doctorId": None,
+        "hospital_id": ACTIVE_HOSPITAL_ID,
+        "doctor_id": None,
         "date": date_str,
         "reason": reason,
-        "isFullDay": is_full_day,
-        "startTime": start_time if not is_full_day else None,
-        "endTime": end_time if not is_full_day else None,
+        "is_full_day": is_full_day,
+        "start_time": start_time if not is_full_day else None,
+        "end_time": end_time if not is_full_day else None,
     }
-    append_to_collection("holidays", payload)
+    
+    result = supabase.table("holidays").insert(payload).execute()
+    
+    if not result.data:
+        raise ValueError("Tatil eklenemedi")
     
     # Saatli tatil ise, o günün çalışma saatlerini tatil başlangıç saatine kadar kısalt
     if not is_full_day and start_time:
@@ -88,9 +102,12 @@ def add_holiday(date_str: str, reason: str, is_full_day: bool = True, start_time
 
 
 def delete_holiday(holiday_id: str) -> None:
-    holidays = load_json("holidays")
-    updated = [h for h in holidays if h["id"] != holiday_id]
-    save_json("holidays", updated)
+    """Tatili siler."""
+    supabase = get_supabase_client()
+    result = supabase.table("holidays").delete().eq("id", holiday_id).execute()
+    
+    if not result.data:
+        raise ValueError("Tatil bulunamadı veya silinemedi")
 
 
 def save_logo(file) -> str:
@@ -241,5 +258,74 @@ def build_initial_working_hours(hospital: dict) -> dict:
         initial[f"{key}_end"] = datetime.strptime(end, "%H:%M").time() if end else None
     return initial
 
+
+def _format_hospital_from_db(db_hospital: dict) -> dict:
+    """Supabase'den gelen hastane verisini mevcut formata çevirir."""
+    return {
+        "id": str(db_hospital.get("id", "")),
+        "name": db_hospital.get("name", ""),
+        "address": db_hospital.get("address", ""),
+        "latitude": float(db_hospital.get("latitude", 0)),
+        "longitude": float(db_hospital.get("longitude", 0)),
+        "phone": db_hospital.get("phone", ""),
+        "email": db_hospital.get("email", ""),
+        "description": db_hospital.get("description", ""),
+        "image": db_hospital.get("image"),
+        "gallery": db_hospital.get("gallery", []),
+        "services": db_hospital.get("services", []),
+        "workingHours": db_hospital.get("working_hours", {}),
+        "createdAt": db_hospital.get("created_at", ""),
+        "provinceId": db_hospital.get("province_id", ""),
+        "provinceName": db_hospital.get("province_name", ""),
+        "districtId": db_hospital.get("district_id", ""),
+        "districtName": db_hospital.get("district_name", ""),
+        "neighborhoodId": db_hospital.get("neighborhood_id", ""),
+        "neighborhoodName": db_hospital.get("neighborhood_name", ""),
+    }
+
+
+def _format_hospital_to_db(hospital: dict) -> dict:
+    """Hastane verisini Supabase formatına çevirir."""
+    return {
+        "name": hospital.get("name", ""),
+        "address": hospital.get("address", ""),
+        "latitude": float(hospital.get("latitude", 0)),
+        "longitude": float(hospital.get("longitude", 0)),
+        "phone": hospital.get("phone", ""),
+        "email": hospital.get("email", ""),
+        "description": hospital.get("description", ""),
+        "image": hospital.get("image"),
+        "gallery": hospital.get("gallery", []),
+        "services": hospital.get("services", []),
+        "working_hours": hospital.get("workingHours", {}),
+        "province_id": hospital.get("provinceId", ""),
+        "province_name": hospital.get("provinceName", ""),
+        "district_id": hospital.get("districtId", ""),
+        "district_name": hospital.get("districtName", ""),
+        "neighborhood_id": hospital.get("neighborhoodId", ""),
+        "neighborhood_name": hospital.get("neighborhoodName", ""),
+    }
+
+
+def _format_holiday_from_db(db_holiday: dict) -> dict:
+    """Supabase'den gelen tatil verisini mevcut formata çevirir."""
+    return {
+        "id": str(db_holiday.get("id", "")),
+        "hospitalId": str(db_holiday.get("hospital_id", "")),
+        "doctorId": str(db_holiday.get("doctor_id", "")) if db_holiday.get("doctor_id") else None,
+        "date": db_holiday.get("date", ""),
+        "reason": db_holiday.get("reason", ""),
+        "isFullDay": db_holiday.get("is_full_day", True),
+        "startTime": db_holiday.get("start_time"),
+        "endTime": db_holiday.get("end_time"),
+    }
+
 def get_hospitals() -> list[dict]:
-    return load_json("hospitals")
+    """Tüm hastaneleri Supabase'den getirir."""
+    supabase = get_supabase_client()
+    result = supabase.table("hospitals").select("*").execute()
+    
+    if not result.data:
+        return []
+    
+    return [_format_hospital_from_db(h) for h in result.data]

@@ -3,57 +3,105 @@ from __future__ import annotations
 from datetime import datetime, date, time
 from typing import List
 
-from .json_repository import load_json, save_json
+from .supabase_client import get_supabase_client
 
 
 def get_appointments() -> List[dict]:
-    return load_json("appointments")
+    """Tüm randevuları Supabase'den getirir."""
+    supabase = get_supabase_client()
+    result = supabase.table("appointments").select("*").execute()
+    
+    if not result.data:
+        return []
+    
+    return [_format_appointment_from_db(a) for a in result.data]
 
 
 def filter_appointments(status=None, doctor_id=None, service_id=None, start_date=None, end_date=None):
-    appointments = get_appointments()
-    result = []
-    for apt in appointments:
-        if status and apt["status"] != status:
-            continue
-        if doctor_id and apt["doctorId"] != doctor_id:
-            continue
-        if service_id and apt["service"] != service_id:
-            continue
-        apt_date = datetime.strptime(apt["date"], "%Y-%m-%d").date()
-        if start_date and apt_date < start_date:
-            continue
-        if end_date and apt_date > end_date:
-            continue
-        result.append(apt)
-    return result
+    """Randevuları filtreler."""
+    supabase = get_supabase_client()
+    query = supabase.table("appointments").select("*")
+    
+    if status:
+        query = query.eq("status", status)
+    if doctor_id:
+        query = query.eq("doctor_id", doctor_id)
+    if service_id:
+        query = query.eq("service_id", service_id)
+    if start_date:
+        query = query.gte("date", start_date.isoformat())
+    if end_date:
+        query = query.lte("date", end_date.isoformat())
+    
+    result = query.execute()
+    
+    if not result.data:
+        return []
+    
+    return [_format_appointment_from_db(a) for a in result.data]
 
 
 def update_appointment(appointment_id: str, **changes):
-    appointments = get_appointments()
-    for idx, apt in enumerate(appointments):
-        if apt["id"] == appointment_id:
-            appointments[idx] = {**apt, **changes}
-            save_json("appointments", appointments)
-            return appointments[idx]
-    raise ValueError("Randevu bulunamadı")
+    """Randevu bilgilerini günceller."""
+    supabase = get_supabase_client()
+    
+    # Supabase formatına çevir
+    db_changes = {}
+    if "status" in changes:
+        db_changes["status"] = changes["status"]
+    if "date" in changes:
+        db_changes["date"] = changes["date"] if isinstance(changes["date"], str) else changes["date"].isoformat()
+    if "time" in changes:
+        db_changes["time"] = changes["time"] if isinstance(changes["time"], str) else changes["time"].strftime("%H:%M")
+    if "notes" in changes:
+        db_changes["notes"] = changes["notes"]
+    
+    result = supabase.table("appointments").update(db_changes).eq("id", appointment_id).execute()
+    
+    if not result.data:
+        raise ValueError("Randevu bulunamadı veya güncellenemedi")
+    
+    return _format_appointment_from_db(result.data[0])
 
 
 def delete_appointment(appointment_id: str):
-    appointments = get_appointments()
-    filtered = [apt for apt in appointments if apt["id"] != appointment_id]
-    save_json("appointments", filtered)
+    """Randevuyu siler."""
+    supabase = get_supabase_client()
+    result = supabase.table("appointments").delete().eq("id", appointment_id).execute()
+    
+    if not result.data:
+        raise ValueError("Randevu bulunamadı veya silinemedi")
 
 
 def get_summary():
-    appointments = get_appointments()
-    stats = {
-        "pending": sum(1 for apt in appointments if apt["status"] == "pending"),
-        "completed": sum(1 for apt in appointments if apt["status"] == "completed"),
-        "cancelled": sum(1 for apt in appointments if apt["status"] == "cancelled"),
-    }
+    """Randevu özet istatistiklerini getirir."""
+    supabase = get_supabase_client()
     today = datetime.now().date()
-    stats["today"] = sum(1 for apt in appointments if apt["date"] == today.isoformat())
+    
+    # Tüm randevuları al
+    all_appointments = supabase.table("appointments").select("status,date").execute()
+    
+    stats = {
+        "pending": 0,
+        "completed": 0,
+        "cancelled": 0,
+        "today": 0,
+    }
+    
+    if all_appointments.data:
+        for apt in all_appointments.data:
+            status = apt.get("status", "")
+            if status == "pending":
+                stats["pending"] += 1
+            elif status == "completed":
+                stats["completed"] += 1
+            elif status == "cancelled":
+                stats["cancelled"] += 1
+            
+            apt_date = apt.get("date", "")
+            if apt_date == today.isoformat():
+                stats["today"] += 1
+    
     return stats
 
 
@@ -64,31 +112,18 @@ def auto_cancel_overdue_appointments(hospital_id: str = "1") -> int:
     """
     from datetime import timedelta
     
-    appointments = get_appointments()
+    supabase = get_supabase_client()
     today = date.today()
+    five_days_ago = (today - timedelta(days=5)).isoformat()
+    
+    # 5 günden eski, pending olan randevuları bul
+    result = supabase.table("appointments").select("id").eq("hospital_id", hospital_id).eq("status", "pending").lt("date", five_days_ago).execute()
+    
     cancelled_count = 0
-    
-    for apt in appointments:
-        if apt.get("hospitalId") != hospital_id:
-            continue
-        
-        # Sadece pending ve completed olmayan randevuları kontrol et
-        if apt["status"] in ["completed", "cancelled"]:
-            continue
-        
-        try:
-            apt_date = datetime.strptime(apt["date"], "%Y-%m-%d").date()
-            days_passed = (today - apt_date).days
-            
-            # 5 gün geçmişse iptal et
-            if days_passed > 5:
-                apt["status"] = "cancelled"
-                cancelled_count += 1
-        except (ValueError, KeyError):
-            continue
-    
-    if cancelled_count > 0:
-        save_json("appointments", appointments)
+    if result.data:
+        for apt in result.data:
+            supabase.table("appointments").update({"status": "cancelled"}).eq("id", apt["id"]).execute()
+            cancelled_count += 1
     
     return cancelled_count
 
@@ -99,7 +134,7 @@ def is_appointment_time_blocked(appointment_date: date, appointment_time: str, h
     Tüm gün tatillerde True döner (randevu alınamaz).
     Saatli tatillerde sadece tatil saatleri içinde True döner.
     """
-    holidays = load_json("holidays")
+    supabase = get_supabase_client()
     appointment_date_str = appointment_date.isoformat()
     
     # Randevu saatini time objesine çevir
@@ -108,21 +143,20 @@ def is_appointment_time_blocked(appointment_date: date, appointment_time: str, h
     except (ValueError, TypeError):
         return False
     
-    for holiday in holidays:
-        if holiday.get("hospitalId") != hospital_id:
-            continue
-        if holiday.get("doctorId"):  # Doktor tatillerini atla, sadece hastane tatilleri
-            continue
-        if holiday.get("date") != appointment_date_str:
-            continue
-        
+    # O tarihteki hastane tatillerini getir
+    result = supabase.table("holidays").select("*").eq("hospital_id", hospital_id).eq("date", appointment_date_str).is_("doctor_id", "null").execute()
+    
+    if not result.data:
+        return False
+    
+    for holiday in result.data:
         # Tüm gün tatil
-        if holiday.get("isFullDay", True):
+        if holiday.get("is_full_day", True):
             return True
         
         # Saatli tatil kontrolü
-        start_time_str = holiday.get("startTime")
-        end_time_str = holiday.get("endTime")
+        start_time_str = holiday.get("start_time")
+        end_time_str = holiday.get("end_time")
         if start_time_str and end_time_str:
             try:
                 start_time = datetime.strptime(start_time_str, "%H:%M").time()
@@ -134,3 +168,19 @@ def is_appointment_time_blocked(appointment_date: date, appointment_time: str, h
                 continue
     
     return False
+
+
+def _format_appointment_from_db(db_appointment: dict) -> dict:
+    """Supabase'den gelen randevu verisini mevcut formata çevirir."""
+    return {
+        "id": str(db_appointment.get("id", "")),
+        "userId": str(db_appointment.get("user_id", "")),
+        "hospitalId": str(db_appointment.get("hospital_id", "")),
+        "doctorId": str(db_appointment.get("doctor_id", "")),
+        "date": db_appointment.get("date", ""),
+        "time": db_appointment.get("time", ""),
+        "status": db_appointment.get("status", ""),
+        "service": str(db_appointment.get("service_id", "")),
+        "notes": db_appointment.get("notes", ""),
+        "createdAt": db_appointment.get("created_at", ""),
+    }

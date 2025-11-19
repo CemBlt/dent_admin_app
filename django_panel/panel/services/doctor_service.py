@@ -8,28 +8,26 @@ from pathlib import Path
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 
-from .json_repository import load_json, save_json
+from .supabase_client import get_supabase_client
 
-ACTIVE_HOSPITAL_ID = "1"
+ACTIVE_HOSPITAL_ID = "1"  # TODO: UUID'ye çevrilecek
 UPLOAD_ROOT = Path(settings.BASE_DIR, "panel", "static", "uploads", "doctors")
 UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
 storage = FileSystemStorage(location=UPLOAD_ROOT, base_url="/static/uploads/doctors/")
 
 
-def _load_doctors() -> list[dict]:
-    return load_json("doctors")
-
-
-def _persist(doctors: list[dict]) -> None:
-    save_json("doctors", doctors)
-
-
 def get_doctors() -> list[dict]:
-    return [doc for doc in _load_doctors() if doc["hospitalId"] == ACTIVE_HOSPITAL_ID]
+    """Aktif hastaneye ait doktorları Supabase'den getirir."""
+    supabase = get_supabase_client()
+    result = supabase.table("doctors").select("*").eq("hospital_id", ACTIVE_HOSPITAL_ID).execute()
+    
+    if not result.data:
+        return []
+    
+    return [_format_doctor_from_db(d) for d in result.data]
 
 
-def _generate_id(doctors: list[dict]) -> str:
-    return str(max((int(doc["id"]) for doc in doctors), default=0) + 1)
+# ID generation artık Supabase tarafından yapılıyor (UUID)
 
 
 def _save_image(file) -> str | None:
@@ -41,68 +39,84 @@ def _save_image(file) -> str | None:
 
 
 def add_doctor(data: dict, image_file=None) -> dict:
-    doctors = _load_doctors()
-    new_id = _generate_id(doctors)
-    doctor = {
-        "id": new_id,
-        "hospitalId": ACTIVE_HOSPITAL_ID,
+    """Yeni doktor ekler."""
+    supabase = get_supabase_client()
+    
+    doctor_data = {
+        "hospital_id": ACTIVE_HOSPITAL_ID,
         "name": data["name"],
         "surname": data["surname"],
         "specialty": data["specialty"],
         "bio": data.get("bio", ""),
         "services": list(data.get("services", [])),
-        "workingHours": _default_working_hours(),
+        "working_hours": _default_working_hours(),
         "image": _save_image(image_file),
-        "isActive": data.get("is_active", True),
-        "createdAt": datetime.utcnow().isoformat(),
+        "is_active": data.get("is_active", True),
     }
-    doctors.append(doctor)
-    _persist(doctors)
-    return doctor
+    
+    result = supabase.table("doctors").insert(doctor_data).execute()
+    
+    if not result.data:
+        raise ValueError("Doktor eklenemedi")
+    
+    return _format_doctor_from_db(result.data[0])
 
 
 def update_doctor(doctor_id: str, data: dict, image_file=None) -> dict:
-    doctors = _load_doctors()
-    for idx, doctor in enumerate(doctors):
-        if doctor["id"] == doctor_id:
-            doctor["name"] = data["name"]
-            doctor["surname"] = data["surname"]
-            doctor["specialty"] = data["specialty"]
-            doctor["bio"] = data.get("bio", "")
-            doctor["services"] = list(data.get("services", []))
-            doctor["isActive"] = data.get("is_active", False)
-            if image_file:
-                _delete_file(doctor.get("image"))
-                doctor["image"] = _save_image(image_file)
-            doctors[idx] = doctor
-            _persist(doctors)
-            return doctor
-    raise ValueError("Doktor bulunamadı")
+    """Doktor bilgilerini günceller."""
+    supabase = get_supabase_client()
+    
+    update_data = {
+        "name": data["name"],
+        "surname": data["surname"],
+        "specialty": data["specialty"],
+        "bio": data.get("bio", ""),
+        "services": list(data.get("services", [])),
+        "is_active": data.get("is_active", False),
+    }
+    
+    if image_file:
+        # Eski resmi sil
+        old_doctor_result = supabase.table("doctors").select("image").eq("id", doctor_id).execute()
+        if old_doctor_result.data and old_doctor_result.data[0].get("image"):
+            _delete_file(old_doctor_result.data[0]["image"])
+        
+        update_data["image"] = _save_image(image_file)
+    
+    result = supabase.table("doctors").update(update_data).eq("id", doctor_id).execute()
+    
+    if not result.data:
+        raise ValueError("Doktor bulunamadı veya güncellenemedi")
+    
+    return _format_doctor_from_db(result.data[0])
 
 
 def delete_doctor(doctor_id: str) -> None:
-    doctors = _load_doctors()
-    updated = []
-    removed_image = None
-    for doctor in doctors:
-        if doctor["id"] == doctor_id:
-            removed_image = doctor.get("image")
-        else:
-            updated.append(doctor)
-    _persist(updated)
-    _delete_file(removed_image)
+    """Doktoru siler."""
+    supabase = get_supabase_client()
+    
+    # Önce resmi al
+    doctor_result = supabase.table("doctors").select("image").eq("id", doctor_id).execute()
+    if doctor_result.data and doctor_result.data[0].get("image"):
+        _delete_file(doctor_result.data[0]["image"])
+    
+    # Doktor tatillerini sil
     _delete_doctor_holidays(doctor_id)
+    
+    # Doktoru sil
+    result = supabase.table("doctors").delete().eq("id", doctor_id).execute()
+    
+    if not result.data:
+        raise ValueError("Doktor bulunamadı veya silinemedi")
 
 
 def update_working_hours(doctor_id: str, working_hours: dict) -> None:
-    doctors = _load_doctors()
-    for idx, doctor in enumerate(doctors):
-        if doctor["id"] == doctor_id:
-            doctor["workingHours"] = working_hours
-            doctors[idx] = doctor
-            _persist(doctors)
-            return
-    raise ValueError("Doktor bulunamadı")
+    """Doktor çalışma saatlerini günceller."""
+    supabase = get_supabase_client()
+    result = supabase.table("doctors").update({"working_hours": working_hours}).eq("id", doctor_id).execute()
+    
+    if not result.data:
+        raise ValueError("Doktor bulunamadı veya güncellenemedi")
 
 
 def build_initial_working_hours(doctor: dict) -> dict:
@@ -154,41 +168,54 @@ def build_working_hours_from_form(cleaned_data: dict) -> dict:
 
 
 def get_doctor_holidays() -> dict[str, list[dict]]:
-    holidays = load_json("holidays")
-    result: dict[str, list[dict]] = {}
-    for holiday in holidays:
-        doctor_id = holiday.get("doctorId")
-        if doctor_id:
-            result.setdefault(doctor_id, []).append(holiday)
-    return result
+    """Doktor tatillerini getirir."""
+    supabase = get_supabase_client()
+    result = supabase.table("holidays").select("*").not_.is_("doctor_id", "null").execute()
+    
+    holidays_dict: dict[str, list[dict]] = {}
+    if result.data:
+        for holiday in result.data:
+            doctor_id = str(holiday.get("doctor_id", ""))
+            if doctor_id:
+                formatted_holiday = _format_holiday_from_db(holiday)
+                holidays_dict.setdefault(doctor_id, []).append(formatted_holiday)
+    
+    return holidays_dict
 
 
 def add_doctor_holiday(doctor_id: str, date_str: str, reason: str) -> None:
-    holidays = load_json("holidays")
-    new_id = str(max((int(item["id"]) for item in holidays), default=0) + 1)
-    holidays.append({
-        "id": new_id,
-        "hospitalId": ACTIVE_HOSPITAL_ID,
-        "doctorId": doctor_id,
+    """Doktor tatili ekler."""
+    supabase = get_supabase_client()
+    payload = {
+        "hospital_id": ACTIVE_HOSPITAL_ID,
+        "doctor_id": doctor_id,
         "date": date_str,
         "reason": reason,
-    })
-    save_json("holidays", holidays)
+        "is_full_day": True,
+    }
+    
+    result = supabase.table("holidays").insert(payload).execute()
+    
+    if not result.data:
+        raise ValueError("Doktor tatili eklenemedi")
 
 
 def delete_doctor_holiday(holiday_id: str) -> None:
-    holidays = load_json("holidays")
-    updated = [h for h in holidays if str(h["id"]) != str(holiday_id)]
-    save_json("holidays", updated)
+    """Doktor tatilini siler."""
+    supabase = get_supabase_client()
+    result = supabase.table("holidays").delete().eq("id", holiday_id).execute()
+    
+    if not result.data:
+        raise ValueError("Tatil bulunamadı veya silinemedi")
 
 
 def toggle_active(doctor_id: str, is_active: bool) -> None:
-    doctors = _load_doctors()
-    for doctor in doctors:
-        if doctor["id"] == doctor_id:
-            doctor["isActive"] = is_active
-            break
-    _persist(doctors)
+    """Doktor aktif/pasif durumunu değiştirir."""
+    supabase = get_supabase_client()
+    result = supabase.table("doctors").update({"is_active": is_active}).eq("id", doctor_id).execute()
+    
+    if not result.data:
+        raise ValueError("Doktor bulunamadı veya güncellenemedi")
 
 
 def _default_working_hours() -> dict:
@@ -212,6 +239,37 @@ def _delete_file(relative_path: str | None) -> None:
 
 
 def _delete_doctor_holidays(doctor_id: str) -> None:
-    holidays = load_json("holidays")
-    updated = [h for h in holidays if h.get("doctorId") != doctor_id]
-    save_json("holidays", updated)
+    """Doktorun tüm tatillerini siler."""
+    supabase = get_supabase_client()
+    supabase.table("holidays").delete().eq("doctor_id", doctor_id).execute()
+
+
+def _format_doctor_from_db(db_doctor: dict) -> dict:
+    """Supabase'den gelen doktor verisini mevcut formata çevirir."""
+    return {
+        "id": str(db_doctor.get("id", "")),
+        "hospitalId": str(db_doctor.get("hospital_id", "")),
+        "name": db_doctor.get("name", ""),
+        "surname": db_doctor.get("surname", ""),
+        "specialty": db_doctor.get("specialty", ""),
+        "image": db_doctor.get("image"),
+        "bio": db_doctor.get("bio", ""),
+        "workingHours": db_doctor.get("working_hours", {}),
+        "isActive": db_doctor.get("is_active", True),
+        "services": db_doctor.get("services", []),
+        "createdAt": db_doctor.get("created_at", ""),
+    }
+
+
+def _format_holiday_from_db(db_holiday: dict) -> dict:
+    """Supabase'den gelen tatil verisini mevcut formata çevirir."""
+    return {
+        "id": str(db_holiday.get("id", "")),
+        "hospitalId": str(db_holiday.get("hospital_id", "")),
+        "doctorId": str(db_holiday.get("doctor_id", "")) if db_holiday.get("doctor_id") else None,
+        "date": db_holiday.get("date", ""),
+        "reason": db_holiday.get("reason", ""),
+        "isFullDay": db_holiday.get("is_full_day", True),
+        "startTime": db_holiday.get("start_time"),
+        "endTime": db_holiday.get("end_time"),
+    }
