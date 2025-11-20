@@ -152,14 +152,42 @@
         if (panel) {
             panel.style.display = 'block';
         }
+        
+        // URL hash'ini güncelle (opsiyonel, daha iyi UX için)
+        const hash = tabId.replace('tab-', '');
+        if (history.pushState) {
+            history.pushState(null, null, '#' + hash);
+        } else {
+            window.location.hash = hash;
+        }
     }
     
-    // İlk yüklemede seçili tab'ı göster (veya genel bilgiler)
-    const checkedTab = document.querySelector('.tab-container input[type="radio"]:checked');
-    if (checkedTab) {
-        showTab(checkedTab.id);
+    // Sayfa yüklendiğinde checked olan tab'ı göster
+    function initTabs() {
+        const checkedTab = document.querySelector('.tab-container input[type="radio"]:checked');
+        if (checkedTab) {
+            showTab(checkedTab.id);
+        } else {
+            // Eğer hiç checked yoksa, URL hash'ine bak
+            const hash = window.location.hash.replace('#', '');
+            if (hash) {
+                const tabInput = document.getElementById('tab-' + hash);
+                if (tabInput) {
+                    tabInput.checked = true;
+                    showTab(tabInput.id);
+                    return;
+                }
+            }
+            // Varsayılan olarak genel bilgiler
+            showTab('tab-general');
+        }
+    }
+    
+    // Sayfa yüklendiğinde çalıştır
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTabs);
     } else {
-        showTab('tab-general');
+        initTabs();
     }
     
     // Tab değişikliklerini dinle
@@ -169,6 +197,18 @@
                 showTab(this.id);
             }
         });
+    });
+    
+    // Browser back/forward butonları için hash değişikliklerini dinle
+    window.addEventListener('hashchange', function() {
+        const hash = window.location.hash.replace('#', '');
+        if (hash) {
+            const tabInput = document.getElementById('tab-' + hash);
+            if (tabInput) {
+                tabInput.checked = true;
+                showTab(tabInput.id);
+            }
+        }
     });
 })();
 

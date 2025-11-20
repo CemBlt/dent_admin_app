@@ -228,7 +228,10 @@ class HospitalSettingsView(View):
                     messages.error(request, str(exc))
                 else:
                     messages.success(request, "Genel bilgiler güncellendi.")
-                    return redirect("hospital_settings")
+                    # Aynı sayfada kal (general sekmesinde)
+                    context = self._build_context(request, general_form=form)
+                    context["active_tab"] = "general"
+                    return render(request, self.template_name, context)
             else:
                 messages.error(request, "Genel bilgiler güncellenemedi. Lütfen formu kontrol edin.")
             context = self._build_context(request, general_form=form)
@@ -240,8 +243,15 @@ class HospitalSettingsView(View):
             if form.is_valid():
                 hospital_service.update_services(hospital, form.cleaned_data.get("services", []), request)
                 messages.success(request, "Hizmet listesi güncellendi.")
-                return redirect("hospital_settings")
-            messages.error(request, "Hizmetler güncellenemedi.")
+                # Aynı sayfada kal (services sekmesinde)
+                context = self._build_context(request)
+                context["active_tab"] = "services"
+                return render(request, self.template_name, context)
+            else:
+                messages.error(request, "Hizmetler güncellenemedi.")
+                context = self._build_context(request)
+                context["active_tab"] = "services"
+                return render(request, self.template_name, context)
 
         elif action == "working_hours":
             form = WorkingHoursForm(request.POST)
@@ -249,7 +259,15 @@ class HospitalSettingsView(View):
                 working_hours = hospital_service.build_working_hours_from_form(form.cleaned_data)
                 hospital_service.update_working_hours(hospital, working_hours, request)
                 messages.success(request, "Çalışma saatleri güncellendi.")
-                return redirect("hospital_settings")
+                # Aynı sayfada kal (working_hours sekmesinde)
+                context = self._build_context(request)
+                context["active_tab"] = "hours"  # Template'de tab-hours id'si var
+                return render(request, self.template_name, context)
+            else:
+                messages.error(request, "Çalışma saatleri güncellenemedi.")
+                context = self._build_context(request)
+                context["active_tab"] = "hours"  # Template'de tab-hours id'si var
+                return render(request, self.template_name, context)
 
         elif action == "gallery_add":
             form = GalleryAddForm(request.POST, request.FILES)
