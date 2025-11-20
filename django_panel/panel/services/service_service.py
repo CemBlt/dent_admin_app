@@ -16,7 +16,6 @@ def add_service(data: dict) -> dict:
     service_data = {
         "name": data["name"],
         "description": data.get("description", ""),
-        "price": int(float(data["price"])),
     }
     
     result = supabase.table("services").insert(service_data).execute()
@@ -34,10 +33,6 @@ def update_service(service_id: str, data: dict) -> dict:
         "name": data["name"],
         "description": data.get("description", ""),
     }
-    
-    # Price alanı formdan kaldırıldı, mevcut değeri koru
-    if "price" in data:
-        update_data["price"] = int(float(data["price"]))
     
     result = supabase.table("services").update(update_data).eq("id", service_id).execute()
     

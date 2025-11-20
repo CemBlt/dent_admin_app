@@ -1,0 +1,379 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kayıt Ol • Diş Randevu Paneli</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .register-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 3rem;
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .register-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .register-header h1 {
+            color: #333;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .register-header p {
+            color: #666;
+            margin: 0;
+        }
+        .form-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .form-section h3 {
+            color: #667eea;
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #667eea;
+        }
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+        .form-control, .form-select {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 0.75rem;
+            transition: all 0.3s;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            margin-top: 1rem;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        .login-link {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: #666;
+        }
+        .login-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+        .alert {
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+        .working-hours-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .working-hours-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        .form-check {
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <div class="register-header">
+            <h1><i class="bi bi-hospital"></i> Hastane Kayıt</h1>
+            <p>Yeni hastane kaydı oluşturun</p>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" id="registerForm">
+            {% csrf_token %}
+            
+            <!-- Kullanıcı Bilgileri -->
+            <div class="form-section">
+                <h3><i class="bi bi-person"></i> Giriş Bilgileri</h3>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.email.id_for_label }}" class="form-label">E-posta</label>
+                        {{ form.email }}
+                        {% if form.email.errors %}
+                            <div class="text-danger small">{{ form.email.errors }}</div>
+                        {% endif %}
+                        <small class="text-muted">{{ form.email.help_text }}</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.password.id_for_label }}" class="form-label">Şifre</label>
+                        {{ form.password }}
+                        {% if form.password.errors %}
+                            <div class="text-danger small">{{ form.password.errors }}</div>
+                        {% endif %}
+                        <small class="text-muted">{{ form.password.help_text }}</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.password_confirm.id_for_label }}" class="form-label">Şifre Tekrar</label>
+                        {{ form.password_confirm }}
+                        {% if form.password_confirm.errors %}
+                            <div class="text-danger small">{{ form.password_confirm.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hastane Bilgileri -->
+            <div class="form-section">
+                <h3><i class="bi bi-building"></i> Hastane Bilgileri</h3>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.name.id_for_label }}" class="form-label">Hastane Adı *</label>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                            <div class="text-danger small">{{ form.name.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.phone.id_for_label }}" class="form-label">Telefon *</label>
+                        {{ form.phone }}
+                        {% if form.phone.errors %}
+                            <div class="text-danger small">{{ form.phone.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.hospital_email.id_for_label }}" class="form-label">Hastane E-posta *</label>
+                        {{ form.hospital_email }}
+                        {% if form.hospital_email.errors %}
+                            <div class="text-danger small">{{ form.hospital_email.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.logo.id_for_label }}" class="form-label">Logo</label>
+                        {{ form.logo }}
+                        {% if form.logo.errors %}
+                            <div class="text-danger small">{{ form.logo.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-12 mb-3">
+                        <label for="{{ form.description.id_for_label }}" class="form-label">Açıklama</label>
+                        {{ form.description }}
+                        {% if form.description.errors %}
+                            <div class="text-danger small">{{ form.description.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lokasyon Bilgileri -->
+            <div class="form-section">
+                <h3><i class="bi bi-geo-alt"></i> Lokasyon Bilgileri</h3>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="{{ form.province.id_for_label }}" class="form-label">İl *</label>
+                        {{ form.province }}
+                        {% if form.province.errors %}
+                            <div class="text-danger small">{{ form.province.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="{{ form.district.id_for_label }}" class="form-label">İlçe *</label>
+                        {{ form.district }}
+                        {% if form.district.errors %}
+                            <div class="text-danger small">{{ form.district.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="{{ form.neighborhood.id_for_label }}" class="form-label">Mahalle *</label>
+                        {{ form.neighborhood }}
+                        {% if form.neighborhood.errors %}
+                            <div class="text-danger small">{{ form.neighborhood.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-12 mb-3">
+                        <label for="{{ form.address.id_for_label }}" class="form-label">Adres Açıklaması</label>
+                        {{ form.address }}
+                        {% if form.address.errors %}
+                            <div class="text-danger small">{{ form.address.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.latitude.id_for_label }}" class="form-label">Enlem (Latitude) *</label>
+                        {{ form.latitude }}
+                        {% if form.latitude.errors %}
+                            <div class="text-danger small">{{ form.latitude.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.longitude.id_for_label }}" class="form-label">Boylam (Longitude) *</label>
+                        {{ form.longitude }}
+                        {% if form.longitude.errors %}
+                            <div class="text-danger small">{{ form.longitude.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Çalışma Saatleri -->
+            <div class="form-section">
+                <h3><i class="bi bi-clock"></i> Çalışma Saatleri</h3>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="{{ form.working_hours_start.id_for_label }}" class="form-label">Başlangıç Saati</label>
+                        {{ form.working_hours_start }}
+                    </div>
+                    <div class="col-md-6">
+                        <label for="{{ form.working_hours_end.id_for_label }}" class="form-label">Bitiş Saati</label>
+                        {{ form.working_hours_end }}
+                    </div>
+                </div>
+                <div class="working-hours-grid">
+                    <div class="working-hours-item">
+                        <div class="form-check">
+                            {{ form.working_hours_monday }}
+                            <label class="form-check-label" for="{{ form.working_hours_monday.id_for_label }}">
+                                {{ form.working_hours_monday.label }}
+                            </label>
+                        </div>
+                    </div>
+                    <div class="working-hours-item">
+                        <div class="form-check">
+                            {{ form.working_hours_tuesday }}
+                            <label class="form-check-label" for="{{ form.working_hours_tuesday.id_for_label }}">
+                                {{ form.working_hours_tuesday.label }}
+                            </label>
+                        </div>
+                    </div>
+                    <div class="working-hours-item">
+                        <div class="form-check">
+                            {{ form.working_hours_wednesday }}
+                            <label class="form-check-label" for="{{ form.working_hours_wednesday.id_for_label }}">
+                                {{ form.working_hours_wednesday.label }}
+                            </label>
+                        </div>
+                    </div>
+                    <div class="working-hours-item">
+                        <div class="form-check">
+                            {{ form.working_hours_thursday }}
+                            <label class="form-check-label" for="{{ form.working_hours_thursday.id_for_label }}">
+                                {{ form.working_hours_thursday.label }}
+                            </label>
+                        </div>
+                    </div>
+                    <div class="working-hours-item">
+                        <div class="form-check">
+                            {{ form.working_hours_friday }}
+                            <label class="form-check-label" for="{{ form.working_hours_friday.id_for_label }}">
+                                {{ form.working_hours_friday.label }}
+                            </label>
+                        </div>
+                    </div>
+                    <div class="working-hours-item">
+                        <div class="form-check">
+                            {{ form.working_hours_saturday }}
+                            <label class="form-check-label" for="{{ form.working_hours_saturday.id_for_label }}">
+                                {{ form.working_hours_saturday.label }}
+                            </label>
+                        </div>
+                    </div>
+                    <div class="working-hours-item">
+                        <div class="form-check">
+                            {{ form.working_hours_sunday }}
+                            <label class="form-check-label" for="{{ form.working_hours_sunday.id_for_label }}">
+                                {{ form.working_hours_sunday.label }}
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="bi bi-check-circle"></i> Kayıt Oluştur
+                </button>
+            </div>
+        </form>
+
+        <div class="login-link">
+            Zaten hesabınız var mı? <a href="{% url 'login' %}">Giriş Yapın</a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Lokasyon seçimleri için dinamik yükleme
+        const provinceSelect = document.getElementById('{{ form.province.id_for_label }}');
+        const districtSelect = document.getElementById('{{ form.district.id_for_label }}');
+        const neighborhoodSelect = document.getElementById('{{ form.neighborhood.id_for_label }}');
+
+        provinceSelect.addEventListener('change', function() {
+            const provinceId = this.value;
+            if (provinceId) {
+                fetch(`/api/locations/districts/${provinceId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        districtSelect.innerHTML = '<option value="">İlçe seçin</option>';
+                        data.results.forEach(district => {
+                            districtSelect.innerHTML += `<option value="${district.id}">${district.name}</option>`;
+                        });
+                        districtSelect.disabled = false;
+                        neighborhoodSelect.innerHTML = '<option value="">Önce ilçe seçin</option>';
+                        neighborhoodSelect.disabled = true;
+                    });
+            }
+        });
+
+        districtSelect.addEventListener('change', function() {
+            const districtId = this.value;
+            if (districtId) {
+                fetch(`/api/locations/neighborhoods/${districtId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        neighborhoodSelect.innerHTML = '<option value="">Mahalle seçin</option>';
+                        data.results.forEach(neighborhood => {
+                            neighborhoodSelect.innerHTML += `<option value="${neighborhood.id}">${neighborhood.name}</option>`;
+                        });
+                        neighborhoodSelect.disabled = false;
+                    });
+            }
+        });
+    </script>
+</body>
+</html>
+

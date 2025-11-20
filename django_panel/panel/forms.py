@@ -450,3 +450,120 @@ class AppearanceSettingsForm(forms.Form):
         min_value=5,
         max_value=100,
     )
+
+
+class LoginForm(forms.Form):
+    """Login formu - Hospital Code, Email ve Şifre"""
+    hospital_code = forms.CharField(
+        label="Hastane Kodu",
+        max_length=10,
+        widget=forms.TextInput(attrs={
+            'placeholder': '123456',
+            'class': 'form-control'
+        })
+    )
+    email = forms.EmailField(
+        label="E-posta",
+        widget=forms.EmailInput(attrs={
+            'placeholder': 'ornek@email.com',
+            'class': 'form-control'
+        })
+    )
+    password = forms.CharField(
+        label="Şifre",
+        widget=forms.PasswordInput(attrs={
+            'placeholder': 'Şifrenizi girin',
+            'class': 'form-control'
+        })
+    )
+
+
+class HospitalRegistrationForm(forms.Form):
+    """Hastane kayıt formu - Tüm hastane bilgileri + email + şifre"""
+    # Kullanıcı bilgileri (Supabase Auth için)
+    email = forms.EmailField(
+        label="E-posta",
+        help_text="Giriş yapmak için kullanacağınız email adresi",
+        widget=forms.EmailInput(attrs={'class': 'form-control'})
+    )
+    password = forms.CharField(
+        label="Şifre",
+        min_length=6,
+        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        help_text="En az 6 karakter olmalıdır"
+    )
+    password_confirm = forms.CharField(
+        label="Şifre Tekrar",
+        widget=forms.PasswordInput(attrs={'class': 'form-control'})
+    )
+    
+    # Hastane bilgileri
+    name = forms.CharField(label="Hastane Adı", max_length=120, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    address = forms.CharField(label="Adres Açıklaması", max_length=200, required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    province = forms.ChoiceField(label="İl", choices=[])
+    district = forms.ChoiceField(label="İlçe", choices=[])
+    neighborhood = forms.ChoiceField(label="Mahalle", choices=[])
+    latitude = forms.DecimalField(label="Enlem (Latitude)", max_digits=10, decimal_places=6, widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.000001'}))
+    longitude = forms.DecimalField(label="Boylam (Longitude)", max_digits=10, decimal_places=6, widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.000001'}))
+    phone = forms.CharField(label="Telefon", max_length=20, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    hospital_email = forms.EmailField(label="Hastane E-posta", max_length=120, widget=forms.EmailInput(attrs={'class': 'form-control'}))
+    description = forms.CharField(label="Açıklama", widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 4}), required=False)
+    logo = forms.FileField(label="Logo", required=False, widget=forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}))
+    
+    # Çalışma saatleri (basitleştirilmiş - sadece hafta içi/hafta sonu)
+    working_hours_monday = forms.BooleanField(label="Pazartesi", required=False, initial=True)
+    working_hours_tuesday = forms.BooleanField(label="Salı", required=False, initial=True)
+    working_hours_wednesday = forms.BooleanField(label="Çarşamba", required=False, initial=True)
+    working_hours_thursday = forms.BooleanField(label="Perşembe", required=False, initial=True)
+    working_hours_friday = forms.BooleanField(label="Cuma", required=False, initial=True)
+    working_hours_saturday = forms.BooleanField(label="Cumartesi", required=False)
+    working_hours_sunday = forms.BooleanField(label="Pazar", required=False)
+    
+    working_hours_start = forms.ChoiceField(
+        label="Başlangıç Saati",
+        choices=TIME_CHOICES,
+        initial="09:00",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    working_hours_end = forms.ChoiceField(
+        label="Bitiş Saati",
+        choices=TIME_CHOICES,
+        initial="18:00",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+
+    def __init__(self, *args, **kwargs):
+        province_choices = kwargs.pop("province_choices", [])
+        district_choices = kwargs.pop("district_choices", [])
+        neighborhood_choices = kwargs.pop("neighborhood_choices", [])
+        super().__init__(*args, **kwargs)
+
+        self.fields["province"].choices = [("", "İl seçin")] + province_choices
+        self.fields["province"].widget.attrs.update({'class': 'form-control'})
+
+        if district_choices:
+            self.fields["district"].choices = [("", "İlçe seçin")] + district_choices
+            self.fields["district"].widget.attrs.update({'class': 'form-control'})
+            self.fields["district"].widget.attrs.pop("disabled", None)
+        else:
+            self.fields["district"].choices = [("", "Önce il seçin")]
+            self.fields["district"].widget.attrs.update({'class': 'form-control', 'disabled': 'disabled'})
+
+        if neighborhood_choices:
+            self.fields["neighborhood"].choices = [("", "Mahalle seçin")] + neighborhood_choices
+            self.fields["neighborhood"].widget.attrs.update({'class': 'form-control'})
+            self.fields["neighborhood"].widget.attrs.pop("disabled", None)
+        else:
+            self.fields["neighborhood"].choices = [("", "Önce ilçe seçin")]
+            self.fields["neighborhood"].widget.attrs.update({'class': 'form-control', 'disabled': 'disabled'})
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get("password")
+        password_confirm = cleaned_data.get("password_confirm")
+        
+        if password and password_confirm:
+            if password != password_confirm:
+                raise forms.ValidationError("Şifreler eşleşmiyor.")
+        
+        return cleaned_data

@@ -1,9 +1,11 @@
 from datetime import datetime, date
+from functools import wraps
 
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.http import require_GET
 
@@ -46,11 +48,140 @@ from .services import (
 )
 from .services.dashboard_service import load_dashboard_context
 from .services import schedule_service, service_service, review_service, settings_service
+from .services.auth_service import sign_in
+from .services.hospital_registration_service import register_hospital
+from .services.supabase_client import get_supabase_client
+from .forms import LoginForm, HospitalRegistrationForm
 
 
+# Login required decorator
+def login_required(view_func):
+    """Kullanıcının giriş yapmış olmasını kontrol eder."""
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        if not request.session.get('user_id') or not request.session.get('hospital_id'):
+            messages.warning(request, "Lütfen giriş yapın.")
+            return redirect('login')
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view
+
+
+def login_view(request):
+    """Kullanıcı giriş sayfası."""
+    if request.method == 'POST':
+        form = LoginForm(request.POST)
+        if form.is_valid():
+            hospital_code = form.cleaned_data['hospital_code']
+            email = form.cleaned_data['email']
+            password = form.cleaned_data['password']
+            
+            try:
+                # 1. Hospital code'dan hospital_id bul
+                supabase = get_supabase_client()
+                hospital_result = supabase.table("hospitals").select("id, status, name").eq("hospital_code", hospital_code).single().execute()
+                
+                if not hospital_result.data:
+                    messages.error(request, "Geçersiz hastane kodu.")
+                    return render(request, "panel/login.html", {"form": form})
+                
+                hospital = hospital_result.data
+                
+                # 2. Hastane onaylanmış mı kontrol et
+                if hospital.get("status") != "approved":
+                    messages.error(request, "Hastaneniz henüz onaylanmamış. Lütfen onay bekleyin.")
+                    return render(request, "panel/login.html", {"form": form})
+                
+                # 3. Supabase Auth ile giriş yap
+                auth_response = sign_in(email, password)
+                user_id = auth_response["user_id"]
+                
+                # 4. Kullanıcının bu hastaneye ait olduğunu kontrol et
+                hospital_check = supabase.table("hospitals").select("id").eq("id", hospital["id"]).eq("created_by_user_id", user_id).execute()
+                
+                if not hospital_check.data:
+                    messages.error(request, "Bu email adresi bu hastaneye ait değil.")
+                    return render(request, "panel/login.html", {"form": form})
+                
+                # 5. Session'a kaydet
+                request.session['user_id'] = user_id
+                request.session['hospital_id'] = str(hospital["id"])
+                request.session['hospital_name'] = hospital.get("name", "")
+                request.session['user_email'] = email
+                
+                messages.success(request, f"Hoş geldiniz, {hospital.get('name', '')}!")
+                return redirect('dashboard')
+                
+            except ValueError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, f"Giriş yapılamadı: {str(e)}")
+    else:
+        form = LoginForm()
+    
+    return render(request, "panel/login.html", {"form": form})
+
+
+def register_view(request):
+    """Hastane kayıt sayfası."""
+    if request.method == 'POST':
+        # Lokasyon seçeneklerini hazırla
+        from .services import location_service
+        province_choices = location_service.as_choice_tuples(location_service.get_provinces())
+        province_id = request.POST.get("province")
+        district_choices = []
+        neighborhood_choices = []
+        
+        if province_id:
+            district_choices = location_service.as_choice_tuples(location_service.get_districts(province_id))
+            district_id = request.POST.get("district")
+            if district_id:
+                neighborhood_choices = location_service.as_choice_tuples(location_service.get_neighborhoods(district_id))
+        
+        form = HospitalRegistrationForm(
+            request.POST,
+            request.FILES,
+            province_choices=province_choices,
+            district_choices=district_choices,
+            neighborhood_choices=neighborhood_choices,
+        )
+        
+        if form.is_valid():
+            try:
+                result = register_hospital(form.cleaned_data, request.FILES.get("logo"))
+                messages.success(
+                    request,
+                    "Kayıt başarıyla oluşturuldu! "
+                    "Kaydınız admin tarafından onaylandıktan sonra giriş yapabileceksiniz. "
+                    "Onay sonrası email adresinize giriş kodunuz gönderilecektir."
+                )
+                return redirect('login')
+            except ValueError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, f"Kayıt oluşturulamadı: {str(e)}")
+    else:
+        from .services import location_service
+        province_choices = location_service.as_choice_tuples(location_service.get_provinces())
+        form = HospitalRegistrationForm(
+            province_choices=province_choices,
+            district_choices=[],
+            neighborhood_choices=[],
+        )
+    
+    return render(request, "panel/register.html", {"form": form})
+
+
+def logout_view(request):
+    """Kullanıcı çıkışı."""
+    request.session.flush()
+    messages.success(request, "Başarıyla çıkış yaptınız.")
+    return redirect('login')
+
+
+@login_required
 def dashboard(request):
     """Panel ana sayfası: JSON verilerinden özet metrikleri oluşturur."""
-    context = load_dashboard_context()
+    context = load_dashboard_context(request)
     context["page_title"] = "Genel Bakış"
     # hospital context processor tarafından otomatik ekleniyor
     return render(request, "panel/dashboard.html", context)
@@ -58,14 +189,18 @@ def dashboard(request):
 
 class HospitalSettingsView(View):
     template_name = "panel/hospital_settings.html"
+    
+    @method_decorator(login_required)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
 
     def get(self, request):
-        context = self._build_context()
+        context = self._build_context(request)
         return render(request, self.template_name, context)
 
     def post(self, request):
         action = request.POST.get("form_type")
-        hospital = hospital_service.get_hospital()
+        hospital = hospital_service.get_hospital(request)
         services = hospital_service.get_services()
 
         if action == "general":
@@ -95,7 +230,7 @@ class HospitalSettingsView(View):
                     return redirect("hospital_settings")
             else:
                 messages.error(request, "Genel bilgiler güncellenemedi. Lütfen formu kontrol edin.")
-            context = self._build_context(general_form=form)
+            context = self._build_context(request, general_form=form)
             context["active_tab"] = "general"
             return render(request, self.template_name, context)
 
@@ -178,10 +313,10 @@ class HospitalSettingsView(View):
         context["active_tab"] = action
         return render(request, self.template_name, context)
 
-    def _build_context(self, general_form: HospitalGeneralForm | None = None):
-        hospital = hospital_service.get_hospital()
+    def _build_context(self, request=None, general_form: HospitalGeneralForm | None = None):
+        hospital = hospital_service.get_hospital(request)
         services = hospital_service.get_services()
-        holidays = hospital_service.get_holidays()
+        holidays = hospital_service.get_holidays(request)
         province_choices = location_service.as_choice_tuples(location_service.get_provinces())
         selected_province = hospital.get("provinceId")
         selected_district = hospital.get("districtId")
@@ -267,6 +402,10 @@ class HospitalSettingsView(View):
 
 class DoctorManagementView(View):
     template_name = "panel/doctor_management.html"
+    
+    @method_decorator(login_required)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
 
     def get(self, request):
         return render(request, self.template_name, self._build_context())
@@ -386,6 +525,11 @@ class DoctorManagementView(View):
 
 class AppointmentManagementView(View):
     template_name = "panel/appointment_management.html"
+    
+    @method_decorator(login_required)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+    
     STATUS_LABELS = {
         "pending": ("Bekleyen", "pending"),
         "completed": ("Tamamlandı", "completed"),
@@ -551,6 +695,10 @@ class AppointmentManagementView(View):
 
 class ScheduleManagementView(View):
     template_name = "panel/schedule_management.html"
+    
+    @method_decorator(login_required)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
 
     def get(self, request):
         from datetime import date
@@ -623,6 +771,10 @@ class ScheduleManagementView(View):
 
 class ServiceManagementView(View):
     template_name = "panel/service_management.html"
+    
+    @method_decorator(login_required)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
 
     def get(self, request):
         return render(request, self.template_name, self._build_context())
@@ -656,7 +808,7 @@ class ServiceManagementView(View):
         all_services = service_service.get_services()
         doctors = doctor_service.get_doctors()
         # hospital iş mantığı için gerekli (services listesini filtrelemek için)
-        hospital = hospital_service.get_hospital()
+        hospital = hospital_service.get_hospital(request)
         
         # Sadece hastanenin seçtiği hizmetleri göster
         selected_service_ids = set(hospital.get("services", []))
@@ -697,6 +849,10 @@ class ServiceManagementView(View):
 
 class ReviewManagementView(View):
     template_name = "panel/review_management.html"
+    
+    @method_decorator(login_required)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
 
     def get(self, request):
         context = self._build_context(request)
@@ -818,6 +974,10 @@ class ReviewManagementView(View):
 
 class SettingsView(View):
     template_name = "panel/settings.html"
+    
+    @method_decorator(login_required)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
 
     def get(self, request):
         context = self._build_context()

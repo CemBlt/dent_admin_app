@@ -34,10 +34,10 @@ def _today() -> date:
     return datetime.now().date()
 
 
-def load_dashboard_context() -> dict[str, Any]:
+def load_dashboard_context(request=None) -> dict[str, Any]:
     """Dashboard için gerekli tüm verileri Supabase'den getirir."""
     supabase = get_supabase_client()
-    hospital_id = _get_active_hospital_id()
+    hospital_id = _get_active_hospital_id(request)
     
     # Hastane bilgisi
     hospital_result = supabase.table("hospitals").select("*").eq("id", hospital_id).single().execute()

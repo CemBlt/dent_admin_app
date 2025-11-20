@@ -12,13 +12,18 @@ from django.core.files.storage import FileSystemStorage
 from . import location_service
 from .supabase_client import get_supabase_client
 
-# Aktif hastane ID'si - İlk hastaneyi otomatik alır
-def _get_active_hospital_id() -> str:
-    """İlk hastanenin ID'sini döndürür."""
+# Aktif hastane ID'si - Session'dan veya ilk hastaneyi alır
+def _get_active_hospital_id(request=None) -> str:
+    """Session'dan veya ilk hastanenin ID'sini döndürür."""
+    # Eğer request varsa ve session'da hospital_id varsa onu kullan
+    if request and hasattr(request, 'session') and request.session.get('hospital_id'):
+        return request.session.get('hospital_id')
+    
+    # Fallback: İlk hastaneyi al (sadece login olmadan erişim için)
     supabase = get_supabase_client()
     result = supabase.table("hospitals").select("id").limit(1).execute()
     
-    if not result.data:
+    if not result.data or len(result.data) == 0:
         raise ValueError("Supabase'de hiç hastane bulunamadı. Lütfen önce bir hastane oluşturun.")
     
     return str(result.data[0]['id'])
@@ -28,17 +33,23 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 upload_storage = FileSystemStorage(location=UPLOAD_DIR, base_url="/static/uploads/")
 
 
-def get_hospital() -> dict:
-    """Aktif hastaneyi Supabase'den getirir (ilk hastaneyi alır)."""
-    supabase = get_supabase_client()
-    result = supabase.table("hospitals").select("*").limit(1).execute()
-    
-    if not result.data:
-        raise ValueError("Supabase'de hiç hastane bulunamadı. Lütfen önce bir hastane oluşturun.")
-    
-    hospital = result.data[0]
-    # Supabase'den gelen veriyi mevcut format'a çevir
-    return _format_hospital_from_db(hospital)
+def get_hospital(request=None) -> dict:
+    """Aktif hastaneyi Supabase'den getirir (session'dan veya ilk hastaneyi alır)."""
+    try:
+        supabase = get_supabase_client()
+        hospital_id = _get_active_hospital_id(request)
+        
+        result = supabase.table("hospitals").select("*").eq("id", hospital_id).single().execute()
+        
+        if not result.data:
+            raise ValueError("Hastane bulunamadı.")
+        
+        hospital = result.data[0]
+        # Supabase'den gelen veriyi mevcut format'a çevir
+        return _format_hospital_from_db(hospital)
+    except (ValueError, IndexError, KeyError) as e:
+        # Eğer hastane bulunamazsa veya session'da hospital_id yoksa
+        raise ValueError(f"Hastane bulunamadı: {str(e)}")
 
 
 def save_hospital(updated: dict) -> None:
@@ -61,10 +72,10 @@ def get_services() -> list[dict]:
     return result.data if result.data else []
 
 
-def get_holidays() -> list[dict]:
+def get_holidays(request=None) -> list[dict]:
     """Aktif hastaneye ait tatilleri Supabase'den getirir."""
     supabase = get_supabase_client()
-    hospital_id = _get_active_hospital_id()
+    hospital_id = _get_active_hospital_id(request)
     result = supabase.table("holidays").select("*").eq("hospital_id", hospital_id).is_("doctor_id", "null").execute()
     
     if not result.data:
@@ -74,12 +85,12 @@ def get_holidays() -> list[dict]:
     return [_format_holiday_from_db(h) for h in result.data]
 
 
-def add_holiday(date_str: str, reason: str, is_full_day: bool = True, start_time: str | None = None, end_time: str | None = None) -> None:
+def add_holiday(date_str: str, reason: str, is_full_day: bool = True, start_time: str | None = None, end_time: str | None = None, request=None) -> None:
     """Yeni tatil ekler."""
     from datetime import datetime, date
     
     supabase = get_supabase_client()
-    hospital_id = _get_active_hospital_id()
+    hospital_id = _get_active_hospital_id(request)
     payload = {
         "hospital_id": hospital_id,
         "doctor_id": None,
