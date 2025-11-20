@@ -15,6 +15,13 @@
         <li><a href="{% url 'settings' %}" {% if request.resolver_match.url_name == 'settings' %}class="active"{% endif %}><i class="bi bi-gear"></i> Ayarlar</a></li>
     </ul>
     
-    {% include 'panel/includes/theme_toggle.html' %}
+    <div style="margin-top: auto; display: flex; flex-direction: column; gap: 16px;">
+        <a href="{% url 'logout' %}" class="btn btn-danger" style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; text-decoration: none;" onclick="return confirm('Çıkış yapmak istediğinize emin misiniz?');">
+            <i class="bi bi-box-arrow-right"></i>
+            <span>Çıkış Yap</span>
+        </a>
+        
+        {% include 'panel/includes/theme_toggle.html' %}
+    </div>
 </aside>
 
