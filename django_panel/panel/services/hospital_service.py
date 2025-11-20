@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import os
 import uuid
-from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 
 from django.conf import settings
-from django.core.files.storage import FileSystemStorage
 
 from . import location_service
 from .supabase_client import get_supabase_client
@@ -28,9 +26,8 @@ def _get_active_hospital_id(request=None) -> str:
     
     return str(result.data[0]['id'])
 
+# UPLOAD_DIR artık sadece geriye dönük uyumluluk için delete_file_if_exists içinde kullanılıyor
 UPLOAD_DIR = Path(settings.BASE_DIR, "panel", "static", "uploads")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-upload_storage = FileSystemStorage(location=UPLOAD_DIR, base_url="/static/uploads/")
 
 
 def get_hospital(request=None) -> dict:
@@ -54,12 +51,12 @@ def get_hospital(request=None) -> dict:
         raise ValueError(f"Hastane bulunamadı: {exc}") from exc
 
 
-def save_hospital(updated: dict) -> None:
+def save_hospital(updated: dict, request=None) -> None:
     """Hastane bilgilerini Supabase'e kaydeder."""
     supabase = get_supabase_client()
     # Veriyi Supabase formatına çevir
     db_data = _format_hospital_to_db(updated)
-    hospital_id = updated.get("id") or _get_active_hospital_id()
+    hospital_id = updated.get("id") or _get_active_hospital_id(request)
     
     result = supabase.table("hospitals").update(db_data).eq("id", hospital_id).execute()
     
@@ -137,24 +134,122 @@ def delete_holiday(holiday_id: str) -> None:
 
 
 def save_logo(file) -> str:
-    filename = f"logo_{uuid.uuid4().hex}{Path(file.name).suffix}"
-    return upload_storage.save(filename, file)
+    """Logoyu Supabase Storage'a yükler ve public URL döndürür."""
+    supabase = get_supabase_client()
+    
+    # Dosya adını güvenli şekilde al
+    original_filename = getattr(file, 'name', 'logo.jpg')
+    if not original_filename or original_filename == '':
+        original_filename = 'logo.jpg'
+    
+    file_extension = Path(original_filename).suffix if original_filename else '.jpg'
+    if not file_extension:
+        file_extension = '.jpg'
+    
+    filename = f"logos/logo_{uuid.uuid4().hex}{file_extension}"
+    
+    # Content type'ı belirle
+    content_type = getattr(file, 'content_type', None) or 'image/jpeg'
+    
+    # Supabase Storage'a yükle (public bucket)
+    # Dosyayı bytes'a çevir
+    try:
+        file.seek(0)  # Dosyayı başa al
+        file_bytes = file.read()  # Bytes'a çevir
+        file.seek(0)  # Tekrar başa al (ileride kullanılabilir)
+        
+        result = supabase.storage.from_("hospital-media").upload(
+            path=filename,
+            file=file_bytes,  # Bytes olarak gönder
+            file_options={"content-type": content_type}
+        )
+        
+        # Public URL'yi al
+        public_url = supabase.storage.from_("hospital-media").get_public_url(filename)
+        return public_url
+    except Exception as upload_error:
+        error_msg = str(upload_error)
+        # Bucket yoksa kullanıcıya bilgi ver
+        if "bucket" in error_msg.lower() or "not found" in error_msg.lower():
+            raise ValueError(
+                "Logo yüklenemedi: 'hospital-media' bucket'ı bulunamadı. "
+                "Lütfen Supabase Dashboard > Storage > New Bucket'dan 'hospital-media' adında "
+                "public bir bucket oluşturun."
+            )
+        raise ValueError(f"Logo yüklenemedi: {error_msg}")
 
 
 def save_gallery_image(file) -> str:
-    filename = f"gallery_{uuid.uuid4().hex}{Path(file.name).suffix}"
-    return upload_storage.save(filename, file)
+    """Galeri görselini Supabase Storage'a yükler ve public URL döndürür."""
+    supabase = get_supabase_client()
+    
+    # Dosya adını güvenli şekilde al
+    original_filename = getattr(file, 'name', 'gallery.jpg')
+    if not original_filename or original_filename == '':
+        original_filename = 'gallery.jpg'
+    
+    file_extension = Path(original_filename).suffix if original_filename else '.jpg'
+    if not file_extension:
+        file_extension = '.jpg'
+    
+    filename = f"gallery/gallery_{uuid.uuid4().hex}{file_extension}"
+    
+    # Content type'ı belirle
+    content_type = getattr(file, 'content_type', None) or 'image/jpeg'
+    
+    # Supabase Storage'a yükle (public bucket)
+    # Dosyayı bytes'a çevir
+    try:
+        file.seek(0)  # Dosyayı başa al
+        file_bytes = file.read()  # Bytes'a çevir
+        file.seek(0)  # Tekrar başa al (ileride kullanılabilir)
+        
+        result = supabase.storage.from_("hospital-media").upload(
+            path=filename,
+            file=file_bytes,  # Bytes olarak gönder
+            file_options={"content-type": content_type}
+        )
+        
+        # Public URL'yi al
+        public_url = supabase.storage.from_("hospital-media").get_public_url(filename)
+        return public_url
+    except Exception as upload_error:
+        error_msg = str(upload_error)
+        # Bucket yoksa kullanıcıya bilgi ver
+        if "bucket" in error_msg.lower() or "not found" in error_msg.lower():
+            raise ValueError(
+                "Galeri görseli yüklenemedi: 'hospital-media' bucket'ı bulunamadı. "
+                "Lütfen Supabase Dashboard > Storage > New Bucket'dan 'hospital-media' adında "
+                "public bir bucket oluşturun."
+            )
+        raise ValueError(f"Galeri görseli yüklenemedi: {error_msg}")
 
 
-def delete_file_if_exists(relative_path: str) -> None:
-    if not relative_path:
+def delete_file_if_exists(file_url_or_path: str) -> None:
+    """Supabase Storage'dan veya yerel dosya sisteminden dosyayı siler."""
+    if not file_url_or_path:
         return
-    abs_path = UPLOAD_DIR / Path(relative_path).name
-    if abs_path.exists() and abs_path.is_file():
+    
+    # Eğer URL ise (Supabase Storage'dan), storage'dan sil
+    if file_url_or_path.startswith("http"):
         try:
-            os.remove(abs_path)
-        except OSError:
+            supabase = get_supabase_client()
+            # URL'den dosya yolunu çıkar
+            # Örnek: https://xxx.supabase.co/storage/v1/object/public/hospital-media/logos/logo_xxx.jpg
+            # -> logos/logo_xxx.jpg
+            if "/hospital-media/" in file_url_or_path:
+                file_path = file_url_or_path.split("/hospital-media/")[-1]
+                supabase.storage.from_("hospital-media").remove([file_path])
+        except Exception:
             pass
+    else:
+        # Eski yerel dosya sistemi için (geriye dönük uyumluluk)
+        abs_path = UPLOAD_DIR / Path(file_url_or_path).name
+        if abs_path.exists() and abs_path.is_file():
+            try:
+                os.remove(abs_path)
+            except OSError:
+                pass
 
 
 def _resolve_location_snapshot(province_id: str, district_id: str, neighborhood_id: str) -> dict:
@@ -177,7 +272,7 @@ def _resolve_location_snapshot(province_id: str, district_id: str, neighborhood_
     }
 
 
-def update_general_info(hospital: dict, data: dict, logo_file=None) -> dict:
+def update_general_info(hospital: dict, data: dict, logo_file=None, request=None) -> dict:
     hospital["name"] = data["name"]
     hospital["address"] = data.get("address", "")
     hospital["phone"] = data["phone"]
@@ -200,43 +295,43 @@ def update_general_info(hospital: dict, data: dict, logo_file=None) -> dict:
 
     if logo_file:
         delete_file_if_exists(hospital.get("image"))
-        saved_path = save_logo(logo_file)
-        hospital["image"] = f"uploads/{Path(saved_path).name}"
+        public_url = save_logo(logo_file)
+        hospital["image"] = public_url  # Artık tam URL kaydediyoruz
 
-    save_hospital(hospital)
+    save_hospital(hospital, request)
     return hospital
 
 
-def update_services(hospital: dict, service_ids: list[str]) -> dict:
+def update_services(hospital: dict, service_ids: list[str], request=None) -> dict:
     hospital["services"] = service_ids
-    save_hospital(hospital)
+    save_hospital(hospital, request)
     return hospital
 
 
-def update_working_hours(hospital: dict, working_hours: dict) -> dict:
+def update_working_hours(hospital: dict, working_hours: dict, request=None) -> dict:
     hospital["workingHours"] = working_hours
-    save_hospital(hospital)
+    save_hospital(hospital, request)
     return hospital
 
 
-def add_gallery_image(hospital: dict, file) -> dict:
-    saved_path = save_gallery_image(file)
+def add_gallery_image(hospital: dict, file, request=None) -> dict:
+    public_url = save_gallery_image(file)
     gallery = hospital.get("gallery", [])
     if len(gallery) >= 5:
         raise ValueError("Maksimum 5 görsel eklenebilir")
-    gallery.append(f"uploads/{Path(saved_path).name}")
+    gallery.append(public_url)  # Artık tam URL kaydediyoruz
     hospital["gallery"] = gallery
-    save_hospital(hospital)
+    save_hospital(hospital, request)
     return hospital
 
 
-def remove_gallery_image(hospital: dict, index: int) -> dict:
+def remove_gallery_image(hospital: dict, index: int, request=None) -> dict:
     gallery = hospital.get("gallery", [])
     if 0 <= index < len(gallery):
         delete_file_if_exists(gallery[index])
         gallery.pop(index)
         hospital["gallery"] = gallery
-        save_hospital(hospital)
+        save_hospital(hospital, request)
     return hospital
 
 

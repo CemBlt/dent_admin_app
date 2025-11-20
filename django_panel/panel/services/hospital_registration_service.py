@@ -78,8 +78,7 @@ def register_hospital(form_data: dict, logo_file=None) -> dict:
     logo_path = None
     if logo_file:
         from .hospital_service import save_logo
-        logo_path = save_logo(logo_file)
-        logo_path = f"uploads/{logo_path.split('/')[-1]}"
+        logo_path = save_logo(logo_file)  # Supabase Storage'dan public URL döner
     
     # 5. Hastane kaydını oluştur
     # Not: Tabloda olmayan kolonlar (status, owner_email, created_by_user_id) 

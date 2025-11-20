@@ -222,6 +222,7 @@ class HospitalSettingsView(View):
                         hospital,
                         form.cleaned_data,
                         request.FILES.get("logo"),
+                        request,
                     )
                 except ValueError as exc:
                     messages.error(request, str(exc))
@@ -237,7 +238,7 @@ class HospitalSettingsView(View):
         elif action == "services":
             form = HospitalServicesForm(request.POST, service_choices=build_service_choices(services))
             if form.is_valid():
-                hospital_service.update_services(hospital, form.cleaned_data.get("services", []))
+                hospital_service.update_services(hospital, form.cleaned_data.get("services", []), request)
                 messages.success(request, "Hizmet listesi güncellendi.")
                 return redirect("hospital_settings")
             messages.error(request, "Hizmetler güncellenemedi.")
@@ -246,7 +247,7 @@ class HospitalSettingsView(View):
             form = WorkingHoursForm(request.POST)
             if form.is_valid() and self._validate_working_hours(form, request):
                 working_hours = hospital_service.build_working_hours_from_form(form.cleaned_data)
-                hospital_service.update_working_hours(hospital, working_hours)
+                hospital_service.update_working_hours(hospital, working_hours, request)
                 messages.success(request, "Çalışma saatleri güncellendi.")
                 return redirect("hospital_settings")
 
@@ -254,7 +255,7 @@ class HospitalSettingsView(View):
             form = GalleryAddForm(request.POST, request.FILES)
             if form.is_valid():
                 try:
-                    hospital_service.add_gallery_image(hospital, request.FILES["image"])
+                    hospital_service.add_gallery_image(hospital, request.FILES["image"], request)
                     messages.success(request, "Galeriye görsel eklendi.")
                 except ValueError as exc:
                     messages.error(request, str(exc))
@@ -264,7 +265,7 @@ class HospitalSettingsView(View):
         elif action == "gallery_remove":
             try:
                 index = int(request.POST.get("index", -1))
-                hospital_service.remove_gallery_image(hospital, index)
+                hospital_service.remove_gallery_image(hospital, index, request)
                 messages.success(request, "Galeri görseli kaldırıldı.")
             except ValueError:
                 messages.error(request, "Geçersiz galeri öğesi.")

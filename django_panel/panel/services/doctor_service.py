@@ -1,19 +1,11 @@
 from __future__ import annotations
 
-import os
 import uuid
 from datetime import datetime
 from pathlib import Path
 
-from django.conf import settings
-from django.core.files.storage import FileSystemStorage
-
 from .supabase_client import get_supabase_client
-
 from .hospital_service import _get_active_hospital_id, get_hospital
-UPLOAD_ROOT = Path(settings.BASE_DIR, "panel", "static", "uploads", "doctors")
-UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
-storage = FileSystemStorage(location=UPLOAD_ROOT, base_url="/static/uploads/doctors/")
 
 
 def get_doctors(request=None) -> list[dict]:
@@ -32,11 +24,52 @@ def get_doctors(request=None) -> list[dict]:
 
 
 def _save_image(file) -> str | None:
+    """Doktor görselini Supabase Storage'a yükler ve public URL döndürür."""
     if not file:
         return None
-    filename = f"doctor_{uuid.uuid4().hex}{Path(file.name).suffix}"
-    saved = storage.save(filename, file)
-    return f"uploads/doctors/{Path(saved).name}"
+    
+    supabase = get_supabase_client()
+    
+    # Dosya adını güvenli şekilde al
+    original_filename = getattr(file, 'name', 'doctor.jpg')
+    if not original_filename or original_filename == '':
+        original_filename = 'doctor.jpg'
+    
+    file_extension = Path(original_filename).suffix if original_filename else '.jpg'
+    if not file_extension:
+        file_extension = '.jpg'
+    
+    filename = f"doctors/doctor_{uuid.uuid4().hex}{file_extension}"
+    
+    # Content type'ı belirle
+    content_type = getattr(file, 'content_type', None) or 'image/jpeg'
+    
+    # Supabase Storage'a yükle (public bucket)
+    # Dosyayı bytes'a çevir
+    try:
+        file.seek(0)  # Dosyayı başa al
+        file_bytes = file.read()  # Bytes'a çevir
+        file.seek(0)  # Tekrar başa al (ileride kullanılabilir)
+        
+        result = supabase.storage.from_("hospital-media").upload(
+            path=filename,
+            file=file_bytes,  # Bytes olarak gönder
+            file_options={"content-type": content_type}
+        )
+        
+        # Public URL'yi al
+        public_url = supabase.storage.from_("hospital-media").get_public_url(filename)
+        return public_url
+    except Exception as upload_error:
+        error_msg = str(upload_error)
+        # Bucket yoksa kullanıcıya bilgi ver
+        if "bucket" in error_msg.lower() or "not found" in error_msg.lower():
+            raise ValueError(
+                "Doktor görseli yüklenemedi: 'hospital-media' bucket'ı bulunamadı. "
+                "Lütfen Supabase Dashboard > Storage > New Bucket'dan 'hospital-media' adında "
+                "public bir bucket oluşturun."
+            )
+        raise ValueError(f"Doktor görseli yüklenemedi: {error_msg}")
 
 
 def add_doctor(data: dict, image_file=None, request=None) -> dict:
@@ -262,15 +295,34 @@ def _build_default_working_hours(request=None) -> dict:
     return default_hours
 
 
-def _delete_file(relative_path: str | None) -> None:
-    if not relative_path:
+def _delete_file(file_url_or_path: str | None) -> None:
+    """Supabase Storage'dan veya yerel dosya sisteminden dosyayı siler."""
+    if not file_url_or_path:
         return
-    path = Path(settings.BASE_DIR, "panel", "static", relative_path)
-    if path.exists():
+    
+    # Eğer URL ise (Supabase Storage'dan), storage'dan sil
+    if file_url_or_path.startswith("http"):
         try:
-            os.remove(path)
-        except OSError:
+            supabase = get_supabase_client()
+            # URL'den dosya yolunu çıkar
+            # Örnek: https://xxx.supabase.co/storage/v1/object/public/hospital-media/doctors/doctor_xxx.jpg
+            # -> doctors/doctor_xxx.jpg
+            if "/hospital-media/" in file_url_or_path:
+                file_path = file_url_or_path.split("/hospital-media/")[-1]
+                supabase.storage.from_("hospital-media").remove([file_path])
+        except Exception:
             pass
+    else:
+        # Eski yerel dosya sistemi için (geriye dönük uyumluluk)
+        from django.conf import settings
+        from pathlib import Path
+        abs_path = Path(settings.BASE_DIR, "panel", "static", "uploads", "doctors", Path(file_url_or_path).name)
+        if abs_path.exists() and abs_path.is_file():
+            try:
+                import os
+                os.remove(abs_path)
+            except OSError:
+                pass
 
 
 def _delete_doctor_holidays(doctor_id: str) -> None:
