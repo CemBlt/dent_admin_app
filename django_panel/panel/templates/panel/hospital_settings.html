@@ -153,7 +153,7 @@
             <div class="gallery-grid">
                 {% for image in gallery %}
                     <div class="gallery-card">
-                        <img src="{% static image %}" alt="Galeri">
+                        <img src="{{ image }}" alt="Galeri">
                         <form method="post" onsubmit="return confirm('Bu görseli silmek istediğinize emin misiniz?');">
                             {% csrf_token %}
                             <input type="hidden" name="form_type" value="gallery_remove">
