@@ -19,6 +19,12 @@
 {% endblock %}
 
 {% block content %}
+    <div class="doctor-actions">
+        <button type="button" class="primary" data-bs-toggle="modal" data-bs-target="#createDoctorModal">
+            <i class="bi bi-person-plus"></i> Doktor Ekle
+        </button>
+    </div>
+
     <!-- Doktor Ekle Modal -->
     <div class="modal fade" id="createDoctorModal" tabindex="-1" aria-labelledby="createDoctorModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">

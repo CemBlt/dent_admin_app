@@ -7,6 +7,12 @@
     gap: 20px;
 }
 
+.doctor-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 16px;
+}
+
 .doctor-card {
     background: var(--card);
     border-radius: 20px;
@@ -142,14 +148,15 @@ button.link:hover {
 
 /* Modal Stilleri - Tema Uyumlu */
 .modal-content {
-    background: var(--card);
-    border: 2px solid var(--card-border);
+    background: var(--card) !important;
+    border: 2px solid var(--card-border) !important;
     border-radius: 20px;
     box-shadow: var(--shadow-lg);
+    color: var(--text);
 }
 
 .modal-header {
-    border-bottom: 2px solid var(--card-border);
+    border-bottom: 2px solid var(--card-border) !important;
     padding: 20px 24px;
 }
 
@@ -162,10 +169,46 @@ button.link:hover {
 .modal-body {
     padding: 24px;
     color: var(--text);
+
+    /* Form elemanlarını tema uyumlu hale getir */
+    --input-bg: var(--bg);
+    --input-border: var(--card-border);
+    --input-text: var(--text);
+}
+
+.modal-body form label {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.modal-body form input[type="text"],
+.modal-body form input[type="email"],
+.modal-body form input[type="tel"],
+.modal-body form input[type="file"],
+.modal-body form select,
+.modal-body form textarea {
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--input-text);
+    border-radius: 10px;
+    padding: 10px 12px;
+    transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.modal-body form input:focus,
+.modal-body form select:focus,
+.modal-body form textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+    outline: none;
+}
+
+.modal-body form .help-text {
+    color: var(--muted);
 }
 
 .modal-footer {
-    border-top: 2px solid var(--card-border);
+    border-top: 2px solid var(--card-border) !important;
     padding: 20px 24px;
     display: flex;
     gap: 12px;
