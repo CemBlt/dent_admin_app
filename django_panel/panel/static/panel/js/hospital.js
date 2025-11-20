@@ -154,8 +154,13 @@
         }
     }
     
-    // İlk yüklemede genel bilgiler tab'ını göster
-    showTab('tab-general');
+    // İlk yüklemede seçili tab'ı göster (veya genel bilgiler)
+    const checkedTab = document.querySelector('.tab-container input[type="radio"]:checked');
+    if (checkedTab) {
+        showTab(checkedTab.id);
+    } else {
+        showTab('tab-general');
+    }
     
     // Tab değişikliklerini dinle
     tabInputs.forEach(input => {

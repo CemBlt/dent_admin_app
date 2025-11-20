@@ -255,12 +255,39 @@ class HospitalSettingsView(View):
             form = GalleryAddForm(request.POST, request.FILES)
             if form.is_valid():
                 try:
-                    hospital_service.add_gallery_image(hospital, request.FILES["image"], request)
-                    messages.success(request, "Galeriye görsel eklendi.")
-                except ValueError as exc:
-                    messages.error(request, str(exc))
-                return redirect("hospital_settings")
-            messages.error(request, "Galeri görseli eklenemedi.")
+                    # Birden fazla görsel seçilmiş olabilir
+                    files = request.FILES.getlist("images")
+                    if not files:
+                        messages.error(request, "Lütfen en az bir görsel seçin.")
+                    else:
+                        current_gallery_count = len(hospital.get("gallery", []))
+                        remaining_slots = 5 - current_gallery_count
+                        
+                        if len(files) > remaining_slots:
+                            messages.error(request, f"Maksimum 5 görsel eklenebilir. {remaining_slots} görsel daha ekleyebilirsiniz.")
+                        else:
+                            added_count = 0
+                            for file in files:
+                                try:
+                                    hospital_service.add_gallery_image(hospital, file, request)
+                                    added_count += 1
+                                except ValueError as exc:
+                                    messages.error(request, f"Görsel eklenemedi: {str(exc)}")
+                            
+                            if added_count > 0:
+                                messages.success(request, f"{added_count} görsel galeriye eklendi.")
+                except Exception as exc:
+                    messages.error(request, f"Hata: {str(exc)}")
+                
+                # Aynı sayfada kal (gallery sekmesinde)
+                context = self._build_context(request)
+                context["active_tab"] = "gallery"
+                return render(request, self.template_name, context)
+            else:
+                messages.error(request, "Galeri görseli eklenemedi. Lütfen formu kontrol edin.")
+                context = self._build_context(request)
+                context["active_tab"] = "gallery"
+                return render(request, self.template_name, context)
 
         elif action == "gallery_remove":
             try:
@@ -269,7 +296,11 @@ class HospitalSettingsView(View):
                 messages.success(request, "Galeri görseli kaldırıldı.")
             except ValueError:
                 messages.error(request, "Geçersiz galeri öğesi.")
-            return redirect("hospital_settings")
+            
+            # Aynı sayfada kal (gallery sekmesinde)
+            context = self._build_context(request)
+            context["active_tab"] = "gallery"
+            return render(request, self.template_name, context)
 
         elif action == "holiday_add":
             form = HolidayAddForm(request.POST)

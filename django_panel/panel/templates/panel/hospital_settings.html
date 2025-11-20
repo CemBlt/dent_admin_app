@@ -12,19 +12,19 @@
     <script id="working-hours-data" type="application/json">{{ working_hours_json|safe }}</script>
 
     <div class="tab-container">
-        <input type="radio" id="tab-general" name="tabs" checked>
+        <input type="radio" id="tab-general" name="tabs" {% if not active_tab or active_tab == 'general' %}checked{% endif %}>
         <label for="tab-general">Genel Bilgiler</label>
 
-        <input type="radio" id="tab-gallery" name="tabs">
+        <input type="radio" id="tab-gallery" name="tabs" {% if active_tab == 'gallery' %}checked{% endif %}>
         <label for="tab-gallery">Galeri</label>
 
-        <input type="radio" id="tab-services" name="tabs">
+        <input type="radio" id="tab-services" name="tabs" {% if active_tab == 'services' %}checked{% endif %}>
         <label for="tab-services">Hizmetler</label>
 
-        <input type="radio" id="tab-hours" name="tabs">
+        <input type="radio" id="tab-hours" name="tabs" {% if active_tab == 'working_hours' or active_tab == 'hours' %}checked{% endif %}>
         <label for="tab-hours">Çalışma Saatleri</label>
 
-        <input type="radio" id="tab-holidays" name="tabs">
+        <input type="radio" id="tab-holidays" name="tabs" {% if active_tab == 'holidays' %}checked{% endif %}>
         <label for="tab-holidays">Tatiller</label>
 
         <section id="panel-general" class="tab-panel">
@@ -169,7 +169,16 @@
                 <form method="post" enctype="multipart/form-data" class="gallery-add">
                     {% csrf_token %}
                     <input type="hidden" name="form_type" value="gallery_add">
-                    {{ gallery_add_form.as_p }}
+                    <div class="form-field full">
+                        {{ gallery_add_form.images.label_tag }}
+                        {{ gallery_add_form.images }}
+                        {% if gallery_add_form.images.help_text %}
+                            <small class="muted-text">{{ gallery_add_form.images.help_text }}</small>
+                        {% endif %}
+                        {% for error in gallery_add_form.images.errors %}
+                            <span class="field-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
                     <button type="submit" class="primary">Görsel Ekle</button>
                 </form>
             {% else %}

@@ -1,6 +1,36 @@
 from __future__ import annotations
 
 from django import forms
+from django.utils.safestring import mark_safe
+
+
+class MultipleFileInput(forms.FileInput):
+    """Multiple file upload desteği olan FileInput widget'ı"""
+    def __init__(self, attrs=None):
+        # Django multiple attribute'unu reddediyor, bu yüzden __init__'te eklemiyoruz
+        if attrs is None:
+            attrs = {}
+        # multiple'ı attrs'tan çıkar (varsa)
+        attrs = {k: v for k, v in attrs.items() if k != 'multiple'}
+        super().__init__(attrs)
+    
+    def render(self, name, value, attrs=None, renderer=None):
+        # HTML'i manuel oluştur ve multiple attribute'unu ekle
+        if attrs is None:
+            attrs = {}
+        # multiple'ı attrs'tan çıkar (varsa) - Django bunu reddediyor
+        attrs = {k: v for k, v in attrs.items() if k != 'multiple'}
+        
+        # HTML'i manuel oluştur
+        final_attrs = self.build_attrs(attrs, extra_attrs={'name': name})
+        final_attrs['type'] = 'file'
+        
+        # HTML string'ini oluştur
+        html = '<input'
+        for key, val in final_attrs.items():
+            html += f' {key}="{val}"'
+        html += ' multiple>'
+        return mark_safe(html)
 
 DAYS = [
     ("monday", "Pazartesi"),
@@ -123,7 +153,11 @@ class WorkingHoursForm(forms.Form):
 
 
 class GalleryAddForm(forms.Form):
-    image = forms.FileField(label="Galeri Görseli")
+    images = forms.FileField(
+        label="Galeri Görselleri",
+        widget=MultipleFileInput(attrs={'accept': 'image/*'}),
+        help_text="Birden fazla görsel seçebilirsiniz (Maksimum 5 görsel)"
+    )
 
 
 class HolidayAddForm(forms.Form):
