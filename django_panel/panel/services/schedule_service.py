@@ -8,10 +8,10 @@ from .hospital_service import _get_active_hospital_id, get_hospital
 from .doctor_service import get_doctors
 
 
-def get_hospital_working_hours() -> dict:
+def get_hospital_working_hours(request=None) -> dict:
     """Hastane çalışma saatlerini getirir."""
     try:
-        hospital = get_hospital()
+        hospital = get_hospital(request)
         return hospital.get("workingHours", {})
     except:
         return {}
@@ -30,10 +30,10 @@ def get_doctor_working_hours(doctor_id: str | None = None) -> dict:
         return {}
 
 
-def get_holidays_for_month(year: int, month: int, doctor_id: str | None = None) -> list[dict]:
+def get_holidays_for_month(year: int, month: int, doctor_id: str | None = None, request=None) -> list[dict]:
     """Belirli bir ay için tatilleri getirir."""
     supabase = get_supabase_client()
-    hospital_id = _get_active_hospital_id()
+    hospital_id = _get_active_hospital_id(request)
     
     query = supabase.table("holidays").select("*").eq("hospital_id", hospital_id)
     
@@ -71,7 +71,7 @@ def get_holidays_for_month(year: int, month: int, doctor_id: str | None = None) 
     return holidays
 
 
-def build_calendar_data(year: int, month: int, selected_doctor_id: str | None = None) -> dict:
+def build_calendar_data(year: int, month: int, selected_doctor_id: str | None = None, request=None) -> dict:
     """Takvim verilerini oluşturur."""
     first_day = date(year, month, 1)
     last_day = date(year, month, monthrange(year, month)[1])
@@ -93,7 +93,7 @@ def build_calendar_data(year: int, month: int, selected_doctor_id: str | None = 
                 "doctor_hours": None,
             }
             weekday_name = _get_weekday_name(current.weekday())
-            hospital_hours = get_hospital_working_hours().get(weekday_name, {})
+            hospital_hours = get_hospital_working_hours(request).get(weekday_name, {})
             if hospital_hours.get("isAvailable"):
                 day_data["hospital_hours"] = f"{hospital_hours.get('start')} - {hospital_hours.get('end')}"
             
@@ -102,7 +102,7 @@ def build_calendar_data(year: int, month: int, selected_doctor_id: str | None = 
                 if doctor_hours.get("isAvailable"):
                     day_data["doctor_hours"] = f"{doctor_hours.get('start')} - {doctor_hours.get('end')}"
             
-            month_holidays = get_holidays_for_month(current.year, current.month, selected_doctor_id)
+            month_holidays = get_holidays_for_month(current.year, current.month, selected_doctor_id, request=request)
             day_holidays = [
                 h for h in month_holidays 
                 if datetime.strptime(h["date"], "%Y-%m-%d").date() == current
@@ -142,15 +142,15 @@ def _get_month_name(month: int) -> str:
     return names[month]
 
 
-def get_day_details(day_date: date, doctor_id: str | None = None) -> dict:
+def get_day_details(day_date: date, doctor_id: str | None = None, request=None) -> dict:
     """Belirli bir günün detaylarını getirir."""
     weekday_name = _get_weekday_name(day_date.weekday())
-    hospital_hours = get_hospital_working_hours().get(weekday_name, {})
+    hospital_hours = get_hospital_working_hours(request).get(weekday_name, {})
     doctor_hours = get_doctor_working_hours(doctor_id).get(weekday_name, {}) if doctor_id else {}
     
     # Tatilleri getir
     supabase = get_supabase_client()
-    hospital_id = _get_active_hospital_id()
+    hospital_id = _get_active_hospital_id(request)
     day_str = day_date.isoformat()
     
     query = supabase.table("holidays").select("*").eq("hospital_id", hospital_id).eq("date", day_str)

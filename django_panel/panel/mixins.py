@@ -20,7 +20,11 @@ class HospitalContextMixin:
         # Context processor zaten ekliyor, ama override edilmişse tekrar ekleme
         if 'hospital' not in context:
             from .services import hospital_service
-            context['hospital'] = hospital_service.get_hospital()
+            request = getattr(self, 'request', None)
+            try:
+                context['hospital'] = hospital_service.get_hospital(request)
+            except ValueError:
+                context['hospital'] = None
         return context
 
 

@@ -34,13 +34,15 @@ def get_reviews_with_details(
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     has_reply: Optional[bool] = None,
+    request=None,
 ) -> list[dict]:
     """Yorumları detaylı bilgilerle birlikte getirir."""
     reviews = _load_reviews()
     ratings = _load_ratings()
     user_map = get_user_map()
-    doctors = {d["id"]: d for d in get_doctors()}
-    hospital = get_hospital()
+    doctors = {d["id"]: d for d in get_doctors(request)}
+    hospital = get_hospital(request)
+    hospital_id = _get_active_hospital_id(request)
 
     # Rating'leri appointment_id'ye göre map'le
     rating_map = {str(r.get("appointment_id", "")): r for r in ratings}
@@ -48,7 +50,6 @@ def get_reviews_with_details(
     result = []
     for review in reviews:
         # Sadece aktif hastaneye ait yorumları al
-        hospital_id = _get_active_hospital_id()
         if str(review.get("hospital_id", "")) != hospital_id:
             continue
 
@@ -111,11 +112,11 @@ def get_reviews_with_details(
     return result
 
 
-def get_review_statistics() -> dict:
+def get_review_statistics(request=None) -> dict:
     """Yorum istatistiklerini hesaplar."""
-    reviews = get_reviews_with_details()
+    reviews = get_reviews_with_details(request=request)
     ratings = _load_ratings()
-    hospital_id = _get_active_hospital_id()
+    hospital_id = _get_active_hospital_id(request)
     hospital_ratings = [
         r.get("hospital_rating", 0) or 0
         for r in ratings

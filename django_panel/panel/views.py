@@ -281,13 +281,13 @@ class HospitalSettingsView(View):
                 if not is_full_day:
                     if not start_time or not end_time:
                         messages.error(request, "Saatli tatil için başlangıç ve bitiş saatleri zorunludur.")
-                        context = self._build_context()
+                        context = self._build_context(request)
                         context["holiday_add_form"] = form
                         context["active_tab"] = "holidays"
                         return render(request, self.template_name, context)
                     if start_time >= end_time:
                         messages.error(request, "Bitiş saati başlangıç saatinden sonra olmalıdır.")
-                        context = self._build_context()
+                        context = self._build_context(request)
                         context["holiday_add_form"] = form
                         context["active_tab"] = "holidays"
                         return render(request, self.template_name, context)
@@ -298,6 +298,7 @@ class HospitalSettingsView(View):
                     is_full_day=is_full_day,
                     start_time=start_time,
                     end_time=end_time,
+                    request=request,
                 )
                 messages.success(request, "Tatil bilgisi eklendi.")
                 return redirect("hospital_settings")
@@ -309,7 +310,7 @@ class HospitalSettingsView(View):
             messages.success(request, "Tatil kaydı silindi.")
             return redirect("hospital_settings")
 
-        context = self._build_context()
+        context = self._build_context(request)
         context["active_tab"] = action
         return render(request, self.template_name, context)
 
@@ -408,7 +409,7 @@ class DoctorManagementView(View):
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request):
-        return render(request, self.template_name, self._build_context())
+        return render(request, self.template_name, self._build_context(request))
 
     def post(self, request):
         action = request.POST.get("form_type")
@@ -418,7 +419,7 @@ class DoctorManagementView(View):
         if action == "create_doctor":
             form = DoctorForm(request.POST, request.FILES, service_choices=service_choices)
             if form.is_valid():
-                doctor_service.add_doctor(form.cleaned_data, request.FILES.get("image"))
+                doctor_service.add_doctor(form.cleaned_data, request.FILES.get("image"), request=request)
                 messages.success(request, "Doktor eklendi.")
                 return redirect("doctor_management")
             messages.error(request, "Doktor eklenemedi. Formu kontrol edin.")
@@ -459,6 +460,7 @@ class DoctorManagementView(View):
                     form.cleaned_data["doctor_id"],
                     form.cleaned_data["date"].isoformat(),
                     form.cleaned_data["reason"],
+                    request=request,
                 )
                 messages.success(request, "Doktor tatili eklendi.")
                 return redirect("doctor_management")
@@ -469,16 +471,16 @@ class DoctorManagementView(View):
             messages.success(request, "Tatil kaydı silindi.")
             return redirect("doctor_management")
 
-        context = self._build_context()
+        context = self._build_context(request)
         context["active_tab"] = action
         return render(request, self.template_name, context)
 
-    def _build_context(self):
+    def _build_context(self, request):
         # hospital context processor tarafından otomatik ekleniyor
         services = hospital_service.get_services()
         service_choices = build_service_choices(services)
-        doctors = doctor_service.get_doctors()
-        holidays_map = doctor_service.get_doctor_holidays()
+        doctors = doctor_service.get_doctors(request)
+        holidays_map = doctor_service.get_doctor_holidays(request)
 
         doctor_cards = []
         for doctor in doctors:
@@ -719,7 +721,7 @@ class ScheduleManagementView(View):
         )
 
         calendar_data = schedule_service.build_calendar_data(
-            year, month, selected_doctor_id if selected_doctor_id else None
+            year, month, selected_doctor_id if selected_doctor_id else None, request=request
         )
 
         # hospital context processor tarafından otomatik ekleniyor
@@ -747,9 +749,9 @@ class ScheduleManagementView(View):
                 doctor_id = form.cleaned_data.get("doctor_id") or None
 
                 if doctor_id:
-                    doctor_service.add_doctor_holiday(doctor_id, holiday_date.isoformat(), reason)
+                    doctor_service.add_doctor_holiday(doctor_id, holiday_date.isoformat(), reason, request=request)
                 else:
-                    hospital_service.add_holiday(holiday_date.isoformat(), reason)
+                    hospital_service.add_holiday(holiday_date.isoformat(), reason, request=request)
 
                 messages.success(request, "Tatil başarıyla eklendi.")
             else:
@@ -777,7 +779,7 @@ class ServiceManagementView(View):
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request):
-        return render(request, self.template_name, self._build_context())
+        return render(request, self.template_name, self._build_context(request))
 
     def post(self, request):
         action = request.POST.get("form_type")
@@ -801,12 +803,12 @@ class ServiceManagementView(View):
             messages.success(request, "Atamalar güncellendi.")
             return redirect("service_management")
 
-        context = self._build_context()
+        context = self._build_context(request)
         return render(request, self.template_name, context)
 
-    def _build_context(self):
+    def _build_context(self, request):
         all_services = service_service.get_services()
-        doctors = doctor_service.get_doctors()
+        doctors = doctor_service.get_doctors(request)
         # hospital iş mantığı için gerekli (services listesini filtrelemek için)
         hospital = hospital_service.get_hospital(request)
         
@@ -920,10 +922,11 @@ class ReviewManagementView(View):
             date_from=date_from,
             date_to=date_to,
             has_reply=has_reply,
+            request=request,
         )
 
         # İstatistikler
-        stats = review_service.get_review_statistics()
+        stats = review_service.get_review_statistics(request=request)
 
         # Her yorum için yanıt formu ve tarih formatını düzelt
         from datetime import datetime
@@ -980,7 +983,7 @@ class SettingsView(View):
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request):
-        context = self._build_context()
+        context = self._build_context(request)
         return render(request, self.template_name, context)
 
     def post(self, request):
@@ -1056,10 +1059,10 @@ class SettingsView(View):
             response["Content-Disposition"] = 'attachment; filename="panel_backup.json"'
             return response
 
-        context = self._build_context()
+        context = self._build_context(request)
         return render(request, self.template_name, context)
 
-    def _build_context(self):
+    def _build_context(self, request):
         settings_data = settings_service.get_settings()
         hospital_choices = settings_service.get_hospital_choices()
         data_stats = settings_service.get_data_statistics()

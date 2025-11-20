@@ -16,10 +16,10 @@ UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
 storage = FileSystemStorage(location=UPLOAD_ROOT, base_url="/static/uploads/doctors/")
 
 
-def get_doctors() -> list[dict]:
+def get_doctors(request=None) -> list[dict]:
     """Aktif hastaneye ait doktorları Supabase'den getirir."""
     supabase = get_supabase_client()
-    hospital_id = _get_active_hospital_id()
+    hospital_id = _get_active_hospital_id(request)
     result = supabase.table("doctors").select("*").eq("hospital_id", hospital_id).execute()
     
     if not result.data:
@@ -39,11 +39,11 @@ def _save_image(file) -> str | None:
     return f"uploads/doctors/{Path(saved).name}"
 
 
-def add_doctor(data: dict, image_file=None) -> dict:
+def add_doctor(data: dict, image_file=None, request=None) -> dict:
     """Yeni doktor ekler."""
     supabase = get_supabase_client()
     
-    hospital_id = _get_active_hospital_id()
+    hospital_id = _get_active_hospital_id(request)
     doctor_data = {
         "hospital_id": hospital_id,
         "name": data["name"],
@@ -169,10 +169,16 @@ def build_working_hours_from_form(cleaned_data: dict) -> dict:
     return working_hours
 
 
-def get_doctor_holidays() -> dict[str, list[dict]]:
+def get_doctor_holidays(request=None) -> dict[str, list[dict]]:
     """Doktor tatillerini getirir."""
     supabase = get_supabase_client()
-    result = supabase.table("holidays").select("*").not_.is_("doctor_id", "null").execute()
+    query = supabase.table("holidays").select("*").not_.is_("doctor_id", "null")
+    try:
+        hospital_id = _get_active_hospital_id(request)
+        query = query.eq("hospital_id", hospital_id)
+    except ValueError:
+        pass
+    result = query.execute()
     
     holidays_dict: dict[str, list[dict]] = {}
     if result.data:
@@ -185,10 +191,10 @@ def get_doctor_holidays() -> dict[str, list[dict]]:
     return holidays_dict
 
 
-def add_doctor_holiday(doctor_id: str, date_str: str, reason: str) -> None:
+def add_doctor_holiday(doctor_id: str, date_str: str, reason: str, request=None) -> None:
     """Doktor tatili ekler."""
     supabase = get_supabase_client()
-    hospital_id = _get_active_hospital_id()
+    hospital_id = _get_active_hospital_id(request)
     payload = {
         "hospital_id": hospital_id,
         "doctor_id": doctor_id,

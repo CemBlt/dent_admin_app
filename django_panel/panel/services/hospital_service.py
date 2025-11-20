@@ -38,18 +38,20 @@ def get_hospital(request=None) -> dict:
     try:
         supabase = get_supabase_client()
         hospital_id = _get_active_hospital_id(request)
-        
+
         result = supabase.table("hospitals").select("*").eq("id", hospital_id).single().execute()
-        
-        if not result.data:
-            raise ValueError("Hastane bulunamadı.")
-        
-        hospital = result.data[0]
-        # Supabase'den gelen veriyi mevcut format'a çevir
+        data = result.data
+
+        if isinstance(data, dict):
+            hospital = data
+        elif isinstance(data, list) and data:
+            hospital = data[0]
+        else:
+            raise ValueError("Supabase'den hastane verisi alınamadı.")
+
         return _format_hospital_from_db(hospital)
-    except (ValueError, IndexError, KeyError) as e:
-        # Eğer hastane bulunamazsa veya session'da hospital_id yoksa
-        raise ValueError(f"Hastane bulunamadı: {str(e)}")
+    except Exception as exc:
+        raise ValueError(f"Hastane bulunamadı: {exc}") from exc
 
 
 def save_hospital(updated: dict) -> None:
