@@ -4,12 +4,17 @@ from datetime import datetime, date, time
 from typing import List
 
 from .supabase_client import get_supabase_client
+from .hospital_service import _get_active_hospital_id
 
 
-def get_appointments() -> List[dict]:
+def get_appointments(request=None) -> List[dict]:
     """Tüm randevuları Supabase'den getirir."""
     supabase = get_supabase_client()
-    result = supabase.table("appointments").select("*").execute()
+    try:
+        hospital_id = _get_active_hospital_id(request)
+        result = supabase.table("appointments").select("*").eq("hospital_id", hospital_id).execute()
+    except ValueError:
+        result = supabase.table("appointments").select("*").execute()
     
     if not result.data:
         return []
@@ -17,10 +22,16 @@ def get_appointments() -> List[dict]:
     return [_format_appointment_from_db(a) for a in result.data]
 
 
-def filter_appointments(status=None, doctor_id=None, service_id=None, start_date=None, end_date=None):
+def filter_appointments(status=None, doctor_id=None, service_id=None, start_date=None, end_date=None, request=None):
     """Randevuları filtreler."""
     supabase = get_supabase_client()
     query = supabase.table("appointments").select("*")
+
+    try:
+        hospital_id = _get_active_hospital_id(request)
+        query = query.eq("hospital_id", hospital_id)
+    except ValueError:
+        pass
     
     if status:
         query = query.eq("status", status)
@@ -73,13 +84,19 @@ def delete_appointment(appointment_id: str):
         raise ValueError("Randevu bulunamadı veya silinemedi")
 
 
-def get_summary():
+def get_summary(request=None):
     """Randevu özet istatistiklerini getirir."""
     supabase = get_supabase_client()
     today = datetime.now().date()
     
     # Tüm randevuları al
-    all_appointments = supabase.table("appointments").select("status,date").execute()
+    query = supabase.table("appointments").select("status,date")
+    try:
+        hospital_id = _get_active_hospital_id(request)
+        query = query.eq("hospital_id", hospital_id)
+    except ValueError:
+        pass
+    all_appointments = query.execute()
     
     stats = {
         "pending": 0,
@@ -105,7 +122,7 @@ def get_summary():
     return stats
 
 
-def auto_cancel_overdue_appointments(hospital_id: str = "1") -> int:
+def auto_cancel_overdue_appointments(request=None) -> int:
     """
     Randevu tarihinden 5 gün geçmiş ve hala tamamlanmamış randevuları otomatik iptal eder.
     Returns: İptal edilen randevu sayısı
@@ -116,8 +133,13 @@ def auto_cancel_overdue_appointments(hospital_id: str = "1") -> int:
     today = date.today()
     five_days_ago = (today - timedelta(days=5)).isoformat()
     
-    # 5 günden eski, pending olan randevuları bul
-    result = supabase.table("appointments").select("id").eq("hospital_id", hospital_id).eq("status", "pending").lt("date", five_days_ago).execute()
+    try:
+        hospital_id = _get_active_hospital_id(request)
+        query = supabase.table("appointments").select("id").eq("hospital_id", hospital_id)
+    except ValueError:
+        query = supabase.table("appointments").select("id")
+
+    result = query.eq("status", "pending").lt("date", five_days_ago).execute()
     
     cancelled_count = 0
     if result.data:
@@ -128,7 +150,7 @@ def auto_cancel_overdue_appointments(hospital_id: str = "1") -> int:
     return cancelled_count
 
 
-def is_appointment_time_blocked(appointment_date: date, appointment_time: str, hospital_id: str = "1") -> bool:
+def is_appointment_time_blocked(appointment_date: date, appointment_time: str, request=None) -> bool:
     """
     Belirli bir tarih ve saatte randevu alınıp alınamayacağını kontrol eder.
     Tüm gün tatillerde True döner (randevu alınamaz).
@@ -144,7 +166,13 @@ def is_appointment_time_blocked(appointment_date: date, appointment_time: str, h
         return False
     
     # O tarihteki hastane tatillerini getir
-    result = supabase.table("holidays").select("*").eq("hospital_id", hospital_id).eq("date", appointment_date_str).is_("doctor_id", "null").execute()
+    query = supabase.table("holidays").select("*").eq("date", appointment_date_str).is_("doctor_id", "null")
+    try:
+        hospital_id = _get_active_hospital_id(request)
+        query = query.eq("hospital_id", hospital_id)
+    except ValueError:
+        pass
+    result = query.execute()
     
     if not result.data:
         return False

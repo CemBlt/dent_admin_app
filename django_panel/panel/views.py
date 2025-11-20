@@ -565,12 +565,12 @@ class AppointmentManagementView(View):
 
     def _build_context(self, request):
         # Otomatik iptal kontrolü - her sayfa yüklendiğinde
-        cancelled_count = appointment_service.auto_cancel_overdue_appointments()
+        cancelled_count = appointment_service.auto_cancel_overdue_appointments(request=request)
         if cancelled_count > 0:
             messages.info(request, f"{cancelled_count} randevu otomatik olarak iptal edildi (5 gün geçmiş).")
         
         # hospital context processor tarafından otomatik ekleniyor
-        doctors = doctor_service.get_doctors()
+        doctors = doctor_service.get_doctors(request)
         services = hospital_service.get_services()
         doctor_choices = build_doctor_choices(doctors)
         service_choices = build_service_choices(services)
@@ -593,6 +593,7 @@ class AppointmentManagementView(View):
             service_id=filters.get("service") or None,
             start_date=start_date,
             end_date=end_date,
+            request=request,
         )
 
         # Sıralama: Bekleyen randevular önce (tarih/saat), tamamlanan en altta
@@ -619,7 +620,7 @@ class AppointmentManagementView(View):
             # hospital context processor tarafından otomatik ekleniyor
             "filter_form": filter_form,
             "appointments": page_obj,
-            "summary": appointment_service.get_summary(),
+            "summary": appointment_service.get_summary(request=request),
             "paginator": paginator,
         }
         return context
@@ -712,7 +713,7 @@ class ScheduleManagementView(View):
         month = int(month_param) if month_param else today.month
         selected_doctor_id = request.GET.get("doctor", "")
 
-        doctors = doctor_service.get_doctors()
+        doctors = doctor_service.get_doctors(request)
         doctor_choices = build_doctor_choices(doctors)
 
         filter_form = ScheduleFilterForm(
@@ -892,7 +893,7 @@ class ReviewManagementView(View):
         return render(request, self.template_name, context)
 
     def _build_context(self, request):
-        doctors = doctor_service.get_doctors()
+        doctors = doctor_service.get_doctors(request)
         doctor_choices = build_doctor_choices(doctors)
 
         # Filtre formu

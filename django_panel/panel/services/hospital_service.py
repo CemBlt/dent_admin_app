@@ -114,7 +114,7 @@ def add_holiday(date_str: str, reason: str, is_full_day: bool = True, start_time
         weekday_names = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
         weekday_name = weekday_names[holiday_date.weekday()]
         
-        hospital = get_hospital()
+        hospital = get_hospital(request)
         working_hours = hospital.get("workingHours", {})
         day_hours = working_hours.get(weekday_name, {})
         
