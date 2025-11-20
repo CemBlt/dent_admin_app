@@ -130,6 +130,11 @@
                 <div class="form-field full">
                     {{ general_form.logo.label_tag }}
                     {{ general_form.logo }}
+                    {% if current_logo %}
+                        <small class="muted-text" style="display: block; margin-top: 8px; color: var(--text-secondary);">
+                            <i class="bi bi-check-circle" style="color: var(--success-color);"></i> Mevcut logo: {{ current_logo }}
+                        </small>
+                    {% endif %}
                     {% for error in general_form.logo.errors %}
                         <span class="field-error">{{ error }}</span>
                     {% endfor %}

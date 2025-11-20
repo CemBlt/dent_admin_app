@@ -367,6 +367,20 @@ class HospitalSettingsView(View):
         # JavaScript için hastane çalışma saatlerini JSON olarak geçir
         import json
         working_hours_json = json.dumps(hospital.get("workingHours", {}))
+        
+        # Logo bilgisini hazırla (URL'den dosya adını çıkar)
+        current_logo = None
+        logo_url = hospital.get("image")
+        if logo_url:
+            # URL'den dosya adını çıkar
+            # Örnek: https://xxx.supabase.co/storage/v1/object/public/hospital-media/logos/logo_abc123.jpg
+            # -> logo_abc123.jpg
+            if "/hospital-media/" in logo_url:
+                current_logo = logo_url.split("/hospital-media/")[-1]
+            elif "/" in logo_url:
+                current_logo = logo_url.split("/")[-1]
+            else:
+                current_logo = logo_url
 
         context = {
             "page_title": "Hastane Bilgileri",
@@ -382,6 +396,7 @@ class HospitalSettingsView(View):
             "holiday_add_form": HolidayAddForm(),
             "days": DAYS,
             "working_hours_json": working_hours_json,
+            "current_logo": current_logo,  # Mevcut logo dosya adı
         }
         return context
 
