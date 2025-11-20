@@ -10,7 +10,7 @@ from django.core.files.storage import FileSystemStorage
 
 from .supabase_client import get_supabase_client
 
-from .hospital_service import _get_active_hospital_id
+from .hospital_service import _get_active_hospital_id, get_hospital
 UPLOAD_ROOT = Path(settings.BASE_DIR, "panel", "static", "uploads", "doctors")
 UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
 storage = FileSystemStorage(location=UPLOAD_ROOT, base_url="/static/uploads/doctors/")
@@ -44,6 +44,7 @@ def add_doctor(data: dict, image_file=None, request=None) -> dict:
     supabase = get_supabase_client()
     
     hospital_id = _get_active_hospital_id(request)
+    working_hours = _build_default_working_hours(request)
     doctor_data = {
         "hospital_id": hospital_id,
         "name": data["name"],
@@ -51,7 +52,7 @@ def add_doctor(data: dict, image_file=None, request=None) -> dict:
         "specialty": data["specialty"],
         "bio": data.get("bio", ""),
         "services": list(data.get("services", [])),
-        "working_hours": _default_working_hours(),
+        "working_hours": working_hours,
         "image": _save_image(image_file),
         "is_active": data.get("is_active", True),
     }
@@ -234,6 +235,31 @@ def _default_working_hours() -> dict:
         key: {"isAvailable": False, "start": None, "end": None}
         for key, _ in DAYS
     }
+
+
+def _build_default_working_hours(request=None) -> dict:
+    """Hastane çalışma saatlerinden varsayılan doktor çalışma saatlerini oluşturur."""
+    try:
+        hospital = get_hospital(request)
+        hospital_hours = hospital.get("workingHours", {}) or {}
+    except ValueError:
+        hospital_hours = {}
+
+    from panel.forms import DAYS
+
+    default_hours = {}
+    for key, _ in DAYS:
+        day_info = hospital_hours.get(key, {}) or {}
+        default_hours[key] = {
+            "isAvailable": bool(day_info.get("isAvailable")),
+            "start": day_info.get("start"),
+            "end": day_info.get("end"),
+        }
+
+    # Eğer hastane çalışma saatleri boşsa tamamen kapalı template döner
+    if not any(slot.get("isAvailable") for slot in default_hours.values()):
+        return _default_working_hours()
+    return default_hours
 
 
 def _delete_file(relative_path: str | None) -> None:
