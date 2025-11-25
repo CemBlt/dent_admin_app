@@ -776,39 +776,6 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
     });
   }
 
-  Future<void> _selectDate() async {
-    final DateTime now = DateTime.now();
-    final DateTime firstDate = now;
-    final DateTime lastDate = now.add(const Duration(days: 90));
-
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: now,
-      firstDate: firstDate,
-      lastDate: lastDate,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: AppTheme.tealBlue,
-              onPrimary: AppTheme.white,
-              surface: AppTheme.white,
-              onSurface: AppTheme.darkText,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
-      setState(() {
-        _selectedDate = picked;
-        _selectedTime = null;
-        _availableTimes = _getAvailableTimes(picked);
-      });
-    }
-  }
 
   List<String> _getAvailableTimes(DateTime date) {
     // Eğer doktor seçilmişse, o doktorun müsait saatlerini göster
@@ -1227,13 +1194,7 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
                               title: '3. Tarih ve saat',
                               subtitle: 'Müsait olduğunuz zamanı seçin',
                               children: [
-                                _buildFieldLabel('Tarih'),
-                                const SizedBox(height: 8),
-                                _buildDatePicker(),
-                                const SizedBox(height: 18),
-                                _buildFieldLabel('Saat'),
-                                const SizedBox(height: 8),
-                                _buildTimeDropdown(),
+                                _buildDateTimePicker(),
                               ],
                             ),
                             _buildSection(
@@ -1406,7 +1367,14 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
     );
   }
 
-  Widget _buildDatePicker() {
+  Widget _buildDateTimePicker() {
+    final hasSelection = _selectedDate != null && _selectedTime != null;
+    final dateText = _selectedDate != null ? _formatDate(_selectedDate!) : 'Tarih seçiniz';
+    final timeText = _selectedTime != null ? _selectedTime! : '';
+    final displayText = hasSelection 
+        ? '$dateText • $timeText'
+        : dateText;
+
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.inputFieldGray,
@@ -1415,34 +1383,57 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
       ),
       child: Material(
         color: Colors.transparent,
-          child: InkWell(
-          onTap: _selectDate,
+        child: InkWell(
+          onTap: () => _showDateTimePickerModal(),
           borderRadius: BorderRadius.circular(12),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Row(
               children: [
-                Icon(
-                  Icons.calendar_today,
-                  color: _selectedDate != null
-                      ? AppTheme.tealBlue
-                      : AppTheme.iconGray,
-                  size: 20,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: hasSelection 
+                        ? AppTheme.tealBlue.withOpacity(0.1)
+                        : AppTheme.iconGray.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.calendar_today,
+                    color: hasSelection
+                        ? AppTheme.tealBlue
+                        : AppTheme.iconGray,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    _selectedDate != null
-                        ? _formatDate(_selectedDate!)
-                        : 'Tarih seçiniz',
-                    style: AppTheme.bodyMedium.copyWith(
-                      color: _selectedDate != null
-                          ? AppTheme.darkText
-                          : AppTheme.iconGray,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayText,
+                        style: AppTheme.bodyMedium.copyWith(
+                          color: hasSelection
+                              ? AppTheme.darkText
+                              : AppTheme.iconGray,
+                          fontWeight: hasSelection ? FontWeight.w500 : FontWeight.normal,
+                        ),
+                      ),
+                      if (hasSelection)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            'Tarih ve saat seçildi',
+                            style: AppTheme.bodySmall.copyWith(
+                              color: AppTheme.tealBlue,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-                if (_selectedDate != null)
+                if (hasSelection)
                   IconButton(
                     icon: Icon(Icons.clear, size: 18, color: AppTheme.iconGray),
                     onPressed: () {
@@ -1453,6 +1444,11 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
                       });
                     },
                   ),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: AppTheme.iconGray,
+                ),
               ],
             ),
           ),
@@ -1461,67 +1457,346 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
     );
   }
 
-  Widget _buildTimeDropdown() {
-    // Seçili saatin availableTimes listesinde olup olmadığını kontrol et
-    // Eğer yoksa veya duplicate varsa, null yap
-    String? validTime;
-    if (_selectedTime != null && _availableTimes.isNotEmpty) {
-      final matchingTimes = _availableTimes.where((time) => time == _selectedTime).toList();
-      if (matchingTimes.length == 1) {
-        validTime = _selectedTime;
-      } else {
-        // Duplicate varsa veya hiç yoksa, null yap
-        validTime = null;
-      }
-    }
-    
-    final isEnabled = _selectedDate != null && _availableTimes.isNotEmpty;
-    
-    return Container(
-      decoration: BoxDecoration(
-        color: isEnabled
-            ? AppTheme.inputFieldGray
-            : AppTheme.inputFieldGray.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isEnabled
-              ? AppTheme.dividerLight
-              : AppTheme.iconGray.withOpacity(0.3),
-        ),
-      ),
-      child: DropdownButtonFormField<String>(
-        value: validTime,
-        items: _availableTimes.map((time) {
-          return DropdownMenuItem<String>(
-            value: time,
-            child: Text(time, style: AppTheme.bodyMedium),
+  Future<void> _showDateTimePickerModal() async {
+    DateTime? tempDate = _selectedDate;
+    String? tempTime = _selectedTime;
+    List<String> tempAvailableTimes = [];
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          // Tarih değiştiğinde saatleri güncelle
+          if (tempDate != null && tempAvailableTimes.isEmpty) {
+            tempAvailableTimes = _getAvailableTimes(tempDate!);
+          }
+
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.85,
+            decoration: BoxDecoration(
+              color: AppTheme.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: AppTheme.dividerLight, width: 1),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Tarih ve Saat Seçiniz',
+                          style: AppTheme.headingMedium.copyWith(
+                            color: AppTheme.darkText,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close, color: AppTheme.iconGray),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Content
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Tarih Seçimi
+                        Text(
+                          'Tarih',
+                          style: AppTheme.bodyLarge.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.darkText,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        // 7 günlük tarih butonları
+                        Builder(
+                          builder: (context) {
+                            final now = DateTime.now();
+                            final today = DateTime(now.year, now.month, now.day);
+                            final weekDays = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+                            final monthNames = [
+                              'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+                              'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+                            ];
+                            
+                            return Row(
+                              children: List.generate(7, (index) {
+                                final date = today.add(Duration(days: index));
+                                final isSelected = tempDate != null &&
+                                    tempDate!.year == date.year &&
+                                    tempDate!.month == date.month &&
+                                    tempDate!.day == date.day;
+                                final isToday = index == 0;
+                                // DateTime.weekday: 1=Pazartesi, 7=Pazar
+                                final dayIndex = date.weekday - 1;
+                                
+                                return Expanded(
+                                  child: Padding(
+                                    padding: EdgeInsets.only(right: index < 6 ? 8 : 0),
+                                    child: InkWell(
+                                      onTap: () {
+                                        setModalState(() {
+                                          tempDate = date;
+                                          tempTime = null; // Tarih değişince saati sıfırla
+                                          tempAvailableTimes = _getAvailableTimes(date);
+                                        });
+                                      },
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? AppTheme.tealBlue
+                                              : isToday
+                                                  ? AppTheme.tealBlue.withOpacity(0.1)
+                                                  : AppTheme.inputFieldGray,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? AppTheme.tealBlue
+                                                : isToday
+                                                    ? AppTheme.tealBlue
+                                                    : AppTheme.dividerLight,
+                                            width: isSelected || isToday ? 2 : 1,
+                                          ),
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            Text(
+                                              weekDays[dayIndex],
+                                              style: AppTheme.bodySmall.copyWith(
+                                                color: isSelected
+                                                    ? AppTheme.white
+                                                    : AppTheme.iconGray,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              date.day.toString(),
+                                              style: AppTheme.bodyLarge.copyWith(
+                                                color: isSelected
+                                                    ? AppTheme.white
+                                                    : AppTheme.darkText,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            Text(
+                                              monthNames[date.month - 1],
+                                              style: AppTheme.bodySmall.copyWith(
+                                                color: isSelected
+                                                    ? AppTheme.white.withOpacity(0.9)
+                                                    : AppTheme.iconGray,
+                                                fontSize: 10,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }),
+                            );
+                          },
+                        ),
+                        
+                        const SizedBox(height: 24),
+                        
+                        // Saat Seçimi
+                        Text(
+                          'Saat',
+                          style: AppTheme.bodyLarge.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.darkText,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (tempDate == null)
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.inputFieldGray.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppTheme.iconGray.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.info_outline, color: AppTheme.iconGray, size: 20),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Önce tarih seçiniz',
+                                    style: AppTheme.bodyMedium.copyWith(
+                                      color: AppTheme.iconGray,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else if (tempAvailableTimes.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.inputFieldGray.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppTheme.iconGray.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.info_outline, color: AppTheme.iconGray, size: 20),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Bu tarihte uygun saat bulunamadı',
+                                    style: AppTheme.bodyMedium.copyWith(
+                                      color: AppTheme.iconGray,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              // Her satırda 3 buton göster (veya ekran genişliğine göre)
+                              final crossAxisCount = 3;
+                              final spacing = 8.0;
+                              final availableWidth = constraints.maxWidth;
+                              final itemWidth = (availableWidth - (spacing * (crossAxisCount - 1))) / crossAxisCount;
+                              
+                              return Wrap(
+                                spacing: spacing,
+                                runSpacing: spacing,
+                                children: tempAvailableTimes.map((time) {
+                                  final isSelected = tempTime == time;
+                                  return SizedBox(
+                                    width: itemWidth,
+                                    child: InkWell(
+                                      onTap: () {
+                                        setModalState(() {
+                                          tempTime = isSelected ? null : time;
+                                        });
+                                      },
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? AppTheme.tealBlue
+                                              : AppTheme.inputFieldGray,
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? AppTheme.tealBlue
+                                                : AppTheme.dividerLight,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            time,
+                                            style: AppTheme.bodyMedium.copyWith(
+                                              color: isSelected
+                                                  ? AppTheme.white
+                                                  : AppTheme.darkText,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              );
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                // Footer Buttons
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(color: AppTheme.dividerLight, width: 1),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            side: BorderSide(color: AppTheme.dividerLight),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'İptal',
+                            style: AppTheme.bodyMedium.copyWith(
+                              color: AppTheme.darkText,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          onPressed: (tempDate != null && tempTime != null)
+                              ? () {
+                                  setState(() {
+                                    _selectedDate = tempDate;
+                                    _selectedTime = tempTime;
+                                    _availableTimes = tempAvailableTimes;
+                                  });
+                                  Navigator.pop(context);
+                                }
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor: AppTheme.tealBlue,
+                            disabledBackgroundColor: AppTheme.iconGray.withOpacity(0.3),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Seç',
+                            style: AppTheme.bodyMedium.copyWith(
+                              color: AppTheme.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           );
-        }).toList(),
-        onChanged: isEnabled
-            ? (value) {
-                setState(() {
-                  _selectedTime = value;
-                });
-              }
-            : null,
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          hintText: _selectedDate == null
-              ? 'Önce tarih seçiniz'
-              : _availableTimes.isEmpty
-                  ? 'Uygun saat bulunamadı'
-                  : 'Saat seçiniz (opsiyonel)',
-          hintStyle: TextStyle(color: AppTheme.iconGray),
-        ),
-        style: AppTheme.bodyMedium,
-        dropdownColor: AppTheme.white,
-        icon: Icon(
-          Icons.access_time,
-          color: isEnabled
-              ? AppTheme.tealBlue
-              : AppTheme.iconGray,
-        ),
+        },
       ),
     );
   }
