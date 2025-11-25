@@ -1,0 +1,118 @@
+[
+  {
+    "id": "1",
+    "hospitalId": "1",
+    "name": "Dr. Mehmet",
+    "surname": "Kaya",
+    "specialty": "Ortodonti",
+    "image": null,
+    "bio": "15 yıllık deneyime sahip ortodonti uzmanı",
+    "workingHours": {
+      "monday": {"start": "09:00", "end": "17:00", "isAvailable": true},
+      "tuesday": {"start": "09:00", "end": "17:00", "isAvailable": true},
+      "wednesday": {"start": "09:00", "end": "17:00", "isAvailable": true},
+      "thursday": {"start": "09:00", "end": "17:00", "isAvailable": true},
+      "friday": {"start": "09:00", "end": "17:00", "isAvailable": true},
+      "saturday": {"start": "10:00", "end": "14:00", "isAvailable": true},
+      "sunday": {"start": null, "end": null, "isAvailable": false}
+    },
+    "createdAt": "2024-01-01T08:30:00Z"
+  },
+  {
+    "id": "2",
+    "hospitalId": "1",
+    "name": "Dr. Zeynep",
+    "surname": "Aydın",
+    "specialty": "Protez",
+    "image": null,
+    "bio": "Protez ve implant konusunda uzman",
+    "workingHours": {
+      "monday": {"start": "10:00", "end": "18:00", "isAvailable": true},
+      "tuesday": {"start": "10:00", "end": "18:00", "isAvailable": true},
+      "wednesday": {"start": "10:00", "end": "18:00", "isAvailable": true},
+      "thursday": {"start": "10:00", "end": "18:00", "isAvailable": true},
+      "friday": {"start": "10:00", "end": "18:00", "isAvailable": true},
+      "saturday": {"start": "10:00", "end": "16:00", "isAvailable": true},
+      "sunday": {"start": null, "end": null, "isAvailable": false}
+    },
+    "createdAt": "2024-01-01T09:00:00Z"
+  },
+  {
+    "id": "3",
+    "hospitalId": "2",
+    "name": "Dr. Can",
+    "surname": "Özkan",
+    "specialty": "Endodonti",
+    "image": null,
+    "bio": "Kanal tedavisi ve kök kanalı uzmanı",
+    "workingHours": {
+      "monday": {"start": "08:00", "end": "16:00", "isAvailable": true},
+      "tuesday": {"start": "08:00", "end": "16:00", "isAvailable": true},
+      "wednesday": {"start": "08:00", "end": "16:00", "isAvailable": true},
+      "thursday": {"start": "08:00", "end": "16:00", "isAvailable": true},
+      "friday": {"start": "08:00", "end": "16:00", "isAvailable": true},
+      "saturday": {"start": "09:00", "end": "15:00", "isAvailable": true},
+      "sunday": {"start": null, "end": null, "isAvailable": false}
+    },
+    "createdAt": "2024-01-02T09:30:00Z"
+  },
+  {
+    "id": "4",
+    "hospitalId": "2",
+    "name": "Dr. Elif",
+    "surname": "Şahin",
+    "specialty": "Periodontoloji",
+    "image": null,
+    "bio": "Diş eti hastalıkları ve cerrahi tedavi uzmanı",
+    "workingHours": {
+      "monday": {"start": "13:00", "end": "19:00", "isAvailable": true},
+      "tuesday": {"start": "13:00", "end": "19:00", "isAvailable": true},
+      "wednesday": {"start": "13:00", "end": "19:00", "isAvailable": true},
+      "thursday": {"start": "13:00", "end": "19:00", "isAvailable": true},
+      "friday": {"start": "13:00", "end": "19:00", "isAvailable": true},
+      "saturday": {"start": "09:00", "end": "17:00", "isAvailable": true},
+      "sunday": {"start": null, "end": null, "isAvailable": false}
+    },
+    "createdAt": "2024-01-02T10:00:00Z"
+  },
+  {
+    "id": "5",
+    "hospitalId": "3",
+    "name": "Dr. Burak",
+    "surname": "Yıldız",
+    "specialty": "Estetik Diş Hekimliği",
+    "image": null,
+    "bio": "Gülüş tasarımı ve beyazlatma uzmanı",
+    "workingHours": {
+      "monday": {"start": "10:00", "end": "20:00", "isAvailable": true},
+      "tuesday": {"start": "10:00", "end": "20:00", "isAvailable": true},
+      "wednesday": {"start": "10:00", "end": "20:00", "isAvailable": true},
+      "thursday": {"start": "10:00", "end": "20:00", "isAvailable": true},
+      "friday": {"start": "10:00", "end": "20:00", "isAvailable": true},
+      "saturday": {"start": "10:00", "end": "18:00", "isAvailable": true},
+      "sunday": {"start": null, "end": null, "isAvailable": false}
+    },
+    "createdAt": "2024-01-03T10:30:00Z"
+  },
+  {
+    "id": "6",
+    "hospitalId": "3",
+    "name": "Dr. Seda",
+    "surname": "Çelik",
+    "specialty": "Estetik Diş Hekimliği",
+    "image": null,
+    "bio": "İmplant ve estetik uygulamalar uzmanı",
+    "workingHours": {
+      "monday": {"start": "10:00", "end": "20:00", "isAvailable": true},
+      "tuesday": {"start": "10:00", "end": "20:00", "isAvailable": true},
+      "wednesday": {"start": "10:00", "end": "20:00", "isAvailable": true},
+      "thursday": {"start": "10:00", "end": "20:00", "isAvailable": true},
+      "friday": {"start": "10:00", "end": "20:00", "isAvailable": true},
+      "saturday": {"start": "10:00", "end": "18:00", "isAvailable": true},
+      "sunday": {"start": null, "end": null, "isAvailable": false}
+    },
+    "createdAt": "2024-01-03T11:00:00Z"
+  }
+]
+
+

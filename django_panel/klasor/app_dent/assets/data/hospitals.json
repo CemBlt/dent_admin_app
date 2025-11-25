@@ -1,0 +1,88 @@
+[
+  {
+    "id": "1",
+    "name": "Gülümseme Diş Kliniği",
+    "address": "Kadıköy, İstanbul",
+    "latitude": 40.9816,
+    "longitude": 29.0244,
+    "phone": "02161234567",
+    "email": "info@gulumseme.com",
+    "description": "Modern teknoloji ile hizmet veren diş kliniği",
+    "image": "assets/images/hospital_1_main.jpg",
+    "gallery": [
+      "assets/images/hospital_1_1.jpg",
+      "assets/images/hospital_1_2.jpg",
+      "assets/images/hospital_1_3.jpg",
+      "assets/images/hospital_1_4.jpg",
+      "assets/images/hospital_1_5.jpg"
+    ],
+    "services": ["1", "2", "3"],
+    "workingHours": {
+      "monday": {"start": "09:00", "end": "18:00", "isAvailable": true},
+      "tuesday": {"start": "09:00", "end": "18:00", "isAvailable": true},
+      "wednesday": {"start": "09:00", "end": "18:00", "isAvailable": true},
+      "thursday": {"start": "09:00", "end": "18:00", "isAvailable": true},
+      "friday": {"start": "09:00", "end": "18:00", "isAvailable": true},
+      "saturday": {"start": "10:00", "end": "16:00", "isAvailable": true},
+      "sunday": {"start": null, "end": null, "isAvailable": false}
+    },
+    "createdAt": "2024-01-01T08:00:00Z"
+  },
+  {
+    "id": "2",
+    "name": "Ağız ve Diş Sağlığı Merkezi",
+    "address": "Beşiktaş, İstanbul",
+    "latitude": 41.0422,
+    "longitude": 29.0084,
+    "phone": "02169876543",
+    "email": "info@agizdis.com",
+    "description": "Kapsamlı diş tedavi hizmetleri",
+    "image": "assets/images/hospital_2_main.jpg",
+    "gallery": [
+      "assets/images/hospital_2_1.jpg",
+      "assets/images/hospital_2_2.jpg",
+      "assets/images/hospital_2_3.jpg",
+      "assets/images/hospital_2_4.jpg"
+    ],
+    "services": ["1", "2", "4", "5"],
+    "workingHours": {
+      "monday": {"start": "08:00", "end": "19:00", "isAvailable": true},
+      "tuesday": {"start": "08:00", "end": "19:00", "isAvailable": true},
+      "wednesday": {"start": "08:00", "end": "19:00", "isAvailable": true},
+      "thursday": {"start": "08:00", "end": "19:00", "isAvailable": true},
+      "friday": {"start": "08:00", "end": "19:00", "isAvailable": true},
+      "saturday": {"start": "09:00", "end": "17:00", "isAvailable": true},
+      "sunday": {"start": null, "end": null, "isAvailable": false}
+    },
+    "createdAt": "2024-01-02T09:00:00Z"
+  },
+  {
+    "id": "3",
+    "name": "Estetik Diş Kliniği",
+    "address": "Şişli, İstanbul",
+    "latitude": 41.0602,
+    "longitude": 28.9874,
+    "phone": "02165556677",
+    "email": "info@estetikdis.com",
+    "description": "Estetik ve implant uygulamalarında uzman",
+    "image": "assets/images/hospital_3_main.jpg",
+    "gallery": [
+      "assets/images/hospital_3_1.jpg",
+      "assets/images/hospital_3_2.jpg",
+      "assets/images/hospital_3_3.jpg"
+    ],
+    "services": ["2", "3", "5", "6"],
+    "workingHours": {
+      "monday": {"start": "10:00", "end": "20:00", "isAvailable": true},
+      "tuesday": {"start": "10:00", "end": "20:00", "isAvailable": true},
+      "wednesday": {"start": "10:00", "end": "20:00", "isAvailable": true},
+      "thursday": {"start": "10:00", "end": "20:00", "isAvailable": true},
+      "friday": {"start": "10:00", "end": "20:00", "isAvailable": true},
+      "saturday": {"start": "10:00", "end": "18:00", "isAvailable": true},
+      "sunday": {"start": null, "end": null, "isAvailable": false}
+    },
+    "createdAt": "2024-01-03T10:00:00Z"
+  }
+]
+
+

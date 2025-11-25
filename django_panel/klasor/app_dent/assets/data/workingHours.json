@@ -1,0 +1,40 @@
+[
+  {
+    "id": "1",
+    "hospitalId": "1",
+    "doctorId": null,
+    "dayOfWeek": "monday",
+    "startTime": "09:00",
+    "endTime": "18:00",
+    "isAvailable": true
+  },
+  {
+    "id": "2",
+    "hospitalId": "1",
+    "doctorId": null,
+    "dayOfWeek": "tuesday",
+    "startTime": "09:00",
+    "endTime": "18:00",
+    "isAvailable": true
+  },
+  {
+    "id": "3",
+    "hospitalId": "1",
+    "doctorId": "1",
+    "dayOfWeek": "monday",
+    "startTime": "09:00",
+    "endTime": "17:00",
+    "isAvailable": true
+  },
+  {
+    "id": "4",
+    "hospitalId": "1",
+    "doctorId": "1",
+    "dayOfWeek": "tuesday",
+    "startTime": "09:00",
+    "endTime": "17:00",
+    "isAvailable": true
+  }
+]
+
+

@@ -1,0 +1,46 @@
+[
+  {
+    "id": "1",
+    "title": "Günde İki Kez Diş Fırçalayın",
+    "content": "Diş sağlığınız için günde en az iki kez, sabah ve akşam dişlerinizi fırçalayın. Her fırçalama en az 2 dakika sürmelidir.",
+    "image": null,
+    "createdAt": "2024-01-01T08:00:00Z"
+  },
+  {
+    "id": "2",
+    "title": "Diş İpi Kullanmayı Unutmayın",
+    "content": "Diş fırçasının ulaşamadığı yerleri temizlemek için günde bir kez diş ipi kullanın. Bu, diş eti hastalıklarını önlemeye yardımcı olur.",
+    "image": null,
+    "createdAt": "2024-01-02T08:00:00Z"
+  },
+  {
+    "id": "3",
+    "title": "Şekerli Gıdalardan Kaçının",
+    "content": "Şekerli ve asitli içecekler diş minesine zarar verir. Bu tür gıdaları tükettikten sonra ağzınızı su ile çalkalayın.",
+    "image": null,
+    "createdAt": "2024-01-03T08:00:00Z"
+  },
+  {
+    "id": "4",
+    "title": "Düzenli Diş Kontrolü Yaptırın",
+    "content": "Yılda en az iki kez diş hekiminize kontrol için gidin. Erken teşhis, büyük sorunları önler.",
+    "image": null,
+    "createdAt": "2024-01-04T08:00:00Z"
+  },
+  {
+    "id": "5",
+    "title": "Doğru Diş Fırçası Seçin",
+    "content": "Yumuşak veya orta sertlikte kıllara sahip bir diş fırçası kullanın. Fırçanızı 3-4 ayda bir değiştirin.",
+    "image": null,
+    "createdAt": "2024-01-05T08:00:00Z"
+  },
+  {
+    "id": "6",
+    "title": "Florürlü Diş Macunu Kullanın",
+    "content": "Florür, diş minesini güçlendirir ve çürükleri önler. Florürlü diş macunu kullanmayı tercih edin.",
+    "image": null,
+    "createdAt": "2024-01-06T08:00:00Z"
+  }
+]
+
+

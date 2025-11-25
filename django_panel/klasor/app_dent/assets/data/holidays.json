@@ -1,0 +1,18 @@
+[
+  {
+    "id": "1",
+    "hospitalId": "1",
+    "doctorId": null,
+    "date": "2024-04-23",
+    "reason": "Ulusal Egemenlik ve Çocuk Bayramı"
+  },
+  {
+    "id": "2",
+    "hospitalId": "1",
+    "doctorId": "1",
+    "date": "2024-03-15",
+    "reason": "Kişisel izin"
+  }
+]
+
+
