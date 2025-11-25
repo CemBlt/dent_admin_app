@@ -158,19 +158,9 @@ class JsonService {
           .neq('status', 'cancelled');
       
       final List<dynamic> data = response;
-      final result = data.cast<Map<String, dynamic>>();
-      
-      print('getAppointmentsForAvailabilityCheck: ${result.length} randevu bulundu');
-      if (result.isNotEmpty) {
-        print('İlk randevu örneği: doctor_id=${result[0]['doctor_id']}, date=${result[0]['date']}, time=${result[0]['time']}, status=${result[0]['status']}');
-      } else {
-        print('⚠️ UYARI: getAppointmentsForAvailabilityCheck boş döndü. RLS politikası kontrol edilmeli!');
-      }
-      
-      return result;
+      return data.cast<Map<String, dynamic>>();
     } catch (e) {
       print('getAppointmentsForAvailabilityCheck hatası: $e');
-      print('⚠️ RLS politikası nedeniyle randevular getirilemiyor olabilir. update_appointments_rls_for_availability_check.sql dosyasını Supabase\'de çalıştırın.');
       return [];
     }
   }

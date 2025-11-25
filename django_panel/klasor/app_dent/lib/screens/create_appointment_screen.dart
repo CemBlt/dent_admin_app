@@ -331,7 +331,24 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
     final hospitals = await JsonService.getHospitals();
     final doctors = await JsonService.getDoctors();
     final services = await JsonService.getServices();
-    final appointments = await JsonService.getAppointments();
+    
+    // Müsaitlik kontrolü için optimize edilmiş sorguyu kullan
+    final availabilityData = await JsonService.getAppointmentsForAvailabilityCheck();
+    final appointments = availabilityData.map((data) {
+      return Appointment(
+        id: '',
+        userId: '',
+        hospitalId: '',
+        doctorId: data['doctor_id'].toString(),
+        date: data['date']?.toString() ?? '',
+        time: data['time']?.toString() ?? '',
+        status: data['status']?.toString() ?? 'pending',
+        service: '',
+        notes: '',
+        review: null,
+        createdAt: '',
+      );
+    }).toList();
 
     setState(() {
       _allHospitals = hospitals;
@@ -452,68 +469,33 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
     });
 
     // Randevu listesini güncelle (alınmış randevuları görmemek için)
-    // ÖNEMLİ: await ile bekleyerek liste güncellenene kadar aramaya başlamıyoruz
     try {
-      // Önce müsaitlik kontrolü için optimize edilmiş sorguyu dene
       final availabilityData = await JsonService.getAppointmentsForAvailabilityCheck();
-      print('Müsaitlik kontrolü için ${availabilityData.length} randevu bulundu');
       
-      // Eğer müsaitlik kontrolü verisi varsa, onu kullan
-      if (availabilityData.isNotEmpty) {
-        // Availability data'yı Appointment listesine çevir (sadece kontrol için gerekli alanlar)
-        final appointments = availabilityData.map((data) {
-          final timeStr = data['time']?.toString() ?? '';
-          final dateStr = data['date']?.toString() ?? '';
-          
-          return Appointment(
-            id: '', // ID gerekli değil
-            userId: '', // User ID gerekli değil
-            hospitalId: '', // Hospital ID gerekli değil
-            doctorId: data['doctor_id'].toString(),
-            date: dateStr,
-            time: timeStr,
-            status: data['status']?.toString() ?? 'pending',
-            service: '', // Service ID gerekli değil
-            notes: '',
-            review: null,
-            createdAt: '',
-          );
-        }).toList();
-        
-        if (mounted) {
-          setState(() {
-            _existingAppointments = appointments;
-          });
-          print('✅ _existingAppointments güncellendi (availability check): ${_existingAppointments.length} randevu');
-          if (appointments.isNotEmpty) {
-            print('   İlk randevu örneği: doctor_id=${appointments[0].doctorId}, date=${appointments[0].date}, time=${appointments[0].time}');
-          }
-        }
-      } else {
-        // Fallback: Normal getAppointments kullan (RLS nedeniyle sadece kullanıcının kendi randevuları)
-        print('⚠️ UYARI: getAppointmentsForAvailabilityCheck boş döndü. RLS politikası uygulanmamış olabilir.');
-        final updatedAppointments = await JsonService.getAppointments();
-        print('Randevu listesi güncellendi: ${updatedAppointments.length} randevu bulundu (sadece kullanıcının kendi randevuları)');
-        if (mounted) {
-          setState(() {
-            _existingAppointments = updatedAppointments;
-          });
-          print('_existingAppointments güncellendi: ${_existingAppointments.length} randevu');
-          
-          // Kullanıcıya bilgilendirme mesajı göster
-          if (updatedAppointments.length < 5) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text('⚠️ Tüm randevular görüntülenemiyor. RLS politikası güncellenmeli.'),
-                backgroundColor: Colors.orange,
-                duration: const Duration(seconds: 5),
-              ),
-            );
-          }
-        }
+      // Availability data'yı Appointment listesine çevir (sadece kontrol için gerekli alanlar)
+      final appointments = availabilityData.map((data) {
+        return Appointment(
+          id: '',
+          userId: '',
+          hospitalId: '',
+          doctorId: data['doctor_id'].toString(),
+          date: data['date']?.toString() ?? '',
+          time: data['time']?.toString() ?? '',
+          status: data['status']?.toString() ?? 'pending',
+          service: '',
+          notes: '',
+          review: null,
+          createdAt: '',
+        );
+      }).toList();
+      
+      if (mounted) {
+        setState(() {
+          _existingAppointments = appointments;
+        });
       }
     } catch (e) {
-      print('❌ Randevu listesi güncellenirken hata: $e');
+      print('Randevu listesi güncellenirken hata: $e');
       if (mounted) {
         setState(() {
           _isSearchingSlots = false;
@@ -784,28 +766,14 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
     });
   }
 
-  void _onDoctorSelected(Doctor? doctor) async {
-    // Randevu listesini güncelle (alınmış randevuları görmemek için)
-    try {
-      final updatedAppointments = await JsonService.getAppointments();
-      setState(() {
-        _existingAppointments = updatedAppointments;
-        _selectedDoctor = doctor;
-        _selectedDate = null;
-        _selectedTime = null;
-        _availableTimes = [];
-        _isSearchingSlots = false;
-      });
-    } catch (e) {
-      print('Randevu listesi güncellenirken hata: $e');
-      setState(() {
-        _selectedDoctor = doctor;
-        _selectedDate = null;
-        _selectedTime = null;
-        _availableTimes = [];
-        _isSearchingSlots = false;
-      });
-    }
+  void _onDoctorSelected(Doctor? doctor) {
+    setState(() {
+      _selectedDoctor = doctor;
+      _selectedDate = null;
+      _selectedTime = null;
+      _availableTimes = [];
+      _isSearchingSlots = false;
+    });
   }
 
   Future<void> _selectDate() async {
@@ -834,23 +802,11 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
     );
 
     if (picked != null) {
-      // Randevu listesini güncelle (alınmış randevuları görmemek için)
-      try {
-        final updatedAppointments = await JsonService.getAppointments();
-        setState(() {
-          _existingAppointments = updatedAppointments;
-          _selectedDate = picked;
-          _selectedTime = null;
-          _availableTimes = _getAvailableTimes(picked);
-        });
-      } catch (e) {
-        print('Randevu listesi güncellenirken hata: $e');
-        setState(() {
-          _selectedDate = picked;
-          _selectedTime = null;
-          _availableTimes = _getAvailableTimes(picked);
-        });
-      }
+      setState(() {
+        _selectedDate = picked;
+        _selectedTime = null;
+        _availableTimes = _getAvailableTimes(picked);
+      });
     }
   }
 
@@ -952,48 +908,18 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
 
   bool _isTimeBooked(Doctor doctor, DateTime date, String time) {
     final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-    
-    // Saat formatını normalize et
     final normalizedTime = _normalizeTime(time);
     
-    // Debug: Mevcut randevu sayısını logla
-    print('_isTimeBooked kontrolü: Doktor=${doctor.id}, Tarih=$dateStr, Saat=$normalizedTime (orijinal: $time)');
-    print('Mevcut randevu sayısı: ${_existingAppointments.length}');
-    
-    if (_existingAppointments.isEmpty) {
-      print('⚠️ UYARI: _existingAppointments boş! RLS politikası kontrol edilmeli.');
-    }
-    
-    final isBooked = _existingAppointments.any((apt) {
-      // Tarih formatını normalize et
+    return _existingAppointments.any((apt) {
       final aptDate = apt.date.trim();
       final aptTime = _normalizeTime(apt.time);
-      
-      // Doktor ID'lerini string olarak karşılaştır
       final doctorIdMatch = apt.doctorId.toString() == doctor.id.toString();
-      
-      // Tarih ve saat eşleşmesi
       final dateMatch = aptDate == dateStr;
       final timeMatch = aptTime == normalizedTime;
-      
-      // Status kontrolü
       final statusMatch = apt.status != 'cancelled';
-      
-      // Detaylı debug log
-      if (doctorIdMatch && dateMatch && statusMatch) {
-        print('  → Doktor eşleşti: $doctorIdMatch, Tarih eşleşti: $dateMatch, Saat eşleşti: $timeMatch (apt: $aptTime, kontrol: $normalizedTime), Status: $statusMatch');
-      }
       
       return dateMatch && timeMatch && doctorIdMatch && statusMatch;
     });
-    
-    if (isBooked) {
-      print('❌ Randevu DOLU: Doktor=${doctor.id}, Tarih=$dateStr, Saat=$normalizedTime');
-    } else {
-      print('✅ Randevu BOŞ: Doktor=${doctor.id}, Tarih=$dateStr, Saat=$normalizedTime');
-    }
-    
-    return isBooked;
   }
 
   DateTime _parseTime(String time) {
@@ -1090,14 +1016,29 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
       return;
     }
 
-    // Randevu listesini güncelleyerek çakışma kontrolü yap
+    // Randevu çakışması kontrolü (frontend'de hızlı kontrol)
     try {
-      final updatedAppointments = await JsonService.getAppointments();
+      final availabilityData = await JsonService.getAppointmentsForAvailabilityCheck();
+      final appointments = availabilityData.map((data) {
+        return Appointment(
+          id: '',
+          userId: '',
+          hospitalId: '',
+          doctorId: data['doctor_id'].toString(),
+          date: data['date']?.toString() ?? '',
+          time: data['time']?.toString() ?? '',
+          status: data['status']?.toString() ?? 'pending',
+          service: '',
+          notes: '',
+          review: null,
+          createdAt: '',
+        );
+      }).toList();
+      
       setState(() {
-        _existingAppointments = updatedAppointments;
+        _existingAppointments = appointments;
       });
       
-      // Randevu çakışması kontrolü
       if (_isTimeBooked(_selectedDoctor!, _selectedDate!, _selectedTime!)) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1111,7 +1052,7 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
         return;
       }
     } catch (e) {
-      print('Randevu listesi güncellenirken hata: $e');
+      print('Randevu kontrolü yapılamadı: $e');
       // Hata olsa bile devam et, backend'de kontrol edilecek
     }
 
@@ -1124,14 +1065,6 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
       // Tarih formatını düzenle (YYYY-MM-DD)
       final dateString = '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
       
-      print('Randevu oluşturuluyor:');
-      print('userId: $userId');
-      print('hospitalId: ${_selectedHospital!.id}');
-      print('doctorId: ${_selectedDoctor!.id}');
-      print('date: $dateString');
-      print('time: ${_selectedTime!}');
-      print('serviceId: ${_selectedService!.id}');
-      
       final appointment = await JsonService.createAppointment(
         userId: userId,
         hospitalId: _selectedHospital!.id,
@@ -1143,14 +1076,6 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
       );
 
       if (appointment != null) {
-        // Randevu listesini güncelle
-        if (mounted) {
-          final updatedAppointments = await JsonService.getAppointments();
-          setState(() {
-            _existingAppointments = updatedAppointments;
-          });
-        }
-        
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

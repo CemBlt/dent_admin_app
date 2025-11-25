@@ -88,16 +88,7 @@ HAVING COUNT(*) > 1;
 -- Artık duplicate olmadığı için constraint ekleyebiliriz
 
 -- Önce mevcut index'i kontrol et ve varsa sil
-DO $$ 
-BEGIN
-    IF EXISTS (
-        SELECT 1 
-        FROM pg_indexes 
-        WHERE indexname = 'unique_doctor_date_time_active'
-    ) THEN
-        DROP INDEX IF EXISTS public.unique_doctor_date_time_active;
-    END IF;
-END $$;
+DROP INDEX IF EXISTS public.unique_doctor_date_time_active;
 
 -- Unique constraint ekle (sadece iptal edilmemiş randevular için)
 CREATE UNIQUE INDEX unique_doctor_date_time_active
