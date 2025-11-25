@@ -12,6 +12,12 @@ class Hospital {
   final List<String> services;
   final Map<String, dynamic> workingHours;
   final String createdAt;
+  final String? provinceId;
+  final String? provinceName;
+  final String? districtId;
+  final String? districtName;
+  final String? neighborhoodId;
+  final String? neighborhoodName;
 
   Hospital({
     required this.id,
@@ -27,6 +33,12 @@ class Hospital {
     required this.services,
     required this.workingHours,
     required this.createdAt,
+    this.provinceId,
+    this.provinceName,
+    this.districtId,
+    this.districtName,
+    this.neighborhoodId,
+    this.neighborhoodName,
   });
 
   factory Hospital.fromJson(Map<String, dynamic> json) {
@@ -46,6 +58,12 @@ class Hospital {
       services: List<String>.from(json['services'] as List),
       workingHours: json['workingHours'] as Map<String, dynamic>,
       createdAt: json['createdAt'] as String,
+      provinceId: json['provinceId'] as String?,
+      provinceName: json['provinceName'] as String?,
+      districtId: json['districtId'] as String?,
+      districtName: json['districtName'] as String?,
+      neighborhoodId: json['neighborhoodId'] as String?,
+      neighborhoodName: json['neighborhoodName'] as String?,
     );
   }
 
@@ -64,6 +82,12 @@ class Hospital {
       'services': services,
       'workingHours': workingHours,
       'createdAt': createdAt,
+      'provinceId': provinceId,
+      'provinceName': provinceName,
+      'districtId': districtId,
+      'districtName': districtName,
+      'neighborhoodId': neighborhoodId,
+      'neighborhoodName': neighborhoodName,
     };
   }
 }

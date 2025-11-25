@@ -48,6 +48,12 @@ class JsonService {
           : [],
       workingHours: dbData['working_hours'] ?? {},
       createdAt: dbData['created_at'] ?? '',
+      provinceId: dbData['province_id']?.toString(),
+      provinceName: dbData['province_name'],
+      districtId: dbData['district_id']?.toString(),
+      districtName: dbData['district_name'],
+      neighborhoodId: dbData['neighborhood_id']?.toString(),
+      neighborhoodName: dbData['neighborhood_name'],
     );
   }
 

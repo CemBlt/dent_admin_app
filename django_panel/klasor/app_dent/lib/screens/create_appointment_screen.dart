@@ -307,7 +307,7 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
             (h) => h.id == widget.preselectedHospitalId,
           );
           // İl ve ilçe bilgilerini ayarla
-          final addressInfo = _parseAddress(preselectedHospital.address);
+          final addressInfo = _getLocationInfo(preselectedHospital);
           _selectedCity = addressInfo['city'];
           _selectedDistrict = addressInfo['district'];
           _selectedHospital = preselectedHospital;
@@ -323,19 +323,38 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
   }
 
   // Adres formatından il ve ilçe çıkar (format: "İlçe, İl")
-  Map<String, String> _parseAddress(String address) {
-    final parts = address.split(',').map((e) => e.trim()).toList();
-    if (parts.length >= 2) {
-      return {'district': parts[0], 'city': parts[1]};
+  Map<String, String> _getLocationInfo(Hospital hospital) {
+    final cityFromField = hospital.provinceName?.trim();
+    final districtFromField = hospital.districtName?.trim();
+
+    if ((cityFromField?.isNotEmpty ?? false) || (districtFromField?.isNotEmpty ?? false)) {
+      return {
+        'city': cityFromField ?? '',
+        'district': districtFromField ?? '',
+      };
     }
-    return {'district': address, 'city': ''};
+
+    final normalizedAddress = hospital.address.replaceAll('/', ',');
+    final parts = normalizedAddress
+        .split(',')
+        .map((e) => e.trim())
+        .where((element) => element.isNotEmpty)
+        .toList();
+
+    if (parts.length >= 2) {
+      final city = parts.last;
+      final district = parts.first;
+      return {'district': district, 'city': city};
+    }
+
+    return {'district': hospital.address.trim(), 'city': ''};
   }
 
   // Tüm illeri getir
   List<String> get _cities {
     final cities = <String>{};
     for (var hospital in _allHospitals) {
-      final addressInfo = _parseAddress(hospital.address);
+      final addressInfo = _getLocationInfo(hospital);
       if (addressInfo['city']!.isNotEmpty) {
         cities.add(addressInfo['city']!);
       }
@@ -349,7 +368,7 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
     
     final districts = <String>{};
     for (var hospital in _allHospitals) {
-      final addressInfo = _parseAddress(hospital.address);
+      final addressInfo = _getLocationInfo(hospital);
       if (addressInfo['city'] == _selectedCity && addressInfo['district']!.isNotEmpty) {
         districts.add(addressInfo['district']!);
       }
@@ -393,7 +412,7 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
 
   void _updateFilteredHospitals() {
     _filteredHospitals = _allHospitals.where((hospital) {
-      final addressInfo = _parseAddress(hospital.address);
+      final addressInfo = _getLocationInfo(hospital);
       final matchesCity = _selectedCity == null || addressInfo['city'] == _selectedCity;
       final matchesDistrict = _selectedDistrict == null || addressInfo['district'] == _selectedDistrict;
       return matchesCity && matchesDistrict;
