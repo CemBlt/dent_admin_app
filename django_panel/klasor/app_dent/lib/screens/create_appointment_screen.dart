@@ -44,7 +44,6 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
   List<String> _availableTimes = [];
   bool _isSearchingSlots = false;
   final ScrollController _scrollController = ScrollController();
-  bool _showCreateButton = false;
 
   @override
   void initState() {
@@ -53,7 +52,6 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAuthenticationAndLoadData();
     });
-    _scrollController.addListener(_handleScrollPosition);
   }
 
   Widget _buildHeroHeader(BuildContext context) {
@@ -199,89 +197,90 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
     );
   }
 
-  Widget _buildSearchButton() {
-    final canSearch = _selectedService != null && !_isSearchingSlots;
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: canSearch ? _searchAvailableSlots : null,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.tealBlue,
-          foregroundColor: AppTheme.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          elevation: 0,
-        ),
-        child: _isSearchingSlots
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.search_rounded, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Uygun randevuları ara',
-                    style: AppTheme.bodyMedium.copyWith(
-                      color: AppTheme.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
-
   Widget _buildBottomAction() {
-    final isActive = _isFormValid();
+    // Tüm alanlar dolu mu kontrol et
+    final isAllFieldsFilled = _isFormValid();
+    // Hizmet seçilmiş mi kontrol et (arama butonu için)
+    final isServiceSelected = _selectedService != null;
+    
+    // Buton metni ve fonksiyonu belirle
+    final bool isCreateButton = isAllFieldsFilled;
+    final String buttonText = isCreateButton ? 'Randevu Oluştur' : 'Uygun randevuları ara';
+    final IconData buttonIcon = isCreateButton ? Icons.check_circle_outline : Icons.search_rounded;
+    final bool isButtonActive = isCreateButton 
+        ? isAllFieldsFilled 
+        : (isServiceSelected && !_isSearchingSlots);
+    final VoidCallback? onButtonTap = isButtonActive
+        ? (isCreateButton ? _createAppointment : _searchAvailableSlots)
+        : null;
+    
     return Positioned(
-      left: 20,
-      right: 20,
-      bottom: 24,
-      child: DecoratedBox(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
         decoration: BoxDecoration(
-          gradient: isActive ? AppTheme.accentGradient : null,
-          color: isActive ? null : AppTheme.iconGray.withOpacity(0.6),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: isActive
-              ? [
-                  BoxShadow(
-                    color: AppTheme.tealBlue.withOpacity(0.3),
-                    blurRadius: 20,
-                    offset: const Offset(0, 12),
-                  ),
-                ]
-              : null,
+          color: AppTheme.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
         ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: isActive ? _createAppointment : null,
-            borderRadius: BorderRadius.circular(20),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.check_circle_outline,
-                    color: AppTheme.white,
+        child: SafeArea(
+          top: false,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: isButtonActive ? AppTheme.accentGradient : null,
+              color: isButtonActive ? null : AppTheme.iconGray.withOpacity(0.6),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: isButtonActive
+                  ? [
+                      BoxShadow(
+                        color: AppTheme.tealBlue.withOpacity(0.3),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onButtonTap,
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (_isSearchingSlots && !isCreateButton)
+                        const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      else
+                        Icon(
+                          buttonIcon,
+                          color: AppTheme.white,
+                        ),
+                      const SizedBox(width: 10),
+                      Text(
+                        buttonText,
+                        style: AppTheme.headingSmall.copyWith(
+                          color: AppTheme.white,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Randevu Oluştur',
-                    style: AppTheme.headingSmall.copyWith(
-                      color: AppTheme.white,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -647,18 +646,6 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
       _updateFilteredHospitals();
       _filteredDoctors = filteredDoctors;
     });
-  }
-
-  void _handleScrollPosition() {
-    if (!_scrollController.hasClients) return;
-    final position = _scrollController.position;
-    final threshold = 40.0;
-    final isNearBottom = position.pixels >= position.maxScrollExtent - threshold;
-    if (isNearBottom != _showCreateButton) {
-      setState(() {
-        _showCreateButton = isNearBottom;
-      });
-    }
   }
 
   // Tüm illeri getir
@@ -1100,7 +1087,6 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
   @override
   void dispose() {
     _notesController.dispose();
-    _scrollController.removeListener(_handleScrollPosition);
     _scrollController.dispose();
     super.dispose();
   }
@@ -1128,7 +1114,7 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
                           child: SingleChildScrollView(
                             controller: _scrollController,
                             physics: const BouncingScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+                            padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -1186,8 +1172,6 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
                                   getLabel: (doctor) => '${doctor.fullName} - ${doctor.specialty}',
                                   enabled: _selectedHospital != null && _filteredDoctors.isNotEmpty,
                                 ),
-                                const SizedBox(height: 20),
-                                _buildSearchButton(),
                               ],
                             ),
                             _buildSection(
@@ -1232,7 +1216,7 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
                 ),
             ),
           ),
-          if (!_isLoading && _showCreateButton) _buildBottomAction(),
+          if (!_isLoading) _buildBottomAction(),
         ],
       ),
     );
