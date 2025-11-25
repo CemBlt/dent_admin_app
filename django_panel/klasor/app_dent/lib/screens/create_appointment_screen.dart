@@ -43,8 +43,6 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
   bool _isLoading = true;
   List<String> _availableTimes = [];
   bool _isSearchingSlots = false;
-  List<_AvailableSlot> _searchResults = [];
-  bool _hasExecutedSearch = false;
   final ScrollController _scrollController = ScrollController();
   bool _showCreateButton = false;
 
@@ -237,100 +235,6 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
                   ),
                 ],
               ),
-      ),
-    );
-  }
-
-  Widget _buildSearchResultsSection() {
-    if (_selectedService == null) {
-      return const SizedBox.shrink();
-    }
-
-    return _buildSection(
-      title: 'Uygun randevular',
-      subtitle: 'Filtrelerinize göre en yakın zamanlar',
-      children: [
-        if (_isSearchingSlots)
-          const Center(child: Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: CircularProgressIndicator(),
-          ))
-        else if (_searchResults.isEmpty)
-          Text(
-            _hasExecutedSearch
-                ? 'Seçilen kriterlere uygun randevu bulunamadı. Filtrelerinizi değiştirip tekrar deneyebilirsiniz.'
-                : 'Hizmeti seçtikten sonra filtrelerinizi belirleyip "Uygun randevuları ara" butonuna basın.',
-            style: AppTheme.bodySmall.copyWith(color: AppTheme.grayText),
-          )
-        else
-          Column(
-            children: _searchResults
-                .map((slot) => _buildSlotCard(slot))
-                .toList(),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildSlotCard(_AvailableSlot slot) {
-    final dateText = _formatDate(slot.date);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          )
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.schedule_rounded, color: AppTheme.tealBlue, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                '$dateText • ${slot.time}',
-                style: AppTheme.bodyMedium.copyWith(fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            slot.hospital.name,
-            style: AppTheme.bodyLarge.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            slot.doctor.fullName,
-            style: AppTheme.bodyMedium,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            slot.hospital.address,
-            style: AppTheme.bodySmall.copyWith(color: AppTheme.grayText),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () => _applySlotSelection(slot),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.tealBlue,
-                side: BorderSide(color: AppTheme.tealBlue),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              child: const Text('Bu randevuyu seç'),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -545,8 +449,6 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
 
     setState(() {
       _isSearchingSlots = true;
-      _hasExecutedSearch = true;
-      _searchResults = [];
     });
 
     final Map<String, Hospital> hospitalById = {
@@ -567,8 +469,8 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
     if (candidateDoctors.isEmpty) {
       setState(() {
         _isSearchingSlots = false;
-        _searchResults = [];
       });
+      _showNoResultMessage();
       return;
     }
 
@@ -610,10 +512,45 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
           _combineDateAndTime(b.date, b.time),
         ));
 
+    if (!mounted) return;
+
     setState(() {
-      _searchResults = slots;
       _isSearchingSlots = false;
     });
+
+    if (slots.isEmpty) {
+      _showNoResultMessage();
+      return;
+    }
+
+    final selectedSlot = await Navigator.push<_AvailableSlot>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => _AvailableSlotsScreen(
+          slots: slots,
+          service: _selectedService!,
+          formatDate: _formatDate,
+          selectedCity: _selectedCity,
+          selectedDistrict: _selectedDistrict,
+          selectedHospital: _selectedHospital,
+          selectedDoctor: _selectedDoctor,
+        ),
+      ),
+    );
+
+    if (selectedSlot != null) {
+      _applySlotSelection(selectedSlot);
+    }
+  }
+
+  void _showNoResultMessage() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Seçilen kriterlere uygun randevu bulunamadı.'),
+        backgroundColor: Colors.orange,
+      ),
+    );
   }
 
   DateTime _combineDateAndTime(DateTime date, String time) {
@@ -644,9 +581,6 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
       _availableTimes = _getAvailableTimes(slot.date);
       _updateFilteredHospitals();
       _filteredDoctors = filteredDoctors;
-      _searchResults = [];
-      _isSearchingSlots = false;
-      _hasExecutedSearch = false;
     });
   }
 
@@ -699,8 +633,6 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
       _availableTimes = [];
       _filteredHospitals = [];
       _filteredDoctors = [];
-      _searchResults = [];
-      _hasExecutedSearch = false;
       _isSearchingSlots = false;
       
       if (city != null) {
@@ -718,8 +650,6 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
       _selectedTime = null;
       _availableTimes = [];
       _filteredDoctors = [];
-      _searchResults = [];
-      _hasExecutedSearch = false;
       _isSearchingSlots = false;
       
       if (district != null) {
@@ -750,8 +680,6 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
       _selectedTime = null;
       _availableTimes = [];
       _filteredDoctors = updatedDoctors;
-      _searchResults = [];
-      _hasExecutedSearch = false;
       _isSearchingSlots = false;
     });
   }
@@ -769,8 +697,6 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
       _selectedTime = null;
       _availableTimes = [];
       _filteredDoctors = updatedDoctors;
-      _searchResults = [];
-      _hasExecutedSearch = false;
       _isSearchingSlots = false;
     });
   }
@@ -781,8 +707,6 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
       _selectedDate = null;
       _selectedTime = null;
       _availableTimes = [];
-      _searchResults = [];
-      _hasExecutedSearch = false;
       _isSearchingSlots = false;
     });
   }
@@ -1146,8 +1070,6 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
                                 _buildSearchButton(),
                               ],
                             ),
-                            const SizedBox(height: 12),
-                            _buildSearchResultsSection(),
                             _buildSection(
                               title: '3. Tarih ve saat',
                               subtitle: 'Müsait olduğunuz zamanı seçin',
@@ -1488,5 +1410,175 @@ class _AvailableSlot {
     required this.date,
     required this.time,
   });
+}
+
+class _AvailableSlotsScreen extends StatelessWidget {
+  final List<_AvailableSlot> slots;
+  final Service service;
+  final String? selectedCity;
+  final String? selectedDistrict;
+  final Hospital? selectedHospital;
+  final Doctor? selectedDoctor;
+  final String Function(DateTime) formatDate;
+
+  const _AvailableSlotsScreen({
+    required this.slots,
+    required this.service,
+    required this.formatDate,
+    this.selectedCity,
+    this.selectedDistrict,
+    this.selectedHospital,
+    this.selectedDoctor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Uygun Randevular'),
+        backgroundColor: AppTheme.white,
+        foregroundColor: AppTheme.darkText,
+        elevation: 0,
+      ),
+      body: SafeArea(
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppTheme.backgroundLight, AppTheme.lightTurquoise.withOpacity(0.4)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: ListView.separated(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+            physics: const BouncingScrollPhysics(),
+            itemCount: slots.length + 1,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              if (index == 0) return _buildSummaryCard();
+              final slot = slots[index - 1];
+              return _buildSlotCard(context, slot);
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryCard() {
+    final filters = <String>[
+      'Hizmet: ${service.name}',
+      if ((selectedCity ?? '').isNotEmpty) 'İl: $selectedCity',
+      if ((selectedDistrict ?? '').isNotEmpty) 'İlçe: $selectedDistrict',
+      if (selectedHospital != null) 'Hastane: ${selectedHospital!.name}',
+      if (selectedDoctor != null) 'Doktor: ${selectedDoctor!.fullName}',
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Filtre özeti',
+            style: AppTheme.bodyLarge.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: filters
+                .map(
+                  (label) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppTheme.inputFieldGray,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      label,
+                      style: AppTheme.bodySmall.copyWith(color: AppTheme.darkText),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSlotCard(BuildContext context, _AvailableSlot slot) {
+    final dateText = formatDate(slot.date);
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppTheme.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.schedule_rounded, color: AppTheme.tealBlue, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                '$dateText • ${slot.time}',
+                style: AppTheme.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            slot.hospital.name,
+            style: AppTheme.bodyLarge.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            slot.doctor.fullName,
+            style: AppTheme.bodyMedium.copyWith(color: AppTheme.darkText),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            slot.hospital.address,
+            style: AppTheme.bodySmall.copyWith(color: AppTheme.grayText),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => Navigator.pop(context, slot),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                side: BorderSide(color: AppTheme.tealBlue),
+                foregroundColor: AppTheme.tealBlue,
+              ),
+              child: const Text('Bu randevuyu seç'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
