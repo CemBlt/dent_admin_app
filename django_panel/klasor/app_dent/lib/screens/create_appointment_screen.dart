@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../models/hospital.dart';
@@ -218,67 +219,65 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
       left: 0,
       right: 0,
       bottom: 0,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-        decoration: BoxDecoration(
-          color: AppTheme.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          top: false,
-          child: DecoratedBox(
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
             decoration: BoxDecoration(
-              gradient: isButtonActive ? AppTheme.accentGradient : null,
-              color: isButtonActive ? null : AppTheme.iconGray.withOpacity(0.6),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: isButtonActive
-                  ? [
-                      BoxShadow(
-                        color: AppTheme.tealBlue.withOpacity(0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ]
-                  : null,
+              color: AppTheme.white.withOpacity(0.85),
             ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: onButtonTap,
-                borderRadius: BorderRadius.circular(20),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (_isSearchingSlots && !isCreateButton)
-                        const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            child: SafeArea(
+              top: false,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: isButtonActive ? AppTheme.accentGradient : null,
+                  color: isButtonActive ? null : AppTheme.iconGray.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: isButtonActive
+                      ? [
+                          BoxShadow(
+                            color: AppTheme.tealBlue.withOpacity(0.3),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
                           ),
-                        )
-                      else
-                        Icon(
-                          buttonIcon,
-                          color: AppTheme.white,
-                        ),
-                      const SizedBox(width: 10),
-                      Text(
-                        buttonText,
-                        style: AppTheme.headingSmall.copyWith(
-                          color: AppTheme.white,
-                        ),
+                        ]
+                      : null,
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: onButtonTap,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (_isSearchingSlots && !isCreateButton)
+                            const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          else
+                            Icon(
+                              buttonIcon,
+                              color: AppTheme.white,
+                            ),
+                          const SizedBox(width: 10),
+                          Text(
+                            buttonText,
+                            style: AppTheme.headingSmall.copyWith(
+                              color: AppTheme.white,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
