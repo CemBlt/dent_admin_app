@@ -131,6 +131,8 @@ class JsonService {
   // ==================== RANDEVULAR ====================
 
   /// Randevuları Supabase'den getirir
+  /// NOT: RLS politikaları nedeniyle sadece kullanıcının kendi randevularını getirebilir
+  /// Müsaitlik kontrolü için tüm randevuları görmek gerekiyorsa, RLS politikasını güncelleyin
   static Future<List<Appointment>> getAppointments() async {
     try {
       final response = await SupabaseService.supabase
@@ -141,6 +143,34 @@ class JsonService {
       final List<dynamic> data = response;
       return data.map((json) => _appointmentFromDb(json)).toList();
     } catch (e) {
+      print('getAppointments hatası: $e');
+      return [];
+    }
+  }
+  
+  /// Randevu müsaitlik kontrolü için kullanılır
+  /// Sadece doktor, tarih, saat ve status bilgilerini getirir (daha hızlı)
+  static Future<List<Map<String, dynamic>>> getAppointmentsForAvailabilityCheck() async {
+    try {
+      final response = await SupabaseService.supabase
+          .from('appointments')
+          .select('doctor_id, date, time, status')
+          .neq('status', 'cancelled');
+      
+      final List<dynamic> data = response;
+      final result = data.cast<Map<String, dynamic>>();
+      
+      print('getAppointmentsForAvailabilityCheck: ${result.length} randevu bulundu');
+      if (result.isNotEmpty) {
+        print('İlk randevu örneği: doctor_id=${result[0]['doctor_id']}, date=${result[0]['date']}, time=${result[0]['time']}, status=${result[0]['status']}');
+      } else {
+        print('⚠️ UYARI: getAppointmentsForAvailabilityCheck boş döndü. RLS politikası kontrol edilmeli!');
+      }
+      
+      return result;
+    } catch (e) {
+      print('getAppointmentsForAvailabilityCheck hatası: $e');
+      print('⚠️ RLS politikası nedeniyle randevular getirilemiyor olabilir. update_appointments_rls_for_availability_check.sql dosyasını Supabase\'de çalıştırın.');
       return [];
     }
   }
@@ -292,6 +322,21 @@ class JsonService {
     String notes = '',
   }) async {
     try {
+      // Önce aynı doktor, tarih ve saatte randevu olup olmadığını kontrol et
+      final existingAppointmentsResponse = await SupabaseService.supabase
+          .from('appointments')
+          .select()
+          .eq('doctor_id', doctorId)
+          .eq('date', date)
+          .eq('time', time)
+          .neq('status', 'cancelled');
+      
+      final List<dynamic> existingAppointments = existingAppointmentsResponse;
+      
+      if (existingAppointments.isNotEmpty) {
+        throw Exception('Bu tarih ve saatte zaten bir randevu bulunmaktadır. Lütfen başka bir saat seçiniz.');
+      }
+      
       final response = await SupabaseService.supabase
           .from('appointments')
           .insert({
