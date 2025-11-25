@@ -8,6 +8,7 @@ class Doctor {
   final String bio;
   final Map<String, dynamic> workingHours;
   final String createdAt;
+  final List<String> services;
 
   Doctor({
     required this.id,
@@ -19,7 +20,8 @@ class Doctor {
     required this.bio,
     required this.workingHours,
     required this.createdAt,
-  });
+    List<String>? services,
+  }) : services = services ?? const [];
 
   String get fullName => '$name $surname';
 
@@ -34,6 +36,9 @@ class Doctor {
       bio: json['bio'] as String,
       workingHours: json['workingHours'] as Map<String, dynamic>,
       createdAt: json['createdAt'] as String,
+      services: json['services'] != null
+          ? List<String>.from(json['services'] as List)
+          : const [],
     );
   }
 
@@ -48,6 +53,7 @@ class Doctor {
       'bio': bio,
       'workingHours': workingHours,
       'createdAt': createdAt,
+      'services': services,
     };
   }
 }

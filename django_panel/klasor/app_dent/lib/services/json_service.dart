@@ -99,6 +99,9 @@ class JsonService {
       bio: dbData['bio'] ?? '',
       workingHours: dbData['working_hours'] ?? {},
       createdAt: dbData['created_at'] ?? '',
+      services: dbData['services'] != null
+          ? (dbData['services'] as List).map((e) => e.toString()).toList()
+          : const [],
     );
   }
 

@@ -297,7 +297,7 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
     setState(() {
       _allHospitals = hospitals;
       _allDoctors = doctors;
-      _services = services;
+      _services = _sortServices(services);
       _existingAppointments = appointments;
       
       // Eğer preselectedHospitalId varsa, hastaneyi seç
@@ -348,6 +348,41 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
     }
 
     return {'district': hospital.address.trim(), 'city': ''};
+  }
+
+  List<Service> _sortServices(List<Service> services) {
+    final sorted = List<Service>.from(services);
+    sorted.sort((a, b) {
+      final aPriority = _isGeneralService(a) ? 0 : 1;
+      final bPriority = _isGeneralService(b) ? 0 : 1;
+      if (aPriority != bPriority) {
+        return aPriority - bPriority;
+      }
+      return a.name.compareTo(b.name);
+    });
+    return sorted;
+  }
+
+  bool _isGeneralService(Service service) {
+    final normalizedName = service.name.toLowerCase();
+    return service.id == '1' || normalizedName.contains('genel');
+  }
+
+  List<Doctor> _getDoctorsForSelection({Hospital? hospital, Service? service}) {
+    if (hospital == null) return [];
+
+    final doctorsForHospital = _allDoctors
+        .where((doctor) => doctor.hospitalId == hospital.id)
+        .toList();
+
+    if (service == null) {
+      return doctorsForHospital;
+    }
+
+    return doctorsForHospital.where((doctor) {
+      if (doctor.services.isEmpty) return false;
+      return doctor.services.contains(service.id);
+    }).toList();
   }
 
   // Tüm illeri getir
@@ -420,20 +455,34 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
   }
 
   void _onHospitalSelected(Hospital? hospital) {
+    final updatedDoctors = _getDoctorsForSelection(
+      hospital: hospital,
+      service: _selectedService,
+    );
+
     setState(() {
       _selectedHospital = hospital;
       _selectedDoctor = null;
       _selectedDate = null;
       _selectedTime = null;
       _availableTimes = [];
-      
-      if (hospital != null) {
-        _filteredDoctors = _allDoctors
-            .where((doctor) => doctor.hospitalId == hospital.id)
-            .toList();
-      } else {
-        _filteredDoctors = [];
-      }
+      _filteredDoctors = updatedDoctors;
+    });
+  }
+
+  void _onServiceSelected(Service? service) {
+    final updatedDoctors = _getDoctorsForSelection(
+      hospital: _selectedHospital,
+      service: service,
+    );
+
+    setState(() {
+      _selectedService = service;
+      _selectedDoctor = null;
+      _selectedDate = null;
+      _selectedTime = null;
+      _availableTimes = [];
+      _filteredDoctors = updatedDoctors;
     });
   }
 
@@ -778,6 +827,15 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
                                   enabled: _selectedDistrict != null,
                                 ),
                                 const SizedBox(height: 18),
+                                _buildFieldLabel('Hizmet'),
+                                const SizedBox(height: 8),
+                                _buildDropdown<Service>(
+                                  value: _selectedService,
+                                  items: _services,
+                                  onChanged: _onServiceSelected,
+                                  getLabel: (service) => service.name,
+                                ),
+                                const SizedBox(height: 18),
                                 _buildFieldLabel('Doktor'),
                                 const SizedBox(height: 8),
                                 _buildDropdown<Doctor>(
@@ -785,20 +843,7 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
                                   items: _filteredDoctors,
                                   onChanged: _onDoctorSelected,
                                   getLabel: (doctor) => '${doctor.fullName} - ${doctor.specialty}',
-                                  enabled: _selectedHospital != null,
-                                ),
-                                const SizedBox(height: 18),
-                                _buildFieldLabel('Hizmet'),
-                                const SizedBox(height: 8),
-                                _buildDropdown<Service>(
-                                  value: _selectedService,
-                                  items: _services,
-                                  onChanged: (service) {
-                                    setState(() {
-                                      _selectedService = service;
-                                    });
-                                  },
-                                  getLabel: (service) => service.name,
+                                  enabled: _selectedHospital != null && _filteredDoctors.isNotEmpty,
                                 ),
                               ],
                             ),
