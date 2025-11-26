@@ -29,6 +29,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   // Hastane ID -> {reviewCount, averageRating}
   Map<String, Map<String, dynamic>> _hospitalRatings = {};
+  // Doktor ID -> {reviewCount, averageRating}
+  Map<String, Map<String, dynamic>> _doctorRatings = {};
 
   @override
   void initState() {
@@ -64,7 +66,51 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHospitalRatingBadge(String hospitalId) {
+  Widget _buildDoctorRatingOverlay(String doctorId) {
+    final ratingData = _doctorRatings[doctorId];
+    if (ratingData == null) return const SizedBox.shrink();
+    
+    final reviewCount = ratingData['reviewCount'] as int;
+    final averageRating = ratingData['averageRating'] as double;
+    
+    // Eğer yorum yoksa gösterme
+    if (reviewCount == 0) return const SizedBox.shrink();
+    
+    return Positioned(
+      top: 6,
+      left: 6,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.6),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.star_rounded,
+              size: 12,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 3),
+            Text(
+              averageRating > 0 
+                  ? '${averageRating.toStringAsFixed(1)} ($reviewCount)'
+                  : '($reviewCount)',
+              style: AppTheme.bodySmall.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHospitalRatingOverlay(String hospitalId) {
     final ratingData = _hospitalRatings[hospitalId];
     if (ratingData == null) return const SizedBox.shrink();
     
@@ -74,11 +120,37 @@ class _HomeScreenState extends State<HomeScreen> {
     // Eğer yorum yoksa gösterme
     if (reviewCount == 0) return const SizedBox.shrink();
     
-    return _buildHospitalBadge(
-      icon: Icons.star_rounded,
-      label: averageRating > 0 
-          ? '${averageRating.toStringAsFixed(1)} ⭐ ($reviewCount Yorum)'
-          : '($reviewCount Yorum)',
+    return Positioned(
+      top: 8,
+      left: 8,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.6),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.star_rounded,
+              size: 12,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              averageRating > 0 
+                  ? '${averageRating.toStringAsFixed(1)} ($reviewCount)'
+                  : '($reviewCount)',
+              style: AppTheme.bodySmall.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -119,17 +191,35 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     // Her hastane için yorum sayısı ve ortalama puanı yükle
-    final ratingsMap = <String, Map<String, dynamic>>{};
+    final hospitalRatingsMap = <String, Map<String, dynamic>>{};
     for (final hospital in hospitals) {
       try {
         final reviews = await JsonService.getReviewsByHospital(hospital.id);
         final averageRating = await JsonService.getHospitalAverageRating(hospital.id);
-        ratingsMap[hospital.id] = {
+        hospitalRatingsMap[hospital.id] = {
           'reviewCount': reviews.length,
           'averageRating': averageRating,
         };
       } catch (e) {
-        ratingsMap[hospital.id] = {
+        hospitalRatingsMap[hospital.id] = {
+          'reviewCount': 0,
+          'averageRating': 0.0,
+        };
+      }
+    }
+
+    // Her doktor için yorum sayısı ve ortalama puanı yükle
+    final doctorRatingsMap = <String, Map<String, dynamic>>{};
+    for (final doctor in doctors) {
+      try {
+        final reviews = await JsonService.getReviewsByDoctor(doctor.id);
+        final averageRating = await JsonService.getDoctorAverageRating(doctor.id);
+        doctorRatingsMap[doctor.id] = {
+          'reviewCount': reviews.length,
+          'averageRating': averageRating,
+        };
+      } catch (e) {
+        doctorRatingsMap[doctor.id] = {
           'reviewCount': 0,
           'averageRating': 0.0,
         };
@@ -141,7 +231,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _popularDoctors = doctors;
       _tips = tips;
       _displayedTips = tips;
-      _hospitalRatings = ratingsMap;
+      _hospitalRatings = hospitalRatingsMap;
+      _doctorRatings = doctorRatingsMap;
       _isLoading = false;
     });
   }
@@ -583,33 +674,39 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 76,
-                    height: 76,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      gradient: AppTheme.cardGradient,
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: doctor.image != null
-                          ? buildImage(
-                              doctor.image!,
-                              fit: BoxFit.cover,
-                              width: 76,
-                              height: 76,
-                              errorWidget: Icon(
-                                Icons.person,
-                                size: 36,
-                                color: AppTheme.tealBlue,
-                              ),
-                            )
-                          : Icon(
-                              Icons.person,
-                              size: 36,
-                              color: AppTheme.tealBlue,
-                            ),
-                    ),
+                  Stack(
+                    children: [
+                      Container(
+                        width: 76,
+                        height: 76,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          gradient: AppTheme.cardGradient,
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: doctor.image != null
+                              ? buildImage(
+                                  doctor.image!,
+                                  fit: BoxFit.cover,
+                                  width: 76,
+                                  height: 76,
+                                  errorWidget: Icon(
+                                    Icons.person,
+                                    size: 36,
+                                    color: AppTheme.tealBlue,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.person,
+                                  size: 36,
+                                  color: AppTheme.tealBlue,
+                                ),
+                        ),
+                      ),
+                      if (_doctorRatings.containsKey(doctor.id))
+                        _buildDoctorRatingOverlay(doctor.id),
+                    ],
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -627,32 +724,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.lightTurquoise,
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.star_rounded,
-                                    size: 16,
-                                    color: AppTheme.accentYellow,
-                                  ),
-                                  Text(
-                                  '4.8',
-                                    style: AppTheme.bodySmall.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
                               ),
                             ),
                           ],
@@ -684,7 +755,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
-                            vertical: 6,
+                            vertical: 5,
                           ),
                           decoration: BoxDecoration(
                             color: AppTheme.inputFieldGray,
@@ -694,15 +765,16 @@ class _HomeScreenState extends State<HomeScreen> {
                             children: [
                               Icon(
                                 Icons.schedule_rounded,
-                                size: 14,
+                                size: 12,
                                 color: AppTheme.iconGray,
                               ),
                               const SizedBox(width: 6),
-                              Expanded(
+                              Flexible(
                                 child: Text(
                                   'Müsait randevu: Bugün',
                                   style: AppTheme.bodySmall.copyWith(
                                     fontWeight: FontWeight.w600,
+                                    fontSize: 11,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -833,37 +905,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                       ),
                     ),
-                    Positioned(
-                      top: 10,
-                      left: 10,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.4),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.star,
-                              size: 14,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '4.6',
-                              style: AppTheme.bodySmall.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                    if (_hospitalRatings.containsKey(hospital.id))
+                      _buildHospitalRatingOverlay(hospital.id),
                   ],
                 ),
                 const SizedBox(width: 18),
@@ -916,8 +959,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               icon: Icons.schedule_rounded,
                               label: '7/24 Açık',
                             ),
-                          if (_hospitalRatings.containsKey(hospital.id))
-                            _buildHospitalRatingBadge(hospital.id),
                         ],
                       ),
                     ],
