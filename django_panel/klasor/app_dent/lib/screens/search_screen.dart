@@ -52,8 +52,7 @@ class _SearchScreenState extends State<SearchScreen> {
         
         // Doktorları filtrele
         _filteredDoctors = _allDoctors.where((doctor) {
-          return doctor.fullName.toLowerCase().contains(lowerQuery) ||
-              doctor.specialty.toLowerCase().contains(lowerQuery);
+          return doctor.fullName.toLowerCase().contains(lowerQuery);
         }).toList();
         
         // Hastaneleri filtrele
@@ -337,25 +336,6 @@ class _SearchScreenState extends State<SearchScreen> {
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.medical_services,
-                            size: 12,
-                            color: AppTheme.iconGray,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              doctor.specialty,
-                              style: AppTheme.bodySmall,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
                       ),
                       if (hospital != null) ...[
                         const SizedBox(height: 4),

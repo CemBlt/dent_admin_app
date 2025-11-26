@@ -234,24 +234,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                       widget.doctor.fullName,
                       style: AppTheme.headingMedium,
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.lightTurquoise,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        widget.doctor.specialty,
-                        style: AppTheme.bodySmall.copyWith(
-                          color: AppTheme.tealBlue,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),

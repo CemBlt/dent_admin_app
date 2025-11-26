@@ -514,7 +514,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '${doctor.fullName} - ${doctor.specialty}',
+                      doctor.fullName,
                       style: AppTheme.bodyMedium,
                     ),
                   ),

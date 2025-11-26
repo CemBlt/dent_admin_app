@@ -808,27 +808,28 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                               ],
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppTheme.turquoiseSoft,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.schedule_rounded, size: 12, color: AppTheme.mintBlue),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '7/24',
-                                  style: AppTheme.bodySmall.copyWith(
-                                    color: AppTheme.mintBlue,
-                                    fontWeight: FontWeight.w600,
+                          if (hospital.isOpen24Hours)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppTheme.turquoiseSoft,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.schedule_rounded, size: 12, color: AppTheme.mintBlue),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '7/24',
+                                    style: AppTheme.bodySmall.copyWith(
+                                      color: AppTheme.mintBlue,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ],

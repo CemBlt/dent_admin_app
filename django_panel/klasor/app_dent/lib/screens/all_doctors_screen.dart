@@ -57,7 +57,6 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
         if (searchQuery.isNotEmpty) {
           final hospital = _getHospitalByDoctor(doctor);
           final matchesSearch = doctor.fullName.toLowerCase().contains(searchQuery) ||
-              doctor.specialty.toLowerCase().contains(searchQuery) ||
               (hospital != null && hospital.name.toLowerCase().contains(searchQuery));
           if (!matchesSearch) return false;
         }
@@ -761,27 +760,6 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                                     ),
                                   ),
                                 ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.medical_services_rounded,
-                              size: 14,
-                              color: AppTheme.iconGray,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                doctor.specialty,
-                                style: AppTheme.bodySmall.copyWith(
-                                  color: AppTheme.grayText,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],

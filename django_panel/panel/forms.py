@@ -544,6 +544,14 @@ class HospitalRegistrationForm(forms.Form):
     description = forms.CharField(label="Açıklama", widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 4}), required=False)
     logo = forms.FileField(label="Logo", required=False, widget=forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}))
     
+    # 7/24 Açık seçeneği
+    is_open_24_hours = forms.BooleanField(
+        label="7/24 Açık",
+        required=False,
+        help_text="İşaretlenirse çalışma saatleri girilmesine gerek kalmaz",
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    
     # Çalışma saatleri (basitleştirilmiş - sadece hafta içi/hafta sonu)
     working_hours_monday = forms.BooleanField(label="Pazartesi", required=False, initial=True)
     working_hours_tuesday = forms.BooleanField(label="Salı", required=False, initial=True)
@@ -595,9 +603,13 @@ class HospitalRegistrationForm(forms.Form):
         cleaned_data = super().clean()
         password = cleaned_data.get("password")
         password_confirm = cleaned_data.get("password_confirm")
+        is_open_24_hours = cleaned_data.get("is_open_24_hours", False)
         
         if password and password_confirm:
             if password != password_confirm:
                 raise forms.ValidationError("Şifreler eşleşmiyor.")
+        
+        # 7/24 açık değilse çalışma saatleri kontrolü yapılabilir (opsiyonel)
+        # Şu an için zorunlu değil, sadece bilgi amaçlı
         
         return cleaned_data

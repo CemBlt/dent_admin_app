@@ -61,18 +61,31 @@ def register_hospital(form_data: dict, logo_file=None) -> dict:
         raise ValueError(str(e))
     
     # 3. Çalışma saatlerini oluştur
+    is_open_24_hours = form_data.get("is_open_24_hours", False)
     working_hours = {}
-    days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-    start_time = form_data.get("working_hours_start", "09:00")
-    end_time = form_data.get("working_hours_end", "18:00")
     
-    for day in days:
-        is_open = form_data.get(f"working_hours_{day}", False)
-        working_hours[day] = {
-            "isAvailable": bool(is_open),
-            "start": start_time if is_open else None,
-            "end": end_time if is_open else None,
-        }
+    if is_open_24_hours:
+        # 7/24 açıksa tüm günleri açık olarak işaretle (saat bilgisi olmadan)
+        days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+        for day in days:
+            working_hours[day] = {
+                "isAvailable": True,
+                "start": None,
+                "end": None,
+            }
+    else:
+        # Normal çalışma saatleri
+        days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+        start_time = form_data.get("working_hours_start", "09:00")
+        end_time = form_data.get("working_hours_end", "18:00")
+        
+        for day in days:
+            is_open = form_data.get(f"working_hours_{day}", False)
+            working_hours[day] = {
+                "isAvailable": bool(is_open),
+                "start": start_time if is_open else None,
+                "end": end_time if is_open else None,
+            }
     
     # 4. Logo dosyasını kaydet (eğer varsa)
     logo_path = None
@@ -95,6 +108,7 @@ def register_hospital(form_data: dict, logo_file=None) -> dict:
         "gallery": [],  # TEXT[] kolonu var, boş array gönder
         "services": [],  # TEXT[] veya JSONB - Hastane hizmetleri (başlangıçta boş, sonra eklenebilir)
         "working_hours": working_hours,
+        "is_open_24_hours": is_open_24_hours,
         "province_id": location_snapshot["province"]["id"],
         "province_name": location_snapshot["province"]["name"],
         "district_id": location_snapshot["district"]["id"],

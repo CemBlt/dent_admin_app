@@ -11,6 +11,7 @@ class Hospital {
   final List<String>? gallery; // Maksimum 5 fotoğraf
   final List<String> services;
   final Map<String, dynamic> workingHours;
+  final bool isOpen24Hours;
   final String createdAt;
   final String? provinceId;
   final String? provinceName;
@@ -32,6 +33,7 @@ class Hospital {
     this.gallery,
     required this.services,
     required this.workingHours,
+    this.isOpen24Hours = false,
     required this.createdAt,
     this.provinceId,
     this.provinceName,
@@ -57,6 +59,7 @@ class Hospital {
           : null,
       services: List<String>.from(json['services'] as List),
       workingHours: json['workingHours'] as Map<String, dynamic>,
+      isOpen24Hours: json['isOpen24Hours'] as bool? ?? false,
       createdAt: json['createdAt'] as String,
       provinceId: json['provinceId'] as String?,
       provinceName: json['provinceName'] as String?,
@@ -81,6 +84,7 @@ class Hospital {
       'gallery': gallery,
       'services': services,
       'workingHours': workingHours,
+      'isOpen24Hours': isOpen24Hours,
       'createdAt': createdAt,
       'provinceId': provinceId,
       'provinceName': provinceName,

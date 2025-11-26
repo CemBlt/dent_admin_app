@@ -27,6 +27,8 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Tip> _displayedTips = [];
   int _currentTipIndex = 0;
   bool _isLoading = true;
+  // Hastane ID -> {reviewCount, averageRating}
+  Map<String, Map<String, dynamic>> _hospitalRatings = {};
 
   @override
   void initState() {
@@ -59,6 +61,24 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHospitalRatingBadge(String hospitalId) {
+    final ratingData = _hospitalRatings[hospitalId];
+    if (ratingData == null) return const SizedBox.shrink();
+    
+    final reviewCount = ratingData['reviewCount'] as int;
+    final averageRating = ratingData['averageRating'] as double;
+    
+    // Eğer yorum yoksa gösterme
+    if (reviewCount == 0) return const SizedBox.shrink();
+    
+    return _buildHospitalBadge(
+      icon: Icons.star_rounded,
+      label: averageRating > 0 
+          ? '${averageRating.toStringAsFixed(1)} ⭐ ($reviewCount Yorum)'
+          : '($reviewCount Yorum)',
     );
   }
 
@@ -98,11 +118,30 @@ class _HomeScreenState extends State<HomeScreen> {
       return distanceA.compareTo(distanceB);
     });
 
+    // Her hastane için yorum sayısı ve ortalama puanı yükle
+    final ratingsMap = <String, Map<String, dynamic>>{};
+    for (final hospital in hospitals) {
+      try {
+        final reviews = await JsonService.getReviewsByHospital(hospital.id);
+        final averageRating = await JsonService.getHospitalAverageRating(hospital.id);
+        ratingsMap[hospital.id] = {
+          'reviewCount': reviews.length,
+          'averageRating': averageRating,
+        };
+      } catch (e) {
+        ratingsMap[hospital.id] = {
+          'reviewCount': 0,
+          'averageRating': 0.0,
+        };
+      }
+    }
+
     setState(() {
       _hospitals = hospitals;
       _popularDoctors = doctors;
       _tips = tips;
       _displayedTips = tips;
+      _hospitalRatings = ratingsMap;
       _isLoading = false;
     });
   }
@@ -618,15 +657,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          doctor.specialty,
-                          style: AppTheme.bodySmall.copyWith(
-                            color: AppTheme.grayText,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
                         if (hospital != null) ...[
                           const SizedBox(height: 6),
                           Row(
@@ -853,14 +883,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       Row(
                         children: [
                           Icon(
-                            Icons.location_on,
+                            Icons.location_city_rounded,
                             size: 16,
                             color: AppTheme.iconGray,
                           ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              hospital.address,
+                              hospital.provinceName != null && hospital.districtName != null
+                                  ? '${hospital.provinceName}/${hospital.districtName}'
+                                  : hospital.address,
                               style: AppTheme.bodySmall.copyWith(
                                 color: AppTheme.grayText,
                               ),
@@ -879,14 +911,13 @@ class _HomeScreenState extends State<HomeScreen> {
                             icon: Icons.location_on,
                             label: _getDistance(hospital),
                           ),
-                          _buildHospitalBadge(
-                            icon: Icons.schedule_rounded,
-                            label: '7/24 Açık',
-                          ),
-                          _buildHospitalBadge(
-                            icon: Icons.verified_user,
-                            label: 'Onaylı',
-                          ),
+                          if (hospital.isOpen24Hours)
+                            _buildHospitalBadge(
+                              icon: Icons.schedule_rounded,
+                              label: '7/24 Açık',
+                            ),
+                          if (_hospitalRatings.containsKey(hospital.id))
+                            _buildHospitalRatingBadge(hospital.id),
                         ],
                       ),
                     ],

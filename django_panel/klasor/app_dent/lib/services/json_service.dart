@@ -47,6 +47,7 @@ class JsonService {
           ? (dbData['services'] as List).map((e) => e.toString()).toList()
           : [],
       workingHours: dbData['working_hours'] ?? {},
+      isOpen24Hours: dbData['is_open_24_hours'] as bool? ?? false,
       createdAt: dbData['created_at'] ?? '',
       provinceId: dbData['province_id']?.toString(),
       provinceName: dbData['province_name'],
@@ -94,7 +95,6 @@ class JsonService {
       hospitalId: dbData['hospital_id'].toString(),
       name: dbData['name'] ?? '',
       surname: dbData['surname'] ?? '',
-      specialty: dbData['specialty'] ?? '',
       image: dbData['image'],
       bio: dbData['bio'] ?? '',
       workingHours: dbData['working_hours'] ?? {},

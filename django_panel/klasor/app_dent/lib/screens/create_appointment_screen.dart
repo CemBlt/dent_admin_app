@@ -1168,7 +1168,7 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
                                   value: _selectedDoctor,
                                   items: _filteredDoctors,
                                   onChanged: _onDoctorSelected,
-                                  getLabel: (doctor) => '${doctor.fullName} - ${doctor.specialty}',
+                                  getLabel: (doctor) => doctor.fullName,
                                   enabled: _selectedHospital != null && _filteredDoctors.isNotEmpty,
                                 ),
                               ],

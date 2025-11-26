@@ -644,17 +644,6 @@ class _HospitalDetailScreenState extends State<HospitalDetailScreen> {
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 2),
-          Text(
-            doctor.specialty,
-            style: AppTheme.bodySmall.copyWith(
-              color: AppTheme.grayText,
-              fontSize: 10,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
         ],
       ),
     );
