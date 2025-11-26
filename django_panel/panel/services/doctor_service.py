@@ -50,18 +50,32 @@ def _save_image(file) -> str | None:
     
     # Supabase Storage'a yükle (public bucket)
     try:
-        file.seek(0)  # Dosyayı başa al
+        # Dosyayı başa al (güvenli şekilde)
+        if hasattr(file, 'seek'):
+            file.seek(0)
         
         # Görseli aç ve resize et
         image = Image.open(file)
+        
         # RGBA modundaysa RGB'ye çevir (JPEG RGBA desteklemez)
-        if image.mode in ('RGBA', 'LA', 'P'):
+        if image.mode in ('RGBA', 'LA'):
             # Transparent arka planı beyaz yap
             rgb_image = Image.new('RGB', image.size, (255, 255, 255))
-            if image.mode == 'P':
-                image = image.convert('RGBA')
-            rgb_image.paste(image, mask=image.split()[-1] if image.mode == 'RGBA' else None)
+            if image.mode == 'RGBA':
+                # Alpha channel'ı mask olarak kullan
+                rgb_image.paste(image, mask=image.split()[3] if len(image.split()) > 3 else None)
+            else:
+                rgb_image.paste(image)
             image = rgb_image
+        elif image.mode == 'P':
+            # Palette modundaysa önce RGBA'ya çevir
+            if 'transparency' in image.info:
+                image = image.convert('RGBA')
+                rgb_image = Image.new('RGB', image.size, (255, 255, 255))
+                rgb_image.paste(image, mask=image.split()[3] if len(image.split()) > 3 else None)
+                image = rgb_image
+            else:
+                image = image.convert('RGB')
         elif image.mode != 'RGB':
             image = image.convert('RGB')
         
@@ -83,6 +97,7 @@ def _save_image(file) -> str | None:
         output = BytesIO()
         image.save(output, format='JPEG', quality=85, optimize=True)
         file_bytes = output.getvalue()
+        output.close()
         
         result = supabase.storage.from_("hospital-media").upload(
             path=filename,
@@ -93,8 +108,13 @@ def _save_image(file) -> str | None:
         # Public URL'yi al
         public_url = supabase.storage.from_("hospital-media").get_public_url(filename)
         return public_url
+    except ValueError as ve:
+        # Pillow import hatası veya diğer ValueError'lar
+        raise ve
     except Exception as upload_error:
         error_msg = str(upload_error)
+        error_type = type(upload_error).__name__
+        
         # Bucket yoksa kullanıcıya bilgi ver
         if "bucket" in error_msg.lower() or "not found" in error_msg.lower():
             raise ValueError(
@@ -102,7 +122,16 @@ def _save_image(file) -> str | None:
                 "Lütfen Supabase Dashboard > Storage > New Bucket'dan 'hospital-media' adında "
                 "public bir bucket oluşturun."
             )
-        raise ValueError(f"Doktor görseli yüklenemedi: {error_msg}")
+        
+        # Görsel işleme hatası
+        if "cannot identify image" in error_msg.lower() or "cannot open" in error_msg.lower():
+            raise ValueError(
+                f"Doktor görseli yüklenemedi: Geçersiz görsel dosyası. "
+                f"Lütfen JPG, PNG veya GIF formatında bir görsel yükleyin. "
+                f"Hata: {error_msg}"
+            )
+        
+        raise ValueError(f"Doktor görseli yüklenemedi ({error_type}): {error_msg}")
 
 
 def add_doctor(data: dict, image_file=None, request=None) -> dict:

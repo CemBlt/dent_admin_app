@@ -56,7 +56,7 @@
                 <header>
                     <div class="avatar-large">
                         {% if card.data.image %}
-                            <img src="{% static card.data.image %}" alt="{{ card.data.name }}">
+                            <img src="{{ card.data.image }}" alt="{{ card.data.name }}">
                         {% else %}
                             {{ card.data.name|first }}{{ card.data.surname|first }}
                         {% endif %}
