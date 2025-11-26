@@ -16,7 +16,9 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
   List<Hospital> _allHospitals = [];
   List<Hospital> _filteredHospitals = [];
   final TextEditingController _searchController = TextEditingController();
-  String _sortBy = 'distance'; // distance, rating, name
+  String _sortBy = 'name'; // distance, rating, name
+  String? _selectedProvince;
+  String? _selectedDistrict;
   bool _isLoading = true;
 
   @override
@@ -28,24 +30,15 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
   Future<void> _loadData() async {
     final hospitals = await JsonService.getHospitals();
 
-    // Maksimum 10km uzaklıktaki hastaneleri filtrele
-    final nearbyHospitals = hospitals.where((hospital) {
-      final distance = _getDistanceValue(hospital);
-      return distance <= 10.0;
-    }).toList();
-
-    // Uzaklığa göre sırala
-    nearbyHospitals.sort((a, b) {
-      final distanceA = _getDistanceValue(a);
-      final distanceB = _getDistanceValue(b);
-      return distanceA.compareTo(distanceB);
-    });
+    // Alfabetik sırala
+    hospitals.sort((a, b) => a.name.compareTo(b.name));
 
     setState(() {
-      _allHospitals = nearbyHospitals;
-      _filteredHospitals = nearbyHospitals;
+      _allHospitals = hospitals;
+      _filteredHospitals = hospitals;
       _isLoading = false;
     });
+    _applyFilters();
   }
 
   // Uzaklık değerini sayısal olarak döndür
@@ -65,16 +58,32 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
   }
 
   void _onSearchChanged(String query) {
+    _applyFilters();
+  }
+
+  void _applyFilters() {
     setState(() {
-      if (query.isEmpty) {
-        _filteredHospitals = _allHospitals;
-      } else {
-        final lowerQuery = query.toLowerCase();
-        _filteredHospitals = _allHospitals.where((hospital) {
-          return hospital.name.toLowerCase().contains(lowerQuery) ||
-              hospital.address.toLowerCase().contains(lowerQuery);
-        }).toList();
-      }
+      _filteredHospitals = _allHospitals.where((hospital) {
+        // Arama filtresi
+        final searchQuery = _searchController.text.toLowerCase();
+        if (searchQuery.isNotEmpty) {
+          final matchesSearch = hospital.name.toLowerCase().contains(searchQuery) ||
+              hospital.address.toLowerCase().contains(searchQuery);
+          if (!matchesSearch) return false;
+        }
+
+        // İl filtresi
+        if (_selectedProvince != null && hospital.provinceName != _selectedProvince) {
+          return false;
+        }
+
+        // İlçe filtresi
+        if (_selectedDistrict != null && hospital.districtName != _selectedDistrict) {
+          return false;
+        }
+
+        return true;
+      }).toList();
       _applySorting();
     });
   }
@@ -91,6 +100,7 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
           break;
         case 'rating':
           // Şimdilik sabit puan kullanıyoruz, gerçek puan sistemi eklendiğinde güncellenir
+          // Geçici olarak alfabetik ters sıralama (gerçek puan sistemi eklendiğinde değiştirilecek)
           _filteredHospitals.sort((a, b) => b.name.compareTo(a.name));
           break;
         case 'name':
@@ -98,6 +108,161 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
           break;
       }
     });
+  }
+
+  List<String> _getProvinces() {
+    final provinces = _allHospitals
+        .where((h) => h.provinceName != null)
+        .map((h) => h.provinceName!)
+        .toSet()
+        .toList();
+    provinces.sort();
+    return provinces;
+  }
+
+  List<String> _getDistricts() {
+    if (_selectedProvince == null) return [];
+    final districts = _allHospitals
+        .where((h) => h.provinceName == _selectedProvince && h.districtName != null)
+        .map((h) => h.districtName!)
+        .toSet()
+        .toList();
+    districts.sort();
+    return districts;
+  }
+
+  void _showProvinceFilter() {
+    final provinces = _getProvinces();
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'İl Seçiniz',
+              style: AppTheme.headingSmall,
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: Icon(Icons.clear, color: AppTheme.iconGray),
+              title: Text(
+                'Tümü',
+                style: AppTheme.bodyMedium.copyWith(
+                  fontWeight: _selectedProvince == null ? FontWeight.bold : FontWeight.normal,
+                  color: _selectedProvince == null ? AppTheme.tealBlue : AppTheme.darkText,
+                ),
+              ),
+              trailing: _selectedProvince == null
+                  ? Icon(Icons.check, color: AppTheme.tealBlue)
+                  : null,
+              onTap: () {
+                setState(() {
+                  _selectedProvince = null;
+                  _selectedDistrict = null;
+                });
+                _applyFilters();
+                Navigator.pop(context);
+              },
+            ),
+            ...provinces.map((province) => ListTile(
+                  leading: Icon(Icons.location_city, color: AppTheme.iconGray),
+                  title: Text(
+                    province,
+                    style: AppTheme.bodyMedium.copyWith(
+                      fontWeight: _selectedProvince == province ? FontWeight.bold : FontWeight.normal,
+                      color: _selectedProvince == province ? AppTheme.tealBlue : AppTheme.darkText,
+                    ),
+                  ),
+                  trailing: _selectedProvince == province
+                      ? Icon(Icons.check, color: AppTheme.tealBlue)
+                      : null,
+                  onTap: () {
+                    setState(() {
+                      _selectedProvince = province;
+                      _selectedDistrict = null;
+                    });
+                    _applyFilters();
+                    Navigator.pop(context);
+                  },
+                )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDistrictFilter() {
+    final districts = _getDistricts();
+    if (districts.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Önce bir il seçiniz')),
+      );
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'İlçe Seçiniz',
+              style: AppTheme.headingSmall,
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: Icon(Icons.clear, color: AppTheme.iconGray),
+              title: Text(
+                'Tümü',
+                style: AppTheme.bodyMedium.copyWith(
+                  fontWeight: _selectedDistrict == null ? FontWeight.bold : FontWeight.normal,
+                  color: _selectedDistrict == null ? AppTheme.tealBlue : AppTheme.darkText,
+                ),
+              ),
+              trailing: _selectedDistrict == null
+                  ? Icon(Icons.check, color: AppTheme.tealBlue)
+                  : null,
+              onTap: () {
+                setState(() {
+                  _selectedDistrict = null;
+                });
+                _applyFilters();
+                Navigator.pop(context);
+              },
+            ),
+            ...districts.map((district) => ListTile(
+                  leading: Icon(Icons.location_on, color: AppTheme.iconGray),
+                  title: Text(
+                    district,
+                    style: AppTheme.bodyMedium.copyWith(
+                      fontWeight: _selectedDistrict == district ? FontWeight.bold : FontWeight.normal,
+                      color: _selectedDistrict == district ? AppTheme.tealBlue : AppTheme.darkText,
+                    ),
+                  ),
+                  trailing: _selectedDistrict == district
+                      ? Icon(Icons.check, color: AppTheme.tealBlue)
+                      : null,
+                  onTap: () {
+                    setState(() {
+                      _selectedDistrict = district;
+                    });
+                    _applyFilters();
+                    Navigator.pop(context);
+                  },
+                )),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showSortOptions() {
@@ -116,9 +281,9 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
               style: AppTheme.headingSmall,
             ),
             const SizedBox(height: 20),
+            _buildSortOption('name', 'Alfabetik', Icons.sort_by_alpha),
             _buildSortOption('distance', 'En Yakın', Icons.near_me),
             _buildSortOption('rating', 'En Yüksek Puan', Icons.star),
-            _buildSortOption('name', 'Alfabetik', Icons.sort_by_alpha),
           ],
         ),
       ),
@@ -218,7 +383,7 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Yakınımdaki Hastaneler',
+                                  'Tüm Hastaneler',
                                   style: AppTheme.headingLarge.copyWith(
                                     color: AppTheme.white,
                                   ),
@@ -298,47 +463,147 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          // Sıralama Butonu
-                          Container(
-                            decoration: BoxDecoration(
-                              color: AppTheme.lightTurquoise.withOpacity(0.5),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: _showSortOptions,
-                                borderRadius: BorderRadius.circular(16),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 14,
+                          // Filtre ve Sıralama Butonları
+                          Row(
+                            children: [
+                              // İl Filtresi
+                              Expanded(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.lightTurquoise.withOpacity(0.5),
+                                    borderRadius: BorderRadius.circular(16),
                                   ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.tune_rounded,
-                                        color: AppTheme.tealBlue,
-                                        size: 20,
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        _getSortLabel(),
-                                        style: AppTheme.bodyMedium.copyWith(
-                                          color: AppTheme.tealBlue,
-                                          fontWeight: FontWeight.w600,
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: _showProvinceFilter,
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 14,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.location_city_rounded,
+                                              color: AppTheme.tealBlue,
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Text(
+                                                _selectedProvince ?? 'İl',
+                                                style: AppTheme.bodyMedium.copyWith(
+                                                  color: AppTheme.tealBlue,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            Icon(
+                                              Icons.arrow_drop_down_rounded,
+                                              color: AppTheme.tealBlue,
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      const Spacer(),
-                                      Icon(
-                                        Icons.arrow_drop_down_rounded,
-                                        color: AppTheme.tealBlue,
-                                      ),
-                                    ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
+                              const SizedBox(width: 12),
+                              // İlçe Filtresi
+                              Expanded(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.lightTurquoise.withOpacity(0.5),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: _showDistrictFilter,
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 14,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.location_on_rounded,
+                                              color: AppTheme.tealBlue,
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Text(
+                                                _selectedDistrict ?? 'İlçe',
+                                                style: AppTheme.bodyMedium.copyWith(
+                                                  color: AppTheme.tealBlue,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            Icon(
+                                              Icons.arrow_drop_down_rounded,
+                                              color: AppTheme.tealBlue,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              // Sıralama Butonu
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: AppTheme.lightTurquoise.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: _showSortOptions,
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 14,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.tune_rounded,
+                                            color: AppTheme.tealBlue,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            _getSortLabel(),
+                                            style: AppTheme.bodyMedium.copyWith(
+                                              color: AppTheme.tealBlue,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Icon(
+                                            Icons.arrow_drop_down_rounded,
+                                            color: AppTheme.tealBlue,
+                                            size: 20,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

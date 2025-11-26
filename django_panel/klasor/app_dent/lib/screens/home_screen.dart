@@ -10,10 +10,8 @@ import 'all_doctors_screen.dart';
 import 'all_hospitals_screen.dart';
 import 'create_appointment_screen.dart';
 import 'doctor_detail_screen.dart';
-import 'filter_hospitals_screen.dart';
 import 'hospital_detail_screen.dart';
 import 'notifications_screen.dart';
-import 'search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -171,10 +169,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Header ve Arama
+                        // Header
                         _buildHeader(),
-                        const SizedBox(height: 20),
-                        _buildSearchBar(),
                         const SizedBox(height: 24),
 
                         // Randevu Oluştur Butonu
@@ -270,102 +266,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: AppTheme.white.withOpacity(0.9),
                 ),
               ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppTheme.tealBlue,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const CreateAppointmentScreen(),
-                      ),
-                    );
-                  },
-                  child: Text(
-                    'Hemen Randevu Oluştur',
-                    style: AppTheme.bodyMedium.copyWith(
-                      color: AppTheme.tealBlue,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: GestureDetector(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const SearchScreen()),
-          );
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-          decoration: BoxDecoration(
-            color: AppTheme.white,
-            borderRadius: BorderRadius.circular(22),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.tealBlue.withOpacity(0.08),
-                blurRadius: 30,
-                offset: const Offset(0, 18),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  gradient: AppTheme.cardGradient,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(
-                  Icons.search_rounded,
-                  color: AppTheme.tealBlue,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  'Doktor, klinik veya hizmet ara',
-                  style: AppTheme.bodyMedium.copyWith(
-                    color: AppTheme.grayText,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppTheme.inputFieldGray,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(
-                  Icons.tune_rounded,
-                  color: AppTheme.iconGray,
-                ),
-              ),
             ],
           ),
         ),
@@ -438,88 +338,26 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             const SizedBox(height: 18),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      backgroundColor: AppTheme.tealBlue,
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const CreateAppointmentScreen(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.add_circle_outline, size: 20),
-                    label: const Text('Randevu Oluştur'),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
                   ),
+                  backgroundColor: AppTheme.tealBlue,
                 ),
-                const SizedBox(width: 12),
-                IconButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const FilterHospitalsScreen(),
-                      ),
-                    );
-                  },
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppTheme.white,
-                    foregroundColor: AppTheme.tealBlue,
-                    minimumSize: const Size(54, 54),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CreateAppointmentScreen(),
                     ),
-                  ),
-                  icon: const Icon(Icons.filter_list_rounded),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                _buildStatChip(Icons.local_hospital_outlined, '35+ Klinik'),
-                const SizedBox(width: 12),
-                _buildStatChip(Icons.verified_rounded, 'Onaylı Doktor'),
-                const SizedBox(width: 12),
-                _buildStatChip(Icons.timer_rounded, '<2 dk'),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatChip(IconData icon, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppTheme.white.withOpacity(0.9),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.inputFieldGray),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 16, color: AppTheme.tealBlue),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label,
-                style: AppTheme.bodySmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-                overflow: TextOverflow.ellipsis,
+                  );
+                },
+                icon: const Icon(Icons.add_circle_outline, size: 20),
+                label: const Text('Randevu Oluştur'),
               ),
             ),
           ],
@@ -531,12 +369,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildQuickActions() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        child: Row(
-          children: [
-            _buildQuickActionCard(
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildQuickActionCard(
               icon: Icons.apartment_rounded,
               label: 'Hastaneler',
               color: AppTheme.lightTurquoise,
@@ -549,8 +385,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-            const SizedBox(width: 12),
-            _buildQuickActionCard(
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildQuickActionCard(
               icon: Icons.people_alt_rounded,
               label: 'Doktorlar',
               color: AppTheme.turquoiseSoft,
@@ -563,22 +401,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-            const SizedBox(width: 12),
-            _buildQuickActionCard(
-              icon: Icons.filter_alt_rounded,
-              label: 'Filtrele',
-              color: AppTheme.lightTurquoise.withOpacity(0.8),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const FilterHospitalsScreen(),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -589,39 +413,36 @@ class _HomeScreenState extends State<HomeScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return SizedBox(
-      width: 120,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.3),
-                blurRadius: 18,
-                offset: const Offset(0, 12),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.3),
+              blurRadius: 18,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              color: AppTheme.tealBlue,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: AppTheme.bodySmall.copyWith(
+                fontWeight: FontWeight.w600,
               ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Icon(
-                icon,
-                color: AppTheme.tealBlue,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: AppTheme.bodySmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );
