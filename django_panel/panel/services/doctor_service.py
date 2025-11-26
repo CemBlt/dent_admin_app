@@ -24,9 +24,18 @@ def get_doctors(request=None) -> list[dict]:
 
 
 def _save_image(file) -> str | None:
-    """Doktor görselini Supabase Storage'a yükler ve public URL döndürür."""
+    """Doktor görselini 300x300px'e resize edip Supabase Storage'a yükler ve public URL döndürür."""
     if not file:
         return None
+    
+    try:
+        from PIL import Image
+        from io import BytesIO
+    except ImportError:
+        raise ValueError(
+            "Görsel işleme için Pillow kütüphanesi gerekli. "
+            "Lütfen 'pip install Pillow' komutu ile yükleyin."
+        )
     
     supabase = get_supabase_client()
     
@@ -35,25 +44,49 @@ def _save_image(file) -> str | None:
     if not original_filename or original_filename == '':
         original_filename = 'doctor.jpg'
     
-    file_extension = Path(original_filename).suffix if original_filename else '.jpg'
-    if not file_extension:
-        file_extension = '.jpg'
-    
-    filename = f"doctors/doctor_{uuid.uuid4().hex}{file_extension}"
-    
-    # Content type'ı belirle
-    content_type = getattr(file, 'content_type', None) or 'image/jpeg'
+    # Her zaman .jpg olarak kaydet (resize sonrası)
+    filename = f"doctors/doctor_{uuid.uuid4().hex}.jpg"
+    content_type = 'image/jpeg'
     
     # Supabase Storage'a yükle (public bucket)
-    # Dosyayı bytes'a çevir
     try:
         file.seek(0)  # Dosyayı başa al
-        file_bytes = file.read()  # Bytes'a çevir
-        file.seek(0)  # Tekrar başa al (ileride kullanılabilir)
+        
+        # Görseli aç ve resize et
+        image = Image.open(file)
+        # RGBA modundaysa RGB'ye çevir (JPEG RGBA desteklemez)
+        if image.mode in ('RGBA', 'LA', 'P'):
+            # Transparent arka planı beyaz yap
+            rgb_image = Image.new('RGB', image.size, (255, 255, 255))
+            if image.mode == 'P':
+                image = image.convert('RGBA')
+            rgb_image.paste(image, mask=image.split()[-1] if image.mode == 'RGBA' else None)
+            image = rgb_image
+        elif image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # 300x300px'e resize et (thumbnail kullanarak aspect ratio korunur, sonra crop)
+        image.thumbnail((300, 300), Image.Resampling.LANCZOS)
+        
+        # Kare yapmak için crop (ortadan)
+        width, height = image.size
+        if width != height:
+            size = min(width, height)
+            left = (width - size) // 2
+            top = (height - size) // 2
+            image = image.crop((left, top, left + size, top + size))
+        
+        # 300x300px'e resize et
+        image = image.resize((300, 300), Image.Resampling.LANCZOS)
+        
+        # Bytes'a çevir
+        output = BytesIO()
+        image.save(output, format='JPEG', quality=85, optimize=True)
+        file_bytes = output.getvalue()
         
         result = supabase.storage.from_("hospital-media").upload(
             path=filename,
-            file=file_bytes,  # Bytes olarak gönder
+            file=file_bytes,
             file_options={"content-type": content_type}
         )
         

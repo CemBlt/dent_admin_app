@@ -134,33 +134,73 @@ def delete_holiday(holiday_id: str) -> None:
 
 
 def save_logo(file) -> str:
-    """Logoyu Supabase Storage'a yükler ve public URL döndürür."""
+    """Hastane görselini 400x300px'e resize edip Supabase Storage'a yükler ve public URL döndürür."""
+    try:
+        from PIL import Image
+        from io import BytesIO
+    except ImportError:
+        raise ValueError(
+            "Görsel işleme için Pillow kütüphanesi gerekli. "
+            "Lütfen 'pip install Pillow' komutu ile yükleyin."
+        )
+    
     supabase = get_supabase_client()
     
-    # Dosya adını güvenli şekilde al
-    original_filename = getattr(file, 'name', 'logo.jpg')
-    if not original_filename or original_filename == '':
-        original_filename = 'logo.jpg'
-    
-    file_extension = Path(original_filename).suffix if original_filename else '.jpg'
-    if not file_extension:
-        file_extension = '.jpg'
-    
-    filename = f"logos/logo_{uuid.uuid4().hex}{file_extension}"
-    
-    # Content type'ı belirle
-    content_type = getattr(file, 'content_type', None) or 'image/jpeg'
+    # Her zaman .jpg olarak kaydet (resize sonrası)
+    filename = f"logos/logo_{uuid.uuid4().hex}.jpg"
+    content_type = 'image/jpeg'
     
     # Supabase Storage'a yükle (public bucket)
-    # Dosyayı bytes'a çevir
     try:
         file.seek(0)  # Dosyayı başa al
-        file_bytes = file.read()  # Bytes'a çevir
-        file.seek(0)  # Tekrar başa al (ileride kullanılabilir)
+        
+        # Görseli aç ve resize et
+        image = Image.open(file)
+        # RGBA modundaysa RGB'ye çevir (JPEG RGBA desteklemez)
+        if image.mode in ('RGBA', 'LA', 'P'):
+            # Transparent arka planı beyaz yap
+            rgb_image = Image.new('RGB', image.size, (255, 255, 255))
+            if image.mode == 'P':
+                image = image.convert('RGBA')
+            rgb_image.paste(image, mask=image.split()[-1] if image.mode == 'RGBA' else None)
+            image = rgb_image
+        elif image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # 4:3 aspect ratio'ya göre resize et
+        target_width = 400
+        target_height = 300
+        target_ratio = target_width / target_height
+        
+        # Mevcut görselin boyutlarını al
+        width, height = image.size
+        current_ratio = width / height
+        
+        # Aspect ratio'ya göre crop ve resize
+        if current_ratio > target_ratio:
+            # Görsel daha geniş, yüksekliği sabit tut, genişliği crop et
+            new_height = height
+            new_width = int(height * target_ratio)
+            left = (width - new_width) // 2
+            image = image.crop((left, 0, left + new_width, new_height))
+        else:
+            # Görsel daha yüksek, genişliği sabit tut, yüksekliği crop et
+            new_width = width
+            new_height = int(width / target_ratio)
+            top = (height - new_height) // 2
+            image = image.crop((0, top, new_width, top + new_height))
+        
+        # 400x300px'e resize et
+        image = image.resize((target_width, target_height), Image.Resampling.LANCZOS)
+        
+        # Bytes'a çevir
+        output = BytesIO()
+        image.save(output, format='JPEG', quality=85, optimize=True)
+        file_bytes = output.getvalue()
         
         result = supabase.storage.from_("hospital-media").upload(
             path=filename,
-            file=file_bytes,  # Bytes olarak gönder
+            file=file_bytes,
             file_options={"content-type": content_type}
         )
         
