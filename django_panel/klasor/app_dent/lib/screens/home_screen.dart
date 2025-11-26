@@ -375,7 +375,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: _buildQuickActionCard(
               icon: Icons.apartment_rounded,
               label: 'Hastaneler',
-              color: AppTheme.lightTurquoise,
+              color: AppTheme.turquoiseSoft,
               onTap: () {
                 Navigator.push(
                   context,
