@@ -130,9 +130,6 @@
                                 {% if review.doctor %}
                                     <p style="margin:8px 0 0; font-size:13px; color:#6C757D;">
                                         <strong>Doktor:</strong> {{ review.doctor.name }} {{ review.doctor.surname }}
-                                        {% if review.doctor.specialty %}
-                                            ({{ review.doctor.specialty }})
-                                        {% endif %}
                                     </p>
                                 {% endif %}
                             </div>

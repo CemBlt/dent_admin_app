@@ -145,7 +145,6 @@ def _build_doctor_status(doctor, today):
     status = 'Ofiste' if is_available else 'İzinli'
     return {
         'name': f"{doctor['name']} {doctor['surname']}",
-        'specialty': doctor['specialty'],
         'status': status,
         'is_available': bool(is_available),
     }
@@ -223,7 +222,6 @@ def _build_doctor_ratings(doctors, ratings):
         doctor_ratings_list.append({
             'id': doctor['id'],
             'name': f"{doctor['name']} {doctor['surname']}",
-            'specialty': doctor.get('specialty', ''),
             'rating': round(avg_rating, 1),
             'rating_count': rating_count,
         })

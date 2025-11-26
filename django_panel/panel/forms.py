@@ -182,7 +182,6 @@ class DoctorForm(forms.Form):
     doctor_id = forms.CharField(widget=forms.HiddenInput, required=False)
     name = forms.CharField(label="Ad", max_length=80)
     surname = forms.CharField(label="Soyad", max_length=80)
-    specialty = forms.CharField(label="Uzmanlık", max_length=120)
     bio = forms.CharField(label="Biyografi", widget=forms.Textarea, required=False)
     is_active = forms.BooleanField(label="Aktif mi?", required=False, initial=True)
     services = forms.MultipleChoiceField(

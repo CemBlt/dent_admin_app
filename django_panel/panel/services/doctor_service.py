@@ -82,7 +82,6 @@ def add_doctor(data: dict, image_file=None, request=None) -> dict:
         "hospital_id": hospital_id,
         "name": data["name"],
         "surname": data["surname"],
-        "specialty": data["specialty"],
         "bio": data.get("bio", ""),
         "services": list(data.get("services", [])),
         "working_hours": working_hours,
@@ -105,7 +104,6 @@ def update_doctor(doctor_id: str, data: dict, image_file=None) -> dict:
     update_data = {
         "name": data["name"],
         "surname": data["surname"],
-        "specialty": data["specialty"],
         "bio": data.get("bio", ""),
         "services": list(data.get("services", [])),
         "is_active": data.get("is_active", False),
@@ -338,7 +336,6 @@ def _format_doctor_from_db(db_doctor: dict) -> dict:
         "hospitalId": str(db_doctor.get("hospital_id", "")),
         "name": db_doctor.get("name", ""),
         "surname": db_doctor.get("surname", ""),
-        "specialty": db_doctor.get("specialty", ""),
         "image": db_doctor.get("image"),
         "bio": db_doctor.get("bio", ""),
         "workingHours": db_doctor.get("working_hours", {}),

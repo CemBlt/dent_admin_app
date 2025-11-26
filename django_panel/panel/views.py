@@ -555,7 +555,6 @@ class DoctorManagementView(View):
                     "doctor_id": doctor["id"],
                     "name": doctor["name"],
                     "surname": doctor["surname"],
-                    "specialty": doctor["specialty"],
                     "bio": doctor.get("bio", ""),
                     "services": doctor.get("services", []),
                     "is_active": doctor.get("isActive", True),

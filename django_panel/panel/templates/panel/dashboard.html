@@ -41,7 +41,6 @@
                         <li class="doctor-item">
                             <div>
                                 <strong>{{ doctor.name }}</strong>
-                                <p style="margin:2px 0 0; font-size:12px;" class="muted-text">{{ doctor.specialty }}</p>
                             </div>
                             <span class="badge" style="background: {% if doctor.is_available %}#C4F1BE{% else %}#FECACA{% endif %};">
                                 {{ doctor.status }}
@@ -84,7 +83,6 @@
                         <li class="doctor-rating-item">
                             <div style="flex: 1;">
                                 <strong>{{ doctor.name }}</strong>
-                                <p style="margin:2px 0 0; font-size:12px;" class="muted-text">{{ doctor.specialty }}</p>
                             </div>
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <div style="display: flex; align-items: center; gap: 4px;">
