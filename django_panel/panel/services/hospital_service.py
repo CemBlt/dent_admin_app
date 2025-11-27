@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import mimetypes
 import os
 import uuid
 from datetime import datetime
@@ -9,6 +10,10 @@ from django.conf import settings
 
 from . import location_service
 from .supabase_client import get_supabase_client
+
+REQUIRED_LOGO_WIDTH = 400
+REQUIRED_LOGO_HEIGHT = 300
+ALLOWED_LOGO_EXTENSIONS = ('.jpg', '.jpeg', '.png')
 
 # Aktif hastane ID'si - Session'dan veya ilk hastaneyi alır
 def _get_active_hospital_id(request=None) -> str:
@@ -134,117 +139,73 @@ def delete_holiday(holiday_id: str) -> None:
 
 
 def save_logo(file) -> str:
-    """Hastane görselini 400x300px'e resize edip Supabase Storage'a yükler ve public URL döndürür."""
+    f"""
+    Hastane logosunu Supabase Storage'a yükler.
+    Görselin {REQUIRED_LOGO_WIDTH}x{REQUIRED_LOGO_HEIGHT}px ölçülerinde olması zorunludur.
+    """
     try:
         from PIL import Image
-        from io import BytesIO
     except ImportError:
         raise ValueError(
             "Görsel işleme için Pillow kütüphanesi gerekli. "
             "Lütfen 'pip install Pillow' komutu ile yükleyin."
         )
-    
+
     supabase = get_supabase_client()
-    
-    # Her zaman .jpg olarak kaydet (resize sonrası)
-    filename = f"logos/logo_{uuid.uuid4().hex}.jpg"
-    content_type = 'image/jpeg'
-    
-    # Supabase Storage'a yükle (public bucket)
+
+    original_name = getattr(file, "name", "") or "logo.jpg"
+    extension = os.path.splitext(original_name)[1].lower()
+    if extension not in ALLOWED_LOGO_EXTENSIONS:
+        extension = ".jpg"
+
+    filename = f"logos/logo_{uuid.uuid4().hex}{extension}"
+    content_type = getattr(file, "content_type", None) or mimetypes.types_map.get(extension, "image/jpeg")
+
     try:
-        # Dosyayı başa al (güvenli şekilde)
-        if hasattr(file, 'seek'):
+        if hasattr(file, "seek"):
             file.seek(0)
-        
-        # Görseli aç ve resize et
+
         image = Image.open(file)
-        
-        # RGBA modundaysa RGB'ye çevir (JPEG RGBA desteklemez)
-        if image.mode in ('RGBA', 'LA'):
-            # Transparent arka planı beyaz yap
-            rgb_image = Image.new('RGB', image.size, (255, 255, 255))
-            if image.mode == 'RGBA':
-                # Alpha channel'ı mask olarak kullan
-                rgb_image.paste(image, mask=image.split()[3] if len(image.split()) > 3 else None)
-            else:
-                rgb_image.paste(image)
-            image = rgb_image
-        elif image.mode == 'P':
-            # Palette modundaysa önce RGBA'ya çevir
-            if 'transparency' in image.info:
-                image = image.convert('RGBA')
-                rgb_image = Image.new('RGB', image.size, (255, 255, 255))
-                rgb_image.paste(image, mask=image.split()[3] if len(image.split()) > 3 else None)
-                image = rgb_image
-            else:
-                image = image.convert('RGB')
-        elif image.mode != 'RGB':
-            image = image.convert('RGB')
-        
-        # 4:3 aspect ratio'ya göre resize et
-        target_width = 400
-        target_height = 300
-        target_ratio = target_width / target_height
-        
-        # Mevcut görselin boyutlarını al
+        image.load()
         width, height = image.size
-        current_ratio = width / height
-        
-        # Aspect ratio'ya göre crop ve resize
-        if current_ratio > target_ratio:
-            # Görsel daha geniş, yüksekliği sabit tut, genişliği crop et
-            new_height = height
-            new_width = int(height * target_ratio)
-            left = (width - new_width) // 2
-            image = image.crop((left, 0, left + new_width, new_height))
-        else:
-            # Görsel daha yüksek, genişliği sabit tut, yüksekliği crop et
-            new_width = width
-            new_height = int(width / target_ratio)
-            top = (height - new_height) // 2
-            image = image.crop((0, top, new_width, top + new_height))
-        
-        # 400x300px'e resize et
-        image = image.resize((target_width, target_height), Image.Resampling.LANCZOS)
-        
-        # Bytes'a çevir
-        output = BytesIO()
-        image.save(output, format='JPEG', quality=85, optimize=True)
-        file_bytes = output.getvalue()
-        output.close()
-        
-        result = supabase.storage.from_("hospital-media").upload(
+
+        if width != REQUIRED_LOGO_WIDTH or height != REQUIRED_LOGO_HEIGHT:
+            raise ValueError(
+                f"Logo {REQUIRED_LOGO_WIDTH}x{REQUIRED_LOGO_HEIGHT}px olmalıdır. "
+                "Lütfen bu ölçülerde bir görsel yükleyin."
+            )
+
+        if hasattr(file, "seek"):
+            file.seek(0)
+        file_bytes = file.read()
+
+        supabase.storage.from_("hospital-media").upload(
             path=filename,
             file=file_bytes,
-            file_options={"content-type": content_type}
+            file_options={"content-type": content_type},
         )
-        
-        # Public URL'yi al
-        public_url = supabase.storage.from_("hospital-media").get_public_url(filename)
-        return public_url
-    except ValueError as ve:
-        # Pillow import hatası veya diğer ValueError'lar
-        raise ve
+
+        return supabase.storage.from_("hospital-media").get_public_url(filename)
+    except ValueError:
+        raise
     except Exception as upload_error:
         error_msg = str(upload_error)
         error_type = type(upload_error).__name__
-        
-        # Bucket yoksa kullanıcıya bilgi ver
+
         if "bucket" in error_msg.lower() or "not found" in error_msg.lower():
             raise ValueError(
                 "Logo yüklenemedi: 'hospital-media' bucket'ı bulunamadı. "
                 "Lütfen Supabase Dashboard > Storage > New Bucket'dan 'hospital-media' adında "
                 "public bir bucket oluşturun."
             )
-        
-        # Görsel işleme hatası
+
         if "cannot identify image" in error_msg.lower() or "cannot open" in error_msg.lower():
             raise ValueError(
                 f"Logo yüklenemedi: Geçersiz görsel dosyası. "
-                f"Lütfen JPG, PNG veya GIF formatında bir görsel yükleyin. "
+                f"Lütfen {REQUIRED_LOGO_WIDTH}x{REQUIRED_LOGO_HEIGHT}px boyutunda JPG veya PNG yükleyin. "
                 f"Hata: {error_msg}"
             )
-        
+
         raise ValueError(f"Logo yüklenemedi ({error_type}): {error_msg}")
 
 

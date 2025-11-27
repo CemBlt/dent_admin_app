@@ -1,7 +1,46 @@
 from __future__ import annotations
 
 from django import forms
+from django.core.exceptions import ValidationError
 from django.utils.safestring import mark_safe
+
+REQUIRED_LOGO_WIDTH = 400
+REQUIRED_LOGO_HEIGHT = 300
+
+
+def validate_logo_image(file):
+    """
+    Logo görselinin zorunlu ölçülerde (400x300px) olup olmadığını kontrol eder.
+    """
+    if not file:
+        return
+
+    try:
+        from PIL import Image
+    except ImportError as exc:
+        raise ValidationError(
+            "Görsel doğrulaması için Pillow kütüphanesi gerekli. "
+            "Lütfen sistem yöneticisine Pillow kurulumunu sorunuz."
+        ) from exc
+
+    if hasattr(file, "seek"):
+        file.seek(0)
+
+    try:
+        image = Image.open(file)
+        image.load()
+    except Exception:
+        raise ValidationError("Lütfen geçerli bir görsel dosyası yükleyin.")
+    finally:
+        if hasattr(file, "seek"):
+            file.seek(0)
+
+    width, height = image.size
+    if width != REQUIRED_LOGO_WIDTH or height != REQUIRED_LOGO_HEIGHT:
+        raise ValidationError(
+            f"Logo {REQUIRED_LOGO_WIDTH}x{REQUIRED_LOGO_HEIGHT}px ölçülerinde olmalıdır. "
+            "Yüklediğiniz görsel bu kriteri karşılamıyor."
+        )
 
 
 class MultipleFileInput(forms.FileInput):
@@ -60,7 +99,11 @@ class HospitalGeneralForm(forms.Form):
     phone = forms.CharField(label="Telefon", max_length=20)
     email = forms.EmailField(label="E-posta", max_length=120)
     description = forms.CharField(label="Açıklama", widget=forms.Textarea, required=False)
-    logo = forms.FileField(label="Logo", required=False)
+    logo = forms.FileField(
+        label="Logo",
+        required=False,
+        help_text=f"{REQUIRED_LOGO_WIDTH}x{REQUIRED_LOGO_HEIGHT}px boyutlarında PNG veya JPG yükleyin",
+    )
 
     def __init__(self, *args, **kwargs):
         province_choices = kwargs.pop("province_choices", [])
@@ -91,6 +134,12 @@ class HospitalGeneralForm(forms.Form):
         numeric_attrs = {"step": "0.000001", "placeholder": "00.000000"}
         self.fields["latitude"].widget.attrs.update(numeric_attrs)
         self.fields["longitude"].widget.attrs.update({**numeric_attrs, "placeholder": "000.000000"})
+
+    def clean_logo(self):
+        logo = self.cleaned_data.get("logo")
+        if logo:
+            validate_logo_image(logo)
+        return logo
 
 
 class HospitalServicesForm(forms.Form):
@@ -551,7 +600,12 @@ class HospitalRegistrationForm(forms.Form):
     phone = forms.CharField(label="Telefon", max_length=20, widget=forms.TextInput(attrs={'class': 'form-control'}))
     hospital_email = forms.EmailField(label="Hastane E-posta", max_length=120, widget=forms.EmailInput(attrs={'class': 'form-control'}))
     description = forms.CharField(label="Açıklama", widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 4}), required=False)
-    logo = forms.FileField(label="Logo", required=False, widget=forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}))
+    logo = forms.FileField(
+        label="Logo",
+        required=False,
+        help_text=f"{REQUIRED_LOGO_WIDTH}x{REQUIRED_LOGO_HEIGHT}px boyutunda PNG/JPG yükleyin",
+        widget=forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+    )
     
     # 7/24 Açık seçeneği
     is_open_24_hours = forms.BooleanField(
@@ -622,3 +676,9 @@ class HospitalRegistrationForm(forms.Form):
         # Şu an için zorunlu değil, sadece bilgi amaçlı
         
         return cleaned_data
+
+    def clean_logo(self):
+        logo = self.cleaned_data.get("logo")
+        if logo:
+            validate_logo_image(logo)
+        return logo

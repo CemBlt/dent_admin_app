@@ -725,6 +725,14 @@ body {
     box-shadow: var(--shadow-sm);
 }
 
+.avatar-image {
+    object-fit: cover;
+    object-position: center;
+    padding: 0;
+    background: var(--card);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
 /* KPI Cards - Renkli ve Belirgin */
 .kpi-grid {
     display: grid;

@@ -5,7 +5,13 @@
     </div>
     {% block top_bar_actions %}
         <div class="user-chip">
-            <div class="avatar">H</div>
+            {% if hospital.image %}
+                <img src="{{ hospital.image }}" alt="{{ hospital.name }} logosu" class="avatar avatar-image">
+            {% else %}
+                <div class="avatar">
+                    {{ hospital.name|default:"H"|slice:":1"|upper }}
+                </div>
+            {% endif %}
             <div>
                 <strong>{{ hospital.name }}</strong>
                 <p style="margin:0; font-size:12px;" class="muted-text">Kontrol Paneli</p>
