@@ -261,12 +261,31 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                       ),
                       child: Row(
                         children: [
-                          Text(
-                            'Randevularım',
-                            style: AppTheme.headingLarge.copyWith(
+                          if (Navigator.canPop(context))
+                            IconButton(
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.white.withOpacity(0.6),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: const Icon(Icons.arrow_back),
                               color: AppTheme.darkText,
+                              onPressed: () => Navigator.pop(context),
+                            )
+                          else
+                            const SizedBox(width: 48),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Randevularım',
+                              textAlign: TextAlign.center,
+                              style: AppTheme.headingLarge.copyWith(
+                                color: AppTheme.darkText,
+                              ),
                             ),
                           ),
+                          const SizedBox(width: 60), // denge için
                         ],
                       ),
                     ),
@@ -633,6 +652,27 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 ),
               ),
             ],
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _showAppointmentDetails(appointment),
+                icon: const Icon(Icons.info_outline, size: 18, color: AppTheme.tealBlue),
+                label: Text(
+                  'Detayları Gör',
+                  style: AppTheme.bodyMedium.copyWith(
+                    color: AppTheme.tealBlue,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: AppTheme.tealBlue.withOpacity(0.5)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -669,6 +709,159 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showAppointmentDetails(Appointment appointment) {
+    final hospital = _getHospital(appointment.hospitalId);
+    final doctor = _getDoctor(appointment.doctorId);
+    final service = _getService(appointment.service);
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.lightTurquoise,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(Icons.event_note, color: AppTheme.tealBlue),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Randevu Detayları',
+                        style: AppTheme.headingMedium.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _buildDetailRow(
+                  icon: Icons.calendar_today,
+                  label: 'Tarih',
+                  value: _formatDate(appointment.date),
+                ),
+                const SizedBox(height: 12),
+                _buildDetailRow(
+                  icon: Icons.access_time,
+                  label: 'Saat',
+                  value: appointment.time,
+                ),
+                if (hospital != null) ...[
+                  const SizedBox(height: 12),
+                  _buildDetailRow(
+                    icon: Icons.local_hospital,
+                    label: 'Hastane',
+                    value: hospital.name,
+                  ),
+                  if (hospital.address.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _buildDetailRow(
+                      icon: Icons.location_on_outlined,
+                      label: 'Adres',
+                      value: hospital.address,
+                    ),
+                  ],
+                  if (hospital.phone.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _buildDetailRow(
+                      icon: Icons.phone,
+                      label: 'Telefon',
+                      value: hospital.phone,
+                    ),
+                  ],
+                ],
+                if (doctor != null) ...[
+                  const SizedBox(height: 12),
+                  _buildDetailRow(
+                    icon: Icons.person_outline,
+                    label: 'Doktor',
+                    value: doctor.fullName,
+                  ),
+                ],
+                if (service != null) ...[
+                  const SizedBox(height: 12),
+                  _buildDetailRow(
+                    icon: Icons.medical_services_outlined,
+                    label: 'Hizmet',
+                    value: service.name,
+                  ),
+                ],
+                if (appointment.notes.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _buildDetailRow(
+                    icon: Icons.notes,
+                    label: 'Not',
+                    value: appointment.notes,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppTheme.backgroundLight,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: AppTheme.tealBlue, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: AppTheme.bodySmall.copyWith(
+                  color: AppTheme.grayText,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: AppTheme.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
