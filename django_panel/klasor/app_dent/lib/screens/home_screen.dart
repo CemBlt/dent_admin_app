@@ -222,36 +222,32 @@ class _HomeScreenState extends State<HomeScreen> {
     // Eğer yorum yoksa gösterme
     if (reviewCount == 0) return const SizedBox.shrink();
     
-    return Positioned(
-      top: 6,
-      left: 6,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.6),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.star_rounded,
-              size: 12,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.star_rounded,
+            size: 10,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 2),
+          Text(
+            averageRating > 0 
+                ? averageRating.toStringAsFixed(1)
+                : '$reviewCount',
+            style: AppTheme.bodySmall.copyWith(
               color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 9,
             ),
-            const SizedBox(width: 3),
-            Text(
-              averageRating > 0 
-                  ? '${averageRating.toStringAsFixed(1)} ($reviewCount)'
-                  : '($reviewCount)',
-              style: AppTheme.bodySmall.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 10,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1029,7 +1025,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 150,
+          height: 200,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1048,7 +1044,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final hospital = _getHospitalByDoctor(doctor);
 
     return Container(
-      width: 280,
+      width: 170,
       margin: const EdgeInsets.only(right: 16),
       decoration: BoxDecoration(
         gradient: AppTheme.accentGradient,
@@ -1081,26 +1077,27 @@ class _HomeScreenState extends State<HomeScreen> {
             },
             child: Padding(
               padding: const EdgeInsets.all(14),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Stack(
+                    alignment: Alignment.center,
                     children: [
                       Container(
-                        width: 76,
-                        height: 76,
+                        width: 72,
+                        height: 72,
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(24),
+                          shape: BoxShape.circle,
                           gradient: AppTheme.cardGradient,
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
+                        child: ClipOval(
                           child: doctor.image != null
                               ? buildImage(
                                   doctor.image!,
                                   fit: BoxFit.cover,
-                                  width: 76,
-                                  height: 76,
+                                  width: 72,
+                                  height: 72,
                                   errorWidget: Icon(
                                     Icons.person,
                                     size: 36,
@@ -1115,81 +1112,79 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       if (_doctorRatings.containsKey(doctor.id))
-                        _buildDoctorRatingOverlay(doctor.id),
+                        Positioned(
+                          top: 0,
+                          right: 0,
+                          child: _buildDoctorRatingOverlay(doctor.id),
+                        ),
                     ],
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
+                  const SizedBox(height: 10),
+                  Text(
+                    doctor.fullName,
+                    style: AppTheme.bodyLarge.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                    maxLines: 2,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (hospital != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                doctor.fullName,
-                                style: AppTheme.bodyLarge.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
+                        Icon(
+                          Icons.local_hospital,
+                          size: 11,
+                          color: AppTheme.iconGray,
                         ),
-                        if (hospital != null) ...[
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.local_hospital,
-                                size: 14,
-                                color: AppTheme.iconGray,
-                              ),
-                              const SizedBox(width: 5),
-                              Expanded(
-                                child: Text(
-                                  hospital.name,
-                                  style: AppTheme.bodySmall.copyWith(
-                                    color: AppTheme.grayText,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            hospital.name,
+                            style: AppTheme.bodySmall.copyWith(
+                              color: AppTheme.grayText,
+                              fontSize: 11,
+                            ),
+                            maxLines: 1,
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ],
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppTheme.inputFieldGray,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.schedule_rounded,
-                                size: 12,
-                                color: AppTheme.iconGray,
-                              ),
-                              const SizedBox(width: 5),
-                              Flexible(
-                                child: Text(
-                                  'Müsait randevu: Bugün',
-                                  style: AppTheme.bodySmall.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 11,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.inputFieldGray,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.schedule_rounded,
+                          size: 10,
+                          color: AppTheme.iconGray,
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            'Müsait: Bugün',
+                            style: AppTheme.bodySmall.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 10,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
