@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_logo.dart';
 import '../services/auth_service.dart';
 import 'register_screen.dart';
 
@@ -146,10 +147,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             color: Colors.white.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: const Icon(
-                            Icons.health_and_safety_rounded,
-                            color: Colors.white,
-                            size: 48,
+                          child: const AppLogo(
+                            size: 72,
+                            withBackground: false,
+                            fallbackIconColor: Colors.white,
                           ),
                         ),
                         const SizedBox(height: 20),

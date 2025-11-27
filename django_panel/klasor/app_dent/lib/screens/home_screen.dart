@@ -7,6 +7,7 @@ import '../models/tip.dart';
 import '../services/auth_service.dart';
 import '../services/json_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_logo.dart';
 import '../widgets/image_widget.dart';
 import 'all_doctors_screen.dart';
 import 'all_hospitals_screen.dart';
@@ -775,19 +776,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Row(
                 children: [
-                  Container(
-                    width: 54,
-                    height: 54,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: const Icon(
-                      Icons.health_and_safety_rounded,
-                      color: Colors.white,
-                      size: 30,
-                    ),
-                  ),
+                  const AppLogo(size: 54),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(

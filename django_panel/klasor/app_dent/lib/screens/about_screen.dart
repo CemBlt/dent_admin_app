@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_logo.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -105,10 +106,12 @@ class _AboutScreenState extends State<AboutScreen> {
                                     ),
                                   ],
                                 ),
-                                child: const Icon(
-                                  Icons.local_hospital_rounded,
-                                  size: 64,
-                                  color: Colors.white,
+                                child: const Center(
+                                  child: AppLogo(
+                                    size: 90,
+                                    withBackground: false,
+                                    fallbackIconColor: Colors.white,
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 24),
