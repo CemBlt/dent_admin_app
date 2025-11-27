@@ -339,23 +339,17 @@ class _HospitalDetailScreenState extends State<HospitalDetailScreen>
                             fit: StackFit.expand,
                             children: [
                               widget.hospital.image != null
-                                  ? GestureDetector(
-                                      onTap: () => _showFullScreenImage(
-                                        context,
-                                        widget.hospital.image!,
-                                      ),
-                                      child: buildImage(
-                                        widget.hospital.image!,
-                                        fit: BoxFit.cover,
-                                        errorWidget: Container(
-                                          decoration: BoxDecoration(
-                                            gradient: AppTheme.accentGradient,
-                                          ),
-                                          child: const Icon(
-                                            Icons.local_hospital_rounded,
-                                            size: 80,
-                                            color: AppTheme.white,
-                                          ),
+                                  ? buildImage(
+                                      widget.hospital.image!,
+                                      fit: BoxFit.cover,
+                                      errorWidget: Container(
+                                        decoration: BoxDecoration(
+                                          gradient: AppTheme.accentGradient,
+                                        ),
+                                        child: const Icon(
+                                          Icons.local_hospital_rounded,
+                                          size: 80,
+                                          color: AppTheme.white,
                                         ),
                                       ),
                                     )
@@ -370,18 +364,34 @@ class _HospitalDetailScreenState extends State<HospitalDetailScreen>
                                       ),
                                     ),
                               // Gradient Overlay
-                              Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      Colors.transparent,
-                                      Colors.black.withOpacity(0.6),
-                                    ],
+                              IgnorePointer(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.transparent,
+                                        Colors.black.withOpacity(0.6),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
+                              // Tıklanabilir alan
+                              if (widget.hospital.image != null)
+                                Positioned.fill(
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () => _showFullScreenImage(
+                                        context,
+                                        widget.hospital.image!,
+                                      ),
+                                      child: Container(),
+                                    ),
+                                  ),
+                                ),
                               // Badge'ler
                               Positioned(
                                 bottom: 16,
@@ -423,12 +433,12 @@ class _HospitalDetailScreenState extends State<HospitalDetailScreen>
                             child: TabBar(
                               controller: _tabController,
                               labelColor: AppTheme.tealBlue,
-                              unselectedLabelColor: AppTheme.grayText,
+                              unselectedLabelColor: AppTheme.grayText.withOpacity(0.6),
                               indicator: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
-                                    AppTheme.tealBlue.withOpacity(0.1),
-                                    AppTheme.lightTurquoise.withOpacity(0.05),
+                                    AppTheme.tealBlue.withOpacity(0.15),
+                                    AppTheme.lightTurquoise.withOpacity(0.08),
                                   ],
                                 ),
                                 borderRadius: const BorderRadius.only(
@@ -438,22 +448,48 @@ class _HospitalDetailScreenState extends State<HospitalDetailScreen>
                               ),
                               indicatorSize: TabBarIndicatorSize.tab,
                               indicatorWeight: 0,
-                              labelStyle: AppTheme.bodyMedium.copyWith(
-                                fontWeight: FontWeight.bold,
+                              labelStyle: AppTheme.headingSmall.copyWith(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                letterSpacing: 0.3,
                               ),
-                              unselectedLabelStyle: AppTheme.bodyMedium,
-                              tabs: const [
+                              unselectedLabelStyle: AppTheme.bodyMedium.copyWith(
+                                fontWeight: FontWeight.w500,
+                                fontSize: 14,
+                              ),
+                              tabs: [
                                 Tab(
-                                  icon: Icon(Icons.info_outline_rounded, size: 20),
-                                  text: 'Bilgiler',
+                                  height: 56,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.info_outline_rounded, size: 22),
+                                      const SizedBox(width: 8),
+                                      const Text('Bilgiler'),
+                                    ],
+                                  ),
                                 ),
                                 Tab(
-                                  icon: Icon(Icons.people_outline_rounded, size: 20),
-                                  text: 'Doktorlar',
+                                  height: 56,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.people_outline_rounded, size: 22),
+                                      const SizedBox(width: 8),
+                                      const Text('Doktorlar'),
+                                    ],
+                                  ),
                                 ),
                                 Tab(
-                                  icon: Icon(Icons.rate_review_outlined, size: 20),
-                                  text: 'Yorumlar',
+                                  height: 56,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.rate_review_outlined, size: 22),
+                                      const SizedBox(width: 8),
+                                      const Text('Yorumlar'),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
@@ -1004,10 +1040,6 @@ class _HospitalDetailScreenState extends State<HospitalDetailScreen>
                   ],
                 ),
               ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: color.withOpacity(0.5),
-              ),
             ],
           ),
         ),
@@ -1272,29 +1304,6 @@ class _HospitalDetailScreenState extends State<HospitalDetailScreen>
     );
   }
 
-  IconData _getServiceIcon(String serviceName) {
-    final name = serviceName.toLowerCase();
-    if (name.contains('muayene') || name.contains('kontrol')) {
-      return Icons.medical_services_rounded;
-    } else if (name.contains('kanal')) {
-      return Icons.healing_rounded;
-    } else if (name.contains('protez')) {
-      return Icons.construction_rounded;
-    } else if (name.contains('temizlik') || name.contains('taş')) {
-      return Icons.cleaning_services_rounded;
-    } else if (name.contains('beyazlatma')) {
-      return Icons.auto_awesome_rounded;
-    } else if (name.contains('implant')) {
-      return Icons.science_rounded;
-    } else if (name.contains('ortodonti') || name.contains('tel')) {
-      return Icons.straighten_rounded;
-    } else if (name.contains('çekim') || name.contains('çekme')) {
-      return Icons.remove_circle_outline_rounded;
-    } else {
-      return Icons.medical_information_rounded;
-    }
-  }
-
   Widget _buildServiceCard(Service service) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -1328,8 +1337,8 @@ class _HospitalDetailScreenState extends State<HospitalDetailScreen>
               gradient: AppTheme.accentGradient,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(
-              _getServiceIcon(service.name),
+            child: const Icon(
+              Icons.medical_services_rounded,
               color: AppTheme.white,
               size: 18,
             ),
