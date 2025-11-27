@@ -66,22 +66,23 @@ class _HomeScreenState extends State<HomeScreen> {
     Color? iconColor,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: backgroundColor ?? AppTheme.inputFieldGray,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.max,
         children: [
-          Icon(icon, size: 14, color: iconColor ?? AppTheme.iconGray),
-          const SizedBox(width: 4),
+          Icon(icon, size: 12, color: iconColor ?? AppTheme.iconGray),
+          const SizedBox(width: 3),
           Expanded(
             child: Text(
               label,
               style: AppTheme.bodySmall.copyWith(
                 fontWeight: FontWeight.w600,
                 color: textColor,
+                fontSize: 11,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -1060,9 +1061,9 @@ class _HomeScreenState extends State<HomeScreen> {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.tealBlue.withOpacity(0.08),
-              blurRadius: 20,
-              offset: const Offset(0, 12),
+              color: AppTheme.tealBlue.withOpacity(0.06),
+              blurRadius: 18,
+              offset: const Offset(0, 10),
             ),
           ],
         ),
@@ -1079,7 +1080,7 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
             child: Padding(
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(14),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1117,7 +1118,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         _buildDoctorRatingOverlay(doctor.id),
                     ],
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1138,7 +1139,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                         if (hospital != null) ...[
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 4),
                           Row(
                             children: [
                               Icon(
@@ -1146,7 +1147,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 size: 14,
                                 color: AppTheme.iconGray,
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 5),
                               Expanded(
                                 child: Text(
                                   hospital.name,
@@ -1160,15 +1161,15 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                         ],
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
+                            horizontal: 8,
                             vertical: 5,
                           ),
                           decoration: BoxDecoration(
                             color: AppTheme.inputFieldGray,
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
                             children: [
@@ -1177,7 +1178,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 size: 12,
                                 color: AppTheme.iconGray,
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 5),
                               Flexible(
                                 child: Text(
                                   'Müsait randevu: Bugün',
@@ -1273,15 +1274,15 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           },
           child: Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: AppTheme.white,
               borderRadius: BorderRadius.circular(26),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 25,
-                  offset: const Offset(0, 16),
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 20,
+                  offset: const Offset(0, 12),
                 ),
               ],
             ),
@@ -1301,7 +1302,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                   ],
                 ),
-                const SizedBox(width: 18),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1314,7 +1315,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Row(
                         children: [
                           Icon(
@@ -1322,7 +1323,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             size: 16,
                             color: AppTheme.iconGray,
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 5),
                           Expanded(
                             child: Text(
                               hospital.provinceName != null && hospital.districtName != null
@@ -1337,10 +1338,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                        spacing: 6,
+                        runSpacing: 6,
                         children: [
                           _buildHospitalBadge(
                             icon: Icons.location_on,
