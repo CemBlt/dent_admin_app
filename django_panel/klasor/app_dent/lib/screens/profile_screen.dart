@@ -6,6 +6,10 @@ import '../services/auth_service.dart';
 import '../widgets/image_widget.dart';
 import 'login_screen.dart';
 import 'main_screen.dart';
+import 'account_settings_screen.dart';
+import 'notifications_settings_screen.dart';
+import 'language_settings_screen.dart';
+import 'about_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -327,8 +331,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildMenuItem(
               icon: Icons.person_outline,
               title: 'Hesap Bilgileri',
-              onTap: () {
-                // Hesap bilgileri sayfasına yönlendirme
+              onTap: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AccountSettingsScreen(),
+                  ),
+                );
+                if (result == true) {
+                  _loadUserData();
+                }
               },
             ),
             _buildDivider(),
@@ -336,7 +348,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: Icons.notifications_outlined,
               title: 'Bildirimler',
               onTap: () {
-                // Bildirimler sayfasına yönlendirme
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const NotificationsSettingsScreen(),
+                  ),
+                );
               },
             ),
             _buildDivider(),
@@ -344,7 +361,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: Icons.language,
               title: 'Dil Ayarları',
               onTap: () {
-                // Dil ayarları sayfasına yönlendirme
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const LanguageSettingsScreen(),
+                  ),
+                );
               },
             ),
             _buildDivider(),
@@ -352,7 +374,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: Icons.info_outline,
               title: 'Hakkında',
               onTap: () {
-                // Hakkında sayfasına yönlendirme
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AboutScreen(),
+                  ),
+                );
               },
             ),
             _buildDivider(),
