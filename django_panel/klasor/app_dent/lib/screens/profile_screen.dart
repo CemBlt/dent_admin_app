@@ -328,22 +328,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         child: Column(
           children: [
-            _buildMenuItem(
-              icon: Icons.person_outline,
-              title: 'Hesap Bilgileri',
-              onTap: () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AccountSettingsScreen(),
-                  ),
-                );
-                if (result == true) {
-                  _loadUserData();
-                }
-              },
-            ),
-            _buildDivider(),
+            // Hesap Bilgileri - Sadece giriş yapmış kullanıcılar için
+            if (AuthService.isAuthenticated && _user != null) ...[
+              _buildMenuItem(
+                icon: Icons.person_outline,
+                title: 'Hesap Bilgileri',
+                onTap: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AccountSettingsScreen(),
+                    ),
+                  );
+                  if (result == true) {
+                    _loadUserData();
+                  }
+                },
+              ),
+              _buildDivider(),
+            ],
             _buildMenuItem(
               icon: Icons.notifications_outlined,
               title: 'Bildirimler',
@@ -382,13 +385,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 );
               },
             ),
-            _buildDivider(),
-            _buildMenuItem(
-              icon: Icons.logout,
-              title: 'Çıkış Yap',
-              titleColor: Colors.red,
-              onTap: _showLogoutDialog,
-            ),
+            // Çıkış Yap - Sadece giriş yapmış kullanıcılar için
+            if (AuthService.isAuthenticated && _user != null) ...[
+              _buildDivider(),
+              _buildMenuItem(
+                icon: Icons.logout,
+                title: 'Çıkış Yap',
+                titleColor: Colors.red,
+                onTap: _showLogoutDialog,
+              ),
+            ],
           ],
         ),
       ),
