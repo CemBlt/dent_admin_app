@@ -183,18 +183,18 @@ class _SearchScreenState extends State<SearchScreen> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: Colors.grey.withOpacity(0.1),
+          color: Colors.red.withOpacity(0.1),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.schedule_rounded, size: 10, color: Colors.grey.shade700),
+            Icon(Icons.schedule_rounded, size: 10, color: Colors.red.shade700),
             const SizedBox(width: 3),
             Text(
               hoursInfo['text'] as String,
               style: AppTheme.bodySmall.copyWith(
-                color: Colors.grey.shade700,
+                color: Colors.red.shade700,
                 fontWeight: FontWeight.w600,
                 fontSize: 11,
               ),

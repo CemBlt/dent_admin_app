@@ -99,9 +99,9 @@ class _HomeScreenState extends State<HomeScreen> {
       return _buildHospitalBadge(
         icon: Icons.schedule_rounded,
         label: hoursInfo['text'] as String,
-        backgroundColor: Colors.grey.withOpacity(0.1),
-        textColor: Colors.grey.shade700,
-        iconColor: Colors.grey.shade700,
+        backgroundColor: Colors.red.withOpacity(0.1),
+        textColor: Colors.red.shade700,
+        iconColor: Colors.red.shade700,
       );
     }
   }

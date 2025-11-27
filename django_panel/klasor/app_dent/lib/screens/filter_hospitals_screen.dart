@@ -189,18 +189,18 @@ class _FilterHospitalsScreenState extends State<FilterHospitalsScreen> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.grey.withOpacity(0.1),
+          color: Colors.red.withOpacity(0.1),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.schedule_rounded, size: 12, color: Colors.grey.shade700),
+            Icon(Icons.schedule_rounded, size: 12, color: Colors.red.shade700),
             const SizedBox(width: 4),
             Text(
               hoursInfo['text'] as String,
               style: AppTheme.bodySmall.copyWith(
-                color: Colors.grey.shade700,
+                color: Colors.red.shade700,
                 fontWeight: FontWeight.w600,
               ),
             ),
