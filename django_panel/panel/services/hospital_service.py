@@ -383,6 +383,24 @@ def update_working_hours(hospital: dict, working_hours: dict, request=None) -> d
     return hospital
 
 
+def update_is_open_24_hours(hospital: dict, is_open_24_hours: bool, request=None) -> dict:
+    """Hastane 7/24 açık durumunu günceller."""
+    hospital["isOpen24Hours"] = is_open_24_hours
+    # Çalışma saatlerini de güncelle (7/24 açıksa tüm günleri açık yap)
+    if is_open_24_hours:
+        from panel.forms import DAYS
+        working_hours = {}
+        for key, _ in DAYS:
+            working_hours[key] = {
+                "isAvailable": True,
+                "start": None,
+                "end": None,
+            }
+        hospital["workingHours"] = working_hours
+    save_hospital(hospital, request)
+    return hospital
+
+
 def add_gallery_image(hospital: dict, file, request=None) -> dict:
     public_url = save_gallery_image(file)
     gallery = hospital.get("gallery", [])
@@ -408,37 +426,55 @@ def build_working_hours_from_form(cleaned_data: dict) -> dict:
     working_hours = {}
     from panel.forms import DAYS
 
-    for key, _ in DAYS:
-        is_open = cleaned_data.get(f"{key}_is_open")
-        start = cleaned_data.get(f"{key}_start")
-        end = cleaned_data.get(f"{key}_end")
-        
-        # ChoiceField'den gelen değerler string olarak gelir
-        # Eğer time objesi ise strftime kullan, string ise direkt kullan
-        start_str = None
-        if start:
-            if hasattr(start, 'strftime'):
-                start_str = start.strftime("%H:%M")
-            elif isinstance(start, str):
-                start_str = start
-        
-        end_str = None
-        if end:
-            if hasattr(end, 'strftime'):
-                end_str = end.strftime("%H:%M")
-            elif isinstance(end, str):
-                end_str = end
-        
-        working_hours[key] = {
-            "isAvailable": bool(is_open),
-            "start": start_str,
-            "end": end_str,
-        }
+    # 7/24 açık kontrolü
+    is_open_24_hours = cleaned_data.get("is_open_24_hours", False)
+    
+    if is_open_24_hours:
+        # 7/24 açıksa tüm günleri açık olarak işaretle (saat bilgisi olmadan)
+        for key, _ in DAYS:
+            working_hours[key] = {
+                "isAvailable": True,
+                "start": None,
+                "end": None,
+            }
+    else:
+        # Normal çalışma saatleri
+        for key, _ in DAYS:
+            is_open = cleaned_data.get(f"{key}_is_open")
+            start = cleaned_data.get(f"{key}_start")
+            end = cleaned_data.get(f"{key}_end")
+            
+            # ChoiceField'den gelen değerler string olarak gelir
+            # Eğer time objesi ise strftime kullan, string ise direkt kullan
+            start_str = None
+            if start:
+                if hasattr(start, 'strftime'):
+                    start_str = start.strftime("%H:%M")
+                elif isinstance(start, str):
+                    start_str = start
+            
+            end_str = None
+            if end:
+                if hasattr(end, 'strftime'):
+                    end_str = end.strftime("%H:%M")
+                elif isinstance(end, str):
+                    end_str = end
+            
+            working_hours[key] = {
+                "isAvailable": bool(is_open),
+                "start": start_str,
+                "end": end_str,
+            }
     return working_hours
 
 
 def build_initial_working_hours(hospital: dict) -> dict:
     initial = {}
+    
+    # 7/24 açık kontrolü
+    is_open_24_hours = hospital.get("is_open_24_hours", False)
+    initial["is_open_24_hours"] = is_open_24_hours
+    
     working_hours = hospital.get("workingHours", {})
     for key, value in working_hours.items():
         initial[f"{key}_is_open"] = value.get("isAvailable")
@@ -464,6 +500,7 @@ def _format_hospital_from_db(db_hospital: dict) -> dict:
         "gallery": db_hospital.get("gallery", []),
         "services": db_hospital.get("services", []),
         "workingHours": db_hospital.get("working_hours", {}),
+        "is_open_24_hours": db_hospital.get("is_open_24_hours", False),
         "createdAt": db_hospital.get("created_at", ""),
         "provinceId": db_hospital.get("province_id", ""),
         "provinceName": db_hospital.get("province_name", ""),
@@ -488,6 +525,7 @@ def _format_hospital_to_db(hospital: dict) -> dict:
         "gallery": hospital.get("gallery", []),
         "services": hospital.get("services", []),
         "working_hours": hospital.get("workingHours", {}),
+        "is_open_24_hours": hospital.get("isOpen24Hours", False),
         "province_id": hospital.get("provinceId", ""),
         "province_name": hospital.get("provinceName", ""),
         "district_id": hospital.get("districtId", ""),

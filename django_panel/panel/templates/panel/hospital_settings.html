@@ -197,10 +197,23 @@
         </section>
 
         <section id="panel-hours" class="tab-panel">
-            <form method="post">
+            <form method="post" id="working-hours-form">
                 {% csrf_token %}
                 <input type="hidden" name="form_type" value="working_hours">
-                <table class="hours-table">
+                
+                <div class="form-group" style="margin-bottom: 24px;">
+                    <div class="form-check">
+                        {{ working_hours_form.is_open_24_hours }}
+                        <label class="form-check-label" for="{{ working_hours_form.is_open_24_hours.id_for_label }}">
+                            <strong>{{ working_hours_form.is_open_24_hours.label }}</strong>
+                        </label>
+                        {% if working_hours_form.is_open_24_hours.help_text %}
+                            <small class="text-muted d-block">{{ working_hours_form.is_open_24_hours.help_text }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <table class="hours-table" id="hours-table">
                     <thead>
                         <tr>
                             <th>Gün</th>

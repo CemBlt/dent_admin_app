@@ -295,3 +295,59 @@
     }
 })();
 
+// 7/24 Açık Checkbox Kontrolü - Çalışma Saatleri
+(function() {
+    'use strict';
+    
+    const isOpen24HoursCheckbox = document.getElementById('id_is_open_24_hours');
+    const hoursTable = document.getElementById('hours-table');
+    
+    if (!isOpen24HoursCheckbox || !hoursTable) return;
+    
+    function toggleWorkingHoursFields() {
+        const isChecked = isOpen24HoursCheckbox.checked;
+        const rows = hoursTable.querySelectorAll('tbody tr');
+        
+        rows.forEach(row => {
+            // Açık checkbox'ı bul
+            const openCheckbox = row.querySelector('input[type="checkbox"]');
+            // Başlangıç ve bitiş select'lerini bul
+            const startSelect = row.querySelector('select[name$="_start"]');
+            const endSelect = row.querySelector('select[name$="_end"]');
+            
+            if (isChecked) {
+                // 7/24 açıksa tüm günleri açık yap ve saat alanlarını devre dışı bırak
+                if (openCheckbox) {
+                    openCheckbox.checked = true;
+                    openCheckbox.disabled = true;
+                }
+                if (startSelect) {
+                    startSelect.value = '';
+                    startSelect.disabled = true;
+                }
+                if (endSelect) {
+                    endSelect.value = '';
+                    endSelect.disabled = true;
+                }
+            } else {
+                // 7/24 açık değilse alanları aktif et
+                if (openCheckbox) {
+                    openCheckbox.disabled = false;
+                }
+                if (startSelect) {
+                    startSelect.disabled = false;
+                }
+                if (endSelect) {
+                    endSelect.disabled = false;
+                }
+            }
+        });
+    }
+    
+    // İlk yüklemede kontrol et
+    toggleWorkingHoursFields();
+    
+    // Checkbox değişikliklerini dinle
+    isOpen24HoursCheckbox.addEventListener('change', toggleWorkingHoursFields);
+})();
+

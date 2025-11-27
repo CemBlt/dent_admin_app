@@ -255,9 +255,19 @@ class HospitalSettingsView(View):
 
         elif action == "working_hours":
             form = WorkingHoursForm(request.POST)
-            if form.is_valid() and self._validate_working_hours(form, request):
+            if form.is_valid():
+                # 7/24 açık kontrolü - eğer 7/24 açıksa validasyon yapma
+                is_open_24_hours = form.cleaned_data.get("is_open_24_hours", False)
+                if not is_open_24_hours and not self._validate_working_hours(form, request):
+                    messages.error(request, "Çalışma saatleri güncellenemedi.")
+                    context = self._build_context(request)
+                    context["active_tab"] = "hours"
+                    return render(request, self.template_name, context)
+                
                 working_hours = hospital_service.build_working_hours_from_form(form.cleaned_data)
+                # is_open_24_hours değerini de güncelle
                 hospital_service.update_working_hours(hospital, working_hours, request)
+                hospital_service.update_is_open_24_hours(hospital, is_open_24_hours, request)
                 messages.success(request, "Çalışma saatleri güncellendi.")
                 # Aynı sayfada kal (working_hours sekmesinde)
                 context = self._build_context(request)
@@ -450,6 +460,11 @@ class HospitalSettingsView(View):
         return context
 
     def _validate_working_hours(self, form, request) -> bool:
+        # 7/24 açıksa validasyon yapma
+        is_open_24_hours = form.cleaned_data.get("is_open_24_hours", False)
+        if is_open_24_hours:
+            return True
+        
         valid = True
         for key, label in DAYS:
             is_open = form.cleaned_data.get(f"{key}_is_open")

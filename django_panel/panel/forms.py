@@ -108,9 +108,21 @@ class HospitalServicesForm(forms.Form):
 
 
 class WorkingHoursForm(forms.Form):
+    # 7/24 Açık seçeneği
+    is_open_24_hours = forms.BooleanField(
+        label="7/24 Açık",
+        required=False,
+        help_text="İşaretlendiğinde çalışma saatleri girmenize gerek kalmaz"
+    )
+    
     def __init__(self, *args, **kwargs):
         initial = kwargs.pop('initial', {})
         super().__init__(*args, **kwargs)
+        
+        # 7/24 açık initial değeri
+        is_open_24_hours_initial = initial.get('is_open_24_hours', False)
+        self.fields['is_open_24_hours'].initial = is_open_24_hours_initial
+        
         for key, label in DAYS:
             # Checkbox için initial değer
             is_open_initial = initial.get(f"{key}_is_open", False)
