@@ -48,6 +48,168 @@ class _FilterHospitalsScreenState extends State<FilterHospitalsScreen> {
     });
   }
 
+  /// Bugünün gününü İngilizce gün adına çevirir (monday, tuesday, vb.)
+  String _getTodayDayName() {
+    final now = DateTime.now();
+    final days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    // DateTime.now().weekday: 1=Pazartesi, 7=Pazar
+    return days[now.weekday - 1];
+  }
+
+  /// Hastane için bugünün çalışma saatlerini ve durumunu döndürür
+  Map<String, dynamic> _getTodayWorkingHours(Hospital hospital) {
+    if (hospital.isOpen24Hours) {
+      return {
+        'isOpen': true,
+        'is24Hours': true,
+        'text': '7/24 Açık',
+      };
+    }
+
+    final today = _getTodayDayName();
+    final todayHours = hospital.workingHours[today] as Map<String, dynamic>?;
+    
+    if (todayHours == null || todayHours['isAvailable'] != true) {
+      // Bugün kapalı, yarın açık mı kontrol et
+      final tomorrow = DateTime.now().add(const Duration(days: 1));
+      final tomorrowDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      final tomorrowDayName = tomorrowDays[tomorrow.weekday - 1];
+      final tomorrowHours = hospital.workingHours[tomorrowDayName] as Map<String, dynamic>?;
+      
+      if (tomorrowHours != null && tomorrowHours['isAvailable'] == true) {
+        final start = tomorrowHours['start'] as String?;
+        if (start != null) {
+          return {
+            'isOpen': false,
+            'is24Hours': false,
+            'text': 'Kapalı - Yarın $start',
+          };
+        }
+      }
+      
+      return {
+        'isOpen': false,
+        'is24Hours': false,
+        'text': 'Kapalı',
+      };
+    }
+
+    final start = todayHours['start'] as String?;
+    final end = todayHours['end'] as String?;
+    
+    if (start == null || end == null) {
+      return {
+        'isOpen': false,
+        'is24Hours': false,
+        'text': 'Kapalı',
+      };
+    }
+
+    // Şu an açık mı kontrol et
+    final now = DateTime.now();
+    final currentTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final isCurrentlyOpen = currentTime.compareTo(start) >= 0 && currentTime.compareTo(end) < 0;
+
+    if (isCurrentlyOpen) {
+      return {
+        'isOpen': true,
+        'is24Hours': false,
+        'text': 'Açık - $end\'e kadar',
+      };
+    } else {
+      // Bugün açık ama şu an kapalı (henüz açılmadı veya kapandı)
+      if (currentTime.compareTo(start) < 0) {
+        return {
+          'isOpen': false,
+          'is24Hours': false,
+          'text': 'Kapalı - $start\'da açılır',
+        };
+      } else {
+        return {
+          'isOpen': false,
+          'is24Hours': false,
+          'text': 'Kapalı - Yarın $start',
+        };
+      }
+    }
+  }
+
+  /// Çalışma saatleri badge'ini oluşturur
+  Widget _buildWorkingHoursBadge(Hospital hospital) {
+    final hoursInfo = _getTodayWorkingHours(hospital);
+    
+    if (hoursInfo['is24Hours'] == true) {
+      // 7/24 Açık
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppTheme.tealBlue.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.schedule_rounded, size: 12, color: AppTheme.tealBlue),
+            const SizedBox(width: 4),
+            Text(
+              hoursInfo['text'] as String,
+              style: AppTheme.bodySmall.copyWith(
+                color: AppTheme.tealBlue,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    } else if (hoursInfo['isOpen'] == true) {
+      // Açık - saat'e kadar
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.schedule_rounded, size: 12, color: Colors.green.shade700),
+            const SizedBox(width: 4),
+            Text(
+              hoursInfo['text'] as String,
+              style: AppTheme.bodySmall.copyWith(
+                color: Colors.green.shade700,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // Kapalı
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.grey.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.schedule_rounded, size: 12, color: Colors.grey.shade700),
+            const SizedBox(width: 4),
+            Text(
+              hoursInfo['text'] as String,
+              style: AppTheme.bodySmall.copyWith(
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   // Adres formatından il ve ilçe çıkar (format: "İlçe, İl")
   Map<String, String> _parseAddress(String address) {
     final parts = address.split(',').map((e) => e.trim()).toList();
@@ -389,6 +551,8 @@ class _FilterHospitalsScreenState extends State<FilterHospitalsScreen> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 8),
+                      _buildWorkingHoursBadge(hospital),
                     ],
                   ),
                 ),
