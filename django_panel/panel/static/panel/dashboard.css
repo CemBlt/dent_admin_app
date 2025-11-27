@@ -34,8 +34,8 @@
     --muted-light: #94A3B8;
     
     /* Durum Renkleri */
-    --status-pending: #FEF3C7;
-    --status-pending-text: #92400E;
+    --status-planned: #DBEAFE;
+    --status-planned-text: #1D4ED8;
     --status-completed: #D1FAE5;
     --status-completed-text: #065F46;
     --status-cancelled: #FEE2E2;
@@ -895,9 +895,9 @@ body {
     letter-spacing: 0.3px;
 }
 
-.status-pending {
-    background: var(--status-pending);
-    color: var(--status-pending-text);
+.status-planned {
+    background: var(--status-planned);
+    color: var(--status-planned-text);
 }
 
 .status-completed {

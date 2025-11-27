@@ -612,9 +612,9 @@ class AppointmentManagementView(View):
         return super().dispatch(request, *args, **kwargs)
     
     STATUS_LABELS = {
-        "pending": ("Bekleyen", "pending"),
         "completed": ("Tamamlandı", "completed"),
         "cancelled": ("İptal", "cancelled"),
+        "planned": ("Planlandı", "planned"),
     }
 
     def get(self, request):
@@ -643,11 +643,6 @@ class AppointmentManagementView(View):
         return render(request, self.template_name, context)
 
     def _build_context(self, request):
-        # Otomatik iptal kontrolü - her sayfa yüklendiğinde
-        cancelled_count = appointment_service.auto_cancel_overdue_appointments(request=request)
-        if cancelled_count > 0:
-            messages.info(request, f"{cancelled_count} randevu otomatik olarak iptal edildi (5 gün geçmiş).")
-        
         # hospital context processor tarafından otomatik ekleniyor
         doctors = doctor_service.get_doctors(request)
         services = hospital_service.get_services()
@@ -706,38 +701,41 @@ class AppointmentManagementView(View):
     
     def _sort_appointments(self, appointments):
         """
-        Randevuları sıralar: Bekleyen randevular önce (tarih/saat), tamamlanan en altta
+        Randevuları sıralar: Yaklaşan randevular önce, ardından iptal edilenler ve tamamlananlar
         """
-        pending = []
-        completed = []
+        upcoming = []
         cancelled = []
-        
-        for apt in appointments:
-            status = apt["data"].get("status", "pending")
-            if status == "pending":
-                pending.append(apt)
-            elif status == "completed":
-                completed.append(apt)
-            else:
-                cancelled.append(apt)
-        
-        # Tarih ve saat sırasına göre sırala
-        def sort_key(apt):
+        completed = []
+
+        def parse_datetime(apt):
             try:
                 date_str = apt["data"].get("date", "")
                 time_str = apt["data"].get("time", "00:00")
                 date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
                 time_obj = datetime.strptime(time_str, "%H:%M").time()
-                return (date_obj, time_obj)
+                return datetime.combine(date_obj, time_obj)
             except (ValueError, KeyError):
-                return (date.today(), datetime.min.time())
-        
-        pending.sort(key=sort_key)
-        completed.sort(key=sort_key, reverse=True)  # Tamamlananlar en yeniden eskiye
-        cancelled.sort(key=sort_key, reverse=True)
-        
-        # Bekleyen önce, sonra iptal, en son tamamlanan
-        return pending + cancelled + completed
+                return datetime.now()
+
+        now = datetime.now()
+
+        for apt in appointments:
+            status = apt["data"].get("status", "completed")
+            apt_datetime = parse_datetime(apt)
+
+            if status == "cancelled":
+                cancelled.append((apt_datetime, apt))
+            elif apt_datetime >= now:
+                upcoming.append((apt_datetime, apt))
+            else:
+                completed.append((apt_datetime, apt))
+
+        upcoming.sort(key=lambda item: item[0])
+        cancelled.sort(key=lambda item: item[0], reverse=True)
+        completed.sort(key=lambda item: item[0], reverse=True)
+
+        ordered = upcoming + cancelled + completed
+        return [item[1] for item in ordered]
 
     def _enrich_appointments(self, appointments, doctors, services):
         doctor_map = {doc["id"]: doc for doc in doctors}
@@ -748,9 +746,23 @@ class AppointmentManagementView(View):
             doctor = doctor_map.get(apt["doctorId"])
             service = service_map.get(apt["service"])
             user = user_map.get(apt["userId"])
-            status_label, status_class = self.STATUS_LABELS.get(
-                apt["status"], (apt["status"], "pending")
-            )
+            status = apt["status"] or "completed"
+            try:
+                date_str = apt.get("date", "")
+                time_str = apt.get("time", "00:00")
+                apt_datetime = datetime.strptime(
+                    f"{date_str} {time_str}", "%Y-%m-%d %H:%M"
+                )
+            except (ValueError, TypeError):
+                apt_datetime = None
+
+            if status == "cancelled":
+                status_label, status_class = self.STATUS_LABELS["cancelled"]
+            else:
+                if apt_datetime and apt_datetime >= datetime.now():
+                    status_label, status_class = self.STATUS_LABELS["planned"]
+                else:
+                    status_label, status_class = self.STATUS_LABELS["completed"]
             
             # Tarihi formatla (gün.ay.yıl)
             formatted_date = format_date(apt.get("date", ""), "%d.%m.%Y")

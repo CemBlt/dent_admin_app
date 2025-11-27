@@ -269,7 +269,6 @@ class AppointmentFilterForm(forms.Form):
         required=False,
         choices=[
             ("", "Tümü"),
-            ("pending", "Bekleyen"),
             ("completed", "Tamamlandı"),
             ("cancelled", "İptal"),
         ],
@@ -307,7 +306,6 @@ class AppointmentStatusForm(forms.Form):
     status = forms.ChoiceField(
         label="Durum",
         choices=[
-            ("pending", "Bekleyen"),
             ("completed", "Tamamlandı"),
             ("cancelled", "İptal"),
         ],

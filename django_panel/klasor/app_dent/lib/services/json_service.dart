@@ -88,6 +88,26 @@ class JsonService {
     }
   }
 
+  /// Tek bir doktoru ID'ye göre getirir
+  static Future<Doctor?> getDoctorById(String doctorId) async {
+    try {
+      final response = await SupabaseService.supabase
+          .from('doctors')
+          .select()
+          .eq('id', doctorId)
+          .maybeSingle();
+
+      if (response == null) {
+        return null;
+      }
+
+      return _doctorFromDb(response as Map<String, dynamic>);
+    } catch (e) {
+      debugPrint('Doktor getirme hatası: $e');
+      return null;
+    }
+  }
+
   /// Supabase formatından Doctor modeline çevirir
   static Doctor _doctorFromDb(Map<String, dynamic> dbData) {
     return Doctor(
@@ -174,7 +194,7 @@ class JsonService {
       doctorId: dbData['doctor_id'].toString(),
       date: dbData['date'] ?? '',
       time: dbData['time'] ?? '',
-      status: dbData['status'] ?? 'pending',
+      status: dbData['status'] ?? 'completed',
       service: dbData['service_id'].toString(),
       notes: dbData['notes'] ?? '',
       review: dbData['review'] as String?,
@@ -195,6 +215,40 @@ class JsonService {
       return data.map((json) => _appointmentFromDb(json)).toList();
     } catch (e) {
       return [];
+    }
+  }
+
+  /// Kullanıcının yaklaşan ilk randevusunu döndürür
+  static Future<Appointment?> getUpcomingAppointmentForUser(String userId) async {
+    try {
+      final response = await SupabaseService.supabase
+          .from('appointments')
+          .select()
+          .eq('user_id', userId)
+          .neq('status', 'cancelled')
+          .order('date', ascending: true)
+          .order('time', ascending: true);
+
+      final List<dynamic> data = response;
+      if (data.isEmpty) return null;
+
+      final appointments = data.map((json) => _appointmentFromDb(json)).toList();
+      final now = DateTime.now();
+
+      for (final appointment in appointments) {
+        if (appointment.status == 'cancelled') {
+          continue;
+        }
+        final appointmentDateTime = _parseAppointmentDateTime(appointment);
+        if (appointmentDateTime == null || !appointmentDateTime.isBefore(now)) {
+          return appointment;
+        }
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('Yaklaşan randevu alınırken hata: $e');
+      return null;
     }
   }
 
@@ -301,6 +355,23 @@ class JsonService {
     }
   }
 
+  /// Randevuyu iptal eder (status -> cancelled)
+  static Future<bool> cancelAppointment(String appointmentId) async {
+    try {
+      final response = await SupabaseService.supabase
+          .from('appointments')
+          .update({'status': 'cancelled'})
+          .eq('id', appointmentId)
+          .select()
+          .maybeSingle();
+
+      return response != null;
+    } catch (e) {
+      debugPrint('Randevu iptal hatası: $e');
+      return false;
+    }
+  }
+
   /// Yeni randevu oluşturur
   static Future<Appointment?> createAppointment({
     required String userId,
@@ -335,7 +406,7 @@ class JsonService {
             'doctor_id': doctorId,
             'date': date,
             'time': time,
-            'status': 'pending',
+            'status': 'completed',
             'service_id': serviceId,
             'notes': notes,
           })
@@ -348,6 +419,22 @@ class JsonService {
       print('Randevu oluşturma hatası: $e');
       rethrow; // Hatayı yukarı fırlat ki detaylı mesaj gösterilebilsin
     }
+  }
+
+  /// Appointment tarih ve saat bilgisini DateTime'a çevirir
+  static DateTime? _parseAppointmentDateTime(Appointment appointment) {
+    if (appointment.date.isEmpty) return null;
+
+    var time = appointment.time;
+    if (time.isEmpty) {
+      time = '00:00';
+    } else if (time.length == 5) {
+      // HH:mm formatını HH:mm:ss'e çevir
+      time = '$time:00';
+    }
+
+    final isoString = '${appointment.date}T$time';
+    return DateTime.tryParse(isoString);
   }
 
   // ==================== HİZMETLER ====================

@@ -5,7 +5,7 @@ class Appointment {
   final String doctorId;
   final String date;
   final String time;
-  final String status; // pending, completed, cancelled
+  final String status; // completed, cancelled
   final String service;
   final String notes;
   final String? review; // Yorum/Değerlendirme
@@ -55,6 +55,25 @@ class Appointment {
       'review': review,
       'createdAt': createdAt,
     };
+  }
+
+  Appointment copyWith({
+    String? status,
+    String? notes,
+  }) {
+    return Appointment(
+      id: id,
+      userId: userId,
+      hospitalId: hospitalId,
+      doctorId: doctorId,
+      date: date,
+      time: time,
+      status: status ?? this.status,
+      service: service,
+      notes: notes ?? this.notes,
+      review: review,
+      createdAt: createdAt,
+    );
   }
 }
 

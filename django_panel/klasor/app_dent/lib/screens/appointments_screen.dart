@@ -23,7 +23,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   List<Doctor> _doctors = [];
   List<Service> _services = [];
   bool _isLoading = true;
-  int _selectedTab = 0; // 0: Bekleyen, 1: Geçmiş
+  int _selectedTab = 0; // 0: Yaklaşan, 1: Geçmiş
 
   @override
   void initState() {
@@ -69,22 +69,36 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     });
   }
 
-  List<Appointment> get _pendingAppointments {
-    return _appointments.where((apt) => apt.status == 'pending').toList()
+  List<Appointment> get _upcomingAppointments {
+    final now = DateTime.now();
+    return _appointments
+        .where((apt) {
+          if (apt.status == 'cancelled') return false;
+          final dateTime = _parseAppointmentDateTime(apt);
+          if (dateTime == null) return true;
+          return !dateTime.isBefore(now);
+        })
+        .toList()
       ..sort((a, b) {
-        final dateA = DateTime.parse('${a.date} ${a.time}');
-        final dateB = DateTime.parse('${b.date} ${b.time}');
+        final dateA = _parseAppointmentDateTime(a) ?? DateTime.now();
+        final dateB = _parseAppointmentDateTime(b) ?? DateTime.now();
         return dateA.compareTo(dateB);
       });
   }
 
-  List<Appointment> get _pastAppointments {
+  List<Appointment> get _historyAppointments {
+    final now = DateTime.now();
     return _appointments
-        .where((apt) => apt.status == 'completed' || apt.status == 'cancelled')
+        .where((apt) {
+          if (apt.status == 'cancelled') return true;
+          final dateTime = _parseAppointmentDateTime(apt);
+          if (dateTime == null) return false;
+          return dateTime.isBefore(now);
+        })
         .toList()
       ..sort((a, b) {
-        final dateA = DateTime.parse('${a.date} ${a.time}');
-        final dateB = DateTime.parse('${b.date} ${b.time}');
+        final dateA = _parseAppointmentDateTime(a) ?? DateTime.now();
+        final dateB = _parseAppointmentDateTime(b) ?? DateTime.now();
         return dateB.compareTo(dateA);
       });
   }
@@ -113,30 +127,38 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     }
   }
 
-  String _getStatusText(String status) {
-    switch (status) {
-      case 'pending':
-        return 'Bekliyor';
-      case 'completed':
-        return 'Tamamlandı';
-      case 'cancelled':
-        return 'İptal Edildi';
-      default:
-        return status;
-    }
+  DateTime? _parseAppointmentDateTime(Appointment appointment) {
+    if (appointment.date.isEmpty) return null;
+    final timeValue = appointment.time.isEmpty ? '00:00' : appointment.time;
+    final normalized = timeValue.length == 5 ? '$timeValue:00' : timeValue;
+    return DateTime.tryParse('${appointment.date}T$normalized');
   }
 
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'pending':
-        return AppTheme.warningOrange;
-      case 'completed':
-        return AppTheme.successGreen;
-      case 'cancelled':
-        return Colors.red;
-      default:
-        return AppTheme.grayText;
+  bool _isFutureAppointment(Appointment appointment) {
+    final dateTime = _parseAppointmentDateTime(appointment);
+    if (dateTime == null) return false;
+    return dateTime.isAfter(DateTime.now());
+  }
+
+  bool _canManageAppointment(Appointment appointment) {
+    if (appointment.status == 'cancelled') return false;
+    return _isFutureAppointment(appointment);
+  }
+
+  String _getStatusText(Appointment appointment) {
+    if (appointment.status == 'cancelled') {
+      return 'İptal Edildi';
     }
+    return _isFutureAppointment(appointment) ? 'Planlandı' : 'Tamamlandı';
+  }
+
+  Color _getStatusColor(Appointment appointment) {
+    if (appointment.status == 'cancelled') {
+      return Colors.red;
+    }
+    return _isFutureAppointment(appointment)
+        ? AppTheme.tealBlue
+        : AppTheme.successGreen;
   }
 
   void _cancelAppointment(Appointment appointment) {
@@ -157,18 +179,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             ),
           ),
           TextButton(
-            onPressed: () {
-              // İptal işlemi (şimdilik sadece UI'dan kaldır)
-              setState(() {
-                _appointments.removeWhere((apt) => apt.id == appointment.id);
-              });
+            onPressed: () async {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Randevu iptal edildi'),
-                  backgroundColor: AppTheme.successGreen,
-                ),
-              );
+              await _confirmCancelAppointment(appointment);
             },
             child: Text(
               'Evet',
@@ -178,6 +191,37 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _confirmCancelAppointment(Appointment appointment) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final success = await JsonService.cancelAppointment(appointment.id);
+
+    if (success) {
+      await _loadData();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Randevu iptal edildi'),
+          backgroundColor: AppTheme.successGreen,
+        ),
+      );
+    } else {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Randevu iptal edilirken hata oluştu'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -234,15 +278,15 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                           Expanded(
                             child: _buildTabButton(
                               0,
-                              'Bekleyen',
-                              _pendingAppointments.length,
+                              'Yaklaşan',
+                              _upcomingAppointments.length,
                             ),
                           ),
                           Expanded(
                             child: _buildTabButton(
                               1,
                               'Geçmiş',
-                              _pastAppointments.length,
+                              _historyAppointments.length,
                             ),
                           ),
                         ],
@@ -255,8 +299,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                           : RefreshIndicator(
                               onRefresh: _loadData,
                               child: _selectedTab == 0
-                                  ? _buildAppointmentsList(_pendingAppointments)
-                                  : _buildAppointmentsList(_pastAppointments),
+                                  ? _buildAppointmentsList(_upcomingAppointments)
+                                  : _buildAppointmentsList(_historyAppointments),
                             ),
                     ),
                   ],
@@ -445,18 +489,18 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: _getStatusColor(appointment.status).withOpacity(0.1),
+                    color: _getStatusColor(appointment).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    _getStatusText(appointment.status),
+                    _getStatusText(appointment),
                     style: AppTheme.bodySmall.copyWith(
-                      color: _getStatusColor(appointment.status),
+                      color: _getStatusColor(appointment),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                if (appointment.status == 'pending')
+                if (_canManageAppointment(appointment))
                   IconButton(
                     icon: const Icon(Icons.more_vert, color: AppTheme.iconGray),
                     onPressed: () {
@@ -561,7 +605,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
               ),
             ],
             // Yorum (Sadece geçmiş randevularda)
-            if (appointment.status == 'completed' || appointment.status == 'cancelled') ...[
+            if (appointment.status == 'cancelled' ||
+                (appointment.status == 'completed' &&
+                    !_isFutureAppointment(appointment))) ...[
               const SizedBox(height: 16),
               Divider(color: AppTheme.dividerLight),
               const SizedBox(height: 8),

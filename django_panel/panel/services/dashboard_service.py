@@ -72,7 +72,13 @@ def load_dashboard_context(request=None) -> dict[str, Any]:
     
     # KPI hesaplamaları
     today = _today()
-    pending_count = sum(1 for apt in appointments if apt['status'] == 'pending')
+    upcoming_count = 0
+    for apt in appointments:
+        if apt.get('status') == 'cancelled':
+            continue
+        apt_date = _parse_date(apt.get('date', ''))
+        if apt_date and apt_date >= today:
+            upcoming_count += 1
     today_count = sum(1 for apt in appointments if _parse_date(apt['date']) == today)
     doctor_count = len(doctors)
     
@@ -81,7 +87,7 @@ def load_dashboard_context(request=None) -> dict[str, Any]:
     avg_rating = sum(hospital_ratings) / len(hospital_ratings) if hospital_ratings else 0
     
     kpi_cards = [
-        KPI("Bekleyen Randevu", str(pending_count), "Onay bekleyen randevular", "schedule", "#FDE68A"),
+        KPI("Yaklaşan Randevu", str(upcoming_count), "Planlanmış randevular", "schedule", "#BFDBFE"),
         KPI("Bugünkü Randevu", str(today_count), "Günün toplam randevusu", "today", "#A5F3FC"),
         KPI("Aktif Doktor", str(doctor_count), "Paneldeki toplam doktor", "medical_services", "#C7D2FE"),
         KPI("Ortalama Puan", f"{avg_rating:.1f}", "Hastane ortalaması", "star", "#FBCFE8"),

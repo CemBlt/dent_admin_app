@@ -95,9 +95,9 @@ button.link:hover {
     letter-spacing: 0.3px;
 }
 
-.status-pending {
-    background: var(--status-pending);
-    color: var(--status-pending-text);
+.status-planned {
+    background: var(--status-planned);
+    color: var(--status-planned-text);
 }
 
 .status-completed {

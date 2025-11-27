@@ -99,7 +99,7 @@ def get_summary(request=None):
     all_appointments = query.execute()
     
     stats = {
-        "pending": 0,
+        "upcoming": 0,
         "completed": 0,
         "cancelled": 0,
         "today": 0,
@@ -107,47 +107,27 @@ def get_summary(request=None):
     
     if all_appointments.data:
         for apt in all_appointments.data:
-            status = apt.get("status", "")
-            if status == "pending":
-                stats["pending"] += 1
-            elif status == "completed":
-                stats["completed"] += 1
-            elif status == "cancelled":
+            status = apt.get("status") or "completed"
+            apt_date_str = apt.get("date", "")
+            apt_date_obj = None
+            if apt_date_str:
+                try:
+                    apt_date_obj = datetime.strptime(apt_date_str, "%Y-%m-%d").date()
+                except ValueError:
+                    apt_date_obj = None
+
+            if status == "cancelled":
                 stats["cancelled"] += 1
-            
-            apt_date = apt.get("date", "")
-            if apt_date == today.isoformat():
+            else:
+                if apt_date_obj and apt_date_obj < today:
+                    stats["completed"] += 1
+                else:
+                    stats["upcoming"] += 1
+
+            if apt_date_obj == today:
                 stats["today"] += 1
     
     return stats
-
-
-def auto_cancel_overdue_appointments(request=None) -> int:
-    """
-    Randevu tarihinden 5 gün geçmiş ve hala tamamlanmamış randevuları otomatik iptal eder.
-    Returns: İptal edilen randevu sayısı
-    """
-    from datetime import timedelta
-    
-    supabase = get_supabase_client()
-    today = date.today()
-    five_days_ago = (today - timedelta(days=5)).isoformat()
-    
-    try:
-        hospital_id = _get_active_hospital_id(request)
-        query = supabase.table("appointments").select("id").eq("hospital_id", hospital_id)
-    except ValueError:
-        query = supabase.table("appointments").select("id")
-
-    result = query.eq("status", "pending").lt("date", five_days_ago).execute()
-    
-    cancelled_count = 0
-    if result.data:
-        for apt in result.data:
-            supabase.table("appointments").update({"status": "cancelled"}).eq("id", apt["id"]).execute()
-            cancelled_count += 1
-    
-    return cancelled_count
 
 
 def is_appointment_time_blocked(appointment_date: date, appointment_time: str, request=None) -> bool:
@@ -207,7 +187,7 @@ def _format_appointment_from_db(db_appointment: dict) -> dict:
         "doctorId": str(db_appointment.get("doctor_id", "")),
         "date": db_appointment.get("date", ""),
         "time": db_appointment.get("time", ""),
-        "status": db_appointment.get("status", ""),
+        "status": db_appointment.get("status") or "completed",
         "service": str(db_appointment.get("service_id", "")),
         "notes": db_appointment.get("notes", ""),
         "createdAt": db_appointment.get("created_at", ""),
