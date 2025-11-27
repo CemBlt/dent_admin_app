@@ -12,7 +12,7 @@ from . import location_service
 from .supabase_client import get_supabase_client
 
 REQUIRED_LOGO_WIDTH = 400
-REQUIRED_LOGO_HEIGHT = 300
+REQUIRED_LOGO_HEIGHT = 400
 ALLOWED_LOGO_EXTENSIONS = ('.jpg', '.jpeg', '.png')
 
 # Aktif hastane ID'si - Session'dan veya ilk hastaneyi alır

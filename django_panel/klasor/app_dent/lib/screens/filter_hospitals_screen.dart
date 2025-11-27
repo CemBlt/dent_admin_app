@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/hospital.dart';
 import '../services/json_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/image_widget.dart';
+import '../widgets/hospital_logo.dart';
 import 'hospital_detail_screen.dart';
 
 class FilterHospitalsScreen extends StatefulWidget {
@@ -490,32 +490,7 @@ class _FilterHospitalsScreenState extends State<FilterHospitalsScreen> {
             child: Row(
               children: [
                 // Hastane Fotoğrafı
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: AppTheme.backgroundSecondary,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: hospital.image != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: buildImage(
-                            hospital.image!,
-                            fit: BoxFit.cover,
-                            errorWidget: Icon(
-                              Icons.local_hospital,
-                              size: 40,
-                              color: AppTheme.primaryBlue,
-                            ),
-                          ),
-                        )
-                      : Icon(
-                          Icons.local_hospital,
-                          size: 40,
-                          color: AppTheme.primaryBlue,
-                        ),
-                ),
+                HospitalLogo(imageUrl: hospital.image, size: 72),
                 const SizedBox(width: 16),
                 // Hastane Bilgileri
                 Expanded(

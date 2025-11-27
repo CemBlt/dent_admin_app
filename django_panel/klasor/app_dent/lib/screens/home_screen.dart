@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import '../services/json_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_logo.dart';
+import '../widgets/hospital_logo.dart';
 import '../widgets/image_widget.dart';
 import 'all_doctors_screen.dart';
 import 'all_hospitals_screen.dart';
@@ -264,36 +265,32 @@ class _HomeScreenState extends State<HomeScreen> {
     // Eğer yorum yoksa gösterme
     if (reviewCount == 0) return const SizedBox.shrink();
     
-    return Positioned(
-      top: 8,
-      left: 8,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.6),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.star_rounded,
-              size: 12,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.star_rounded,
+            size: 12,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            averageRating > 0 
+                ? '${averageRating.toStringAsFixed(1)} ($reviewCount)'
+                : '($reviewCount)',
+            style: AppTheme.bodySmall.copyWith(
               color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 10,
             ),
-            const SizedBox(width: 4),
-            Text(
-              averageRating > 0 
-                  ? '${averageRating.toStringAsFixed(1)} ($reviewCount)'
-                  : '($reviewCount)',
-              style: AppTheme.bodySmall.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 10,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1292,33 +1289,16 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Stack(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(22),
-                      child: SizedBox(
-                        width: 110,
-                        height: 110,
-                        child: hospital.image != null
-                            ? buildImage(
-                                hospital.image!,
-                                fit: BoxFit.cover,
-                                errorWidget: Icon(
-                                  Icons.local_hospital,
-                                  size: 40,
-                                  color: AppTheme.tealBlue,
-                                ),
-                              )
-                            : Container(
-                                color: AppTheme.lightTurquoise,
-                                child: Icon(
-                                  Icons.local_hospital,
-                                  size: 40,
-                                  color: AppTheme.tealBlue,
-                                ),
-                              ),
-                      ),
+                    HospitalLogo(
+                      imageUrl: hospital.image,
+                      size: 80,
                     ),
                     if (_hospitalRatings.containsKey(hospital.id))
-                      _buildHospitalRatingOverlay(hospital.id),
+                      Positioned(
+                        top: 4,
+                        left: 4,
+                        child: _buildHospitalRatingOverlay(hospital.id),
+                      ),
                   ],
                 ),
                 const SizedBox(width: 18),

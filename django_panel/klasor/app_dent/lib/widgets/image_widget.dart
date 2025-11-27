@@ -48,8 +48,9 @@ Widget buildImage(String? imagePath, {
       imageUrl: imagePath,
       fit: fit,
       // Bellek optimizasyonu: 2x çözünürlük yeterli
-      memCacheWidth: width != null ? (width * 2).toInt() : null,
-      memCacheHeight: height != null ? (height * 2).toInt() : null,
+      // Infinity değerlerini kontrol et
+      memCacheWidth: width != null && width.isFinite ? (width * 2).toInt() : null,
+      memCacheHeight: height != null && height.isFinite ? (height * 2).toInt() : null,
       // FadeIn animasyonu
       fadeInDuration: const Duration(milliseconds: 300),
       fadeInCurve: Curves.easeIn,

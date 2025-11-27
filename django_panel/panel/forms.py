@@ -5,12 +5,12 @@ from django.core.exceptions import ValidationError
 from django.utils.safestring import mark_safe
 
 REQUIRED_LOGO_WIDTH = 400
-REQUIRED_LOGO_HEIGHT = 300
+REQUIRED_LOGO_HEIGHT = 400
 
 
 def validate_logo_image(file):
     """
-    Logo görselinin zorunlu ölçülerde (400x300px) olup olmadığını kontrol eder.
+    Logo görselinin zorunlu ölçülerde (400x400px) olup olmadığını kontrol eder.
     """
     if not file:
         return

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
 import '../models/hospital.dart';
 import '../services/json_service.dart';
-import '../widgets/image_widget.dart';
+import '../theme/app_theme.dart';
+import '../widgets/hospital_logo.dart';
 import 'hospital_detail_screen.dart';
 
 class AllHospitalsScreen extends StatefulWidget {
@@ -856,40 +856,15 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                 // Hastane Görseli
                 Stack(
                   children: [
-                    Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.cardGradient,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: hospital.image != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(20),
-                              child: buildImage(
-                                hospital.image!,
-                                fit: BoxFit.cover,
-                                errorWidget: Icon(
-                                  Icons.local_hospital_rounded,
-                                  size: 40,
-                                  color: AppTheme.tealBlue,
-                                ),
-                              ),
-                            )
-                          : Icon(
-                              Icons.local_hospital_rounded,
-                              size: 40,
-                              color: AppTheme.tealBlue,
-                            ),
-                    ),
+                    HospitalLogo(imageUrl: hospital.image, size: 84),
                     Positioned(
-                      top: 8,
-                      right: 8,
+                      top: 4,
+                      right: 4,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.black.withOpacity(0.55),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -911,71 +886,71 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                 ),
                 const SizedBox(width: 16),
                 // Hastane Bilgileri
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        hospital.name,
-                        style: AppTheme.bodyLarge.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.location_on_rounded,
-                            size: 14,
-                            color: AppTheme.iconGray,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              hospital.address,
-                              style: AppTheme.bodySmall.copyWith(
-                                color: AppTheme.grayText,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 6,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppTheme.lightTurquoise,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.near_me_rounded, size: 12, color: AppTheme.tealBlue),
-                                const SizedBox(width: 4),
-                                Text(
-                                  _getDistance(hospital),
-                                  style: AppTheme.bodySmall.copyWith(
-                                    color: AppTheme.tealBlue,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          _buildWorkingHoursBadge(hospital),
-                        ],
-                      ),
-                    ],
-                  ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                hospital.name,
+                style: AppTheme.bodyLarge.copyWith(
+                  fontWeight: FontWeight.bold,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(
+                    Icons.location_on_rounded,
+                    size: 14,
+                    color: AppTheme.iconGray,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      hospital.address,
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.grayText,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.lightTurquoise,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.near_me_rounded, size: 12, color: AppTheme.tealBlue),
+                        const SizedBox(width: 4),
+                        Text(
+                          _getDistance(hospital),
+                          style: AppTheme.bodySmall.copyWith(
+                            color: AppTheme.tealBlue,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _buildWorkingHoursBadge(hospital),
+                ],
+              ),
+            ],
+          ),
+        ),
                 Icon(
                   Icons.chevron_right_rounded,
                   color: AppTheme.iconGray,

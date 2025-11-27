@@ -3,7 +3,7 @@ import '../theme/app_theme.dart';
 import '../models/doctor.dart';
 import '../models/hospital.dart';
 import '../services/json_service.dart';
-import '../widgets/image_widget.dart';
+import '../widgets/hospital_logo.dart';
 import 'hospital_detail_screen.dart';
 import 'doctor_detail_screen.dart';
 
@@ -574,32 +574,7 @@ class _SearchScreenState extends State<SearchScreen> {
             child: Row(
               children: [
                 // Hastane Görseli
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: AppTheme.lightTurquoise,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: hospital.image != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: buildImage(
-                            hospital.image!,
-                            fit: BoxFit.cover,
-                            errorWidget: Icon(
-                              Icons.local_hospital,
-                              size: 30,
-                              color: AppTheme.tealBlue,
-                            ),
-                          ),
-                        )
-                      : Icon(
-                          Icons.local_hospital,
-                          size: 30,
-                          color: AppTheme.tealBlue,
-                        ),
-                ),
+                HospitalLogo(imageUrl: hospital.image, size: 60),
                 const SizedBox(width: 12),
                 // Hastane Bilgileri
                 Expanded(
