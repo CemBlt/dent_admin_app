@@ -2,7 +2,6 @@
 <aside class="sidebar">
     <div>
         <div class="brand">{{ hospital.name }}</div>
-        <p style="margin:4px 0 0; font-size:13px;" class="muted-text">{{ hospital.address }}</p>
     </div>
     <ul class="nav-links">
         <li><a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}><i class="bi bi-speedometer2"></i> Genel Bakış</a></li>
