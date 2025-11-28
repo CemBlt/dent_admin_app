@@ -9,6 +9,7 @@ import '../models/review.dart';
 import '../models/rating.dart';
 import 'supabase_service.dart';
 import 'auth_service.dart';
+import 'location_service.dart';
 
 class JsonService {
   // ==================== HASTANELER ====================
@@ -68,6 +69,51 @@ class JsonService {
       return hospital.name.toLowerCase().contains(lowerQuery) ||
           hospital.address.toLowerCase().contains(lowerQuery);
     }).toList();
+  }
+
+  /// Yakındaki hastaneleri getirir (mesafeye göre sıralı)
+  /// [userLat] ve [userLon] kullanıcının konumu
+  /// [radiusKm] maksimum mesafe (km) - null ise tüm hastaneleri döndürür
+  static Future<List<Hospital>> getNearbyHospitals({
+    required double userLat,
+    required double userLon,
+    double? radiusKm,
+  }) async {
+    final allHospitals = await getHospitals();
+    
+    // Her hastane için mesafe hesapla ve ekle
+    final hospitalsWithDistance = allHospitals.map((hospital) {
+      final distance = LocationService.calculateDistance(
+        userLat,
+        userLon,
+        hospital.latitude,
+        hospital.longitude,
+      );
+      return {
+        'hospital': hospital,
+        'distance': distance,
+      };
+    }).toList();
+
+    // Mesafeye göre sırala
+    hospitalsWithDistance.sort((a, b) {
+      final distanceA = a['distance'] as double;
+      final distanceB = b['distance'] as double;
+      return distanceA.compareTo(distanceB);
+    });
+
+    // Radius filtresi varsa uygula
+    List<Map<String, dynamic>> filtered;
+    if (radiusKm != null) {
+      filtered = hospitalsWithDistance
+          .where((item) => (item['distance'] as double) <= radiusKm)
+          .toList();
+    } else {
+      filtered = hospitalsWithDistance;
+    }
+
+    // Sadece hastaneleri döndür
+    return filtered.map((item) => item['hospital'] as Hospital).toList();
   }
 
   // ==================== DOKTORLAR ====================

@@ -10,6 +10,8 @@ import '../theme/app_theme.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/hospital_logo.dart';
 import '../widgets/image_widget.dart';
+import '../services/location_service.dart';
+import 'package:geolocator/geolocator.dart';
 import 'all_doctors_screen.dart';
 import 'all_hospitals_screen.dart';
 import 'appointments_screen.dart';
@@ -50,12 +52,153 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, Map<String, dynamic>> _hospitalRatings = {};
   // Doktor ID -> {reviewCount, averageRating}
   Map<String, Map<String, dynamic>> _doctorRatings = {};
+  // Kullanıcı konumu
+  Position? _userPosition;
+  // Mesafe bilgisi (hastane ID -> mesafe km)
+  Map<String, double> _hospitalDistances = {};
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _checkLocationAndLoadData();
     _startTipCarousel();
+  }
+
+  /// Konum kontrolü yap ve verileri yükle
+  Future<void> _checkLocationAndLoadData() async {
+    // İlk açılışta konum izni istenmiş mi kontrol et
+    final hasRequested = await LocationService.hasRequestedPermission();
+    
+    if (!hasRequested) {
+      // İlk açılış - izin dialogu göster
+      final shouldRequest = await _showLocationPermissionDialog();
+      if (shouldRequest) {
+        await _requestLocationPermission();
+      }
+    } else {
+      // Daha önce izin istenmiş, konumu al
+      await _loadUserLocation();
+    }
+    
+    // Verileri yükle
+    await _loadData();
+  }
+
+  /// İlk açılış konum izni dialogu
+  Future<bool> _showLocationPermissionDialog() async {
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text(
+          'Konum İzni',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        content: const Text(
+          'Yakınındaki hastaneleri görmek için konum bilgisine ihtiyacımız var. '
+          'Konumunuz sadece bu amaç için kullanılacak ve saklanmayacaktır.',
+          style: TextStyle(fontSize: 16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Şimdi Değil'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.tealBlue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('İzin Ver'),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
+  /// Konum izni iste
+  Future<void> _requestLocationPermission() async {
+    final permission = await LocationService.requestPermission();
+    if (permission == LocationPermission.whileInUse ||
+        permission == LocationPermission.always) {
+      await _loadUserLocation();
+      // Konum alındıktan sonra verileri yeniden yükle
+      await _loadData();
+    }
+  }
+
+  /// Kullanıcı konumunu yükle
+  Future<void> _loadUserLocation() async {
+    final position = await LocationService.getCurrentLocation();
+    if (mounted) {
+      setState(() {
+        _userPosition = position;
+      });
+      // Debug: Konum alındı mı kontrol et
+      if (position != null) {
+        debugPrint('✅ Konum alındı: ${position.latitude}, ${position.longitude}');
+      } else {
+        debugPrint('❌ Konum alınamadı');
+      }
+    }
+  }
+
+  /// Konum izni yoksa tekrar iste
+  Future<void> _requestLocationPermissionAgain() async {
+    final permission = await LocationService.requestPermission();
+    if (permission == LocationPermission.whileInUse ||
+        permission == LocationPermission.always) {
+      await _loadUserLocation();
+      await _loadData();
+    } else if (permission == LocationPermission.deniedForever) {
+      // Ayarlara yönlendir
+      await _showOpenSettingsDialog();
+    }
+  }
+
+  /// Ayarlara git dialogu
+  Future<void> _showOpenSettingsDialog() async {
+    final shouldOpen = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text('Konum İzni Gerekli'),
+        content: const Text(
+          'Yakınındaki hastaneleri görmek için konum izni gereklidir. '
+          'Lütfen ayarlardan konum iznini açın.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.tealBlue,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Ayarlara Git'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldOpen == true) {
+      await LocationService.openAppSettings();
+    }
   }
 
   Widget _buildHospitalBadge({
@@ -317,7 +460,38 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadData() async {
-    final hospitals = await JsonService.getHospitals();
+    List<Hospital> hospitals;
+    Map<String, double> hospitalDistances = {};
+
+    // Konum varsa yakındaki hastaneleri getir
+    if (_userPosition != null) {
+      debugPrint('📍 Konum var, yakındaki hastaneler getiriliyor...');
+      hospitals = await JsonService.getNearbyHospitals(
+        userLat: _userPosition!.latitude,
+        userLon: _userPosition!.longitude,
+        radiusKm: 50, // 50 km içindeki hastaneler
+      );
+      debugPrint('✅ ${hospitals.length} yakındaki hastane bulundu');
+      
+      // Her hastane için mesafeyi hesapla ve sakla
+      for (final hospital in hospitals) {
+        final distance = LocationService.calculateDistance(
+          _userPosition!.latitude,
+          _userPosition!.longitude,
+          hospital.latitude,
+          hospital.longitude,
+        );
+        hospitalDistances[hospital.id] = distance;
+      }
+    } else {
+      debugPrint('📍 Konum yok, tüm hastaneler getiriliyor...');
+      // Konum yoksa tüm hastaneleri getir
+      hospitals = await JsonService.getHospitals();
+      // Alfabetik sırala
+      hospitals.sort((a, b) => a.name.compareTo(b.name));
+      debugPrint('✅ ${hospitals.length} hastane bulundu');
+    }
+
     final doctors = await JsonService.getPopularDoctors();
     final tips = await JsonService.getTips();
     Appointment? upcomingAppointment;
@@ -332,13 +506,6 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
     }
-
-    // Hastaneleri uzaklığa göre sırala (en yakından uzağa)
-    hospitals.sort((a, b) {
-      final distanceA = _getDistanceValue(a);
-      final distanceB = _getDistanceValue(b);
-      return distanceA.compareTo(distanceB);
-    });
 
     // Her hastane için yorum sayısı ve ortalama puanı yükle
     final hospitalRatingsMap = <String, Map<String, dynamic>>{};
@@ -386,6 +553,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _doctorRatings = doctorRatingsMap;
       _upcomingAppointment = upcomingAppointment;
       _upcomingDoctor = upcomingDoctor;
+      _hospitalDistances = hospitalDistances;
       _isLoading = false;
     });
   }
@@ -403,14 +571,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Uzaklık değerini sayısal olarak döndür
   double _getDistanceValue(Hospital hospital) {
-    // Gerçek konum bilgisi olmadığı için hastane ID'sine göre sabit değer
-    final distances = {'1': 1.2, '2': 0.8, '3': 2.5};
-    return distances[hospital.id] ?? 1.6;
+    // Konum varsa gerçek mesafeyi döndür
+    if (_userPosition != null && _hospitalDistances.containsKey(hospital.id)) {
+      return _hospitalDistances[hospital.id]!;
+    }
+    // Konum yoksa null döndür (mesafe gösterilmez)
+    return -1;
   }
 
   // Uzaklık hesaplama (string formatında)
   String _getDistance(Hospital hospital) {
     final distance = _getDistanceValue(hospital);
+    if (distance < 0) {
+      return 'Mesafe bilgisi yok';
+    }
+    if (distance < 1) {
+      return '${(distance * 1000).toStringAsFixed(0)} m';
+    }
     return '${distance.toStringAsFixed(1)} km';
   }
 
@@ -1212,7 +1389,9 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Expanded(
                 child: Text(
-                  'Yakınımdaki Hastaneler',
+                  _userPosition != null 
+                      ? 'Yakınımdaki Hastaneler'
+                      : 'Hastaneler',
                   style: AppTheme.headingMedium,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -1239,6 +1418,66 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 12),
+        // Konum yoksa bilgilendirme mesajı
+        if (_userPosition == null) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.inputFieldGray,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.dividerLight),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.location_off_rounded,
+                    color: AppTheme.iconGray,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Yakındaki hastaneleri görmek için konum izni gerekli',
+                          style: AppTheme.bodyMedium.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.darkText,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Konum izni vererek size en yakın hastaneleri görebilirsiniz.',
+                          style: AppTheme.bodySmall.copyWith(
+                            color: AppTheme.grayText,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: _requestLocationPermissionAgain,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    child: Text(
+                      'İzin Ver',
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.tealBlue,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -1338,10 +1577,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         spacing: 6,
                         runSpacing: 6,
                         children: [
-                          _buildHospitalBadge(
-                            icon: Icons.location_on,
-                            label: _getDistance(hospital),
-                          ),
+                          if (_userPosition != null && _hospitalDistances.containsKey(hospital.id))
+                            _buildHospitalBadge(
+                              icon: Icons.location_on,
+                              label: _getDistance(hospital),
+                            ),
                           _buildWorkingHoursBadge(hospital),
                         ],
                       ),
