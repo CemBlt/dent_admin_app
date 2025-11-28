@@ -273,6 +273,15 @@ class _HospitalDetailScreenState extends State<HospitalDetailScreen>
                         expandedHeight: 320,
                         pinned: true,
                         backgroundColor: AppTheme.tealBlue,
+                        title: Text(
+                          widget.hospital.name,
+                          style: AppTheme.headingSmall.copyWith(
+                            color: AppTheme.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                         leading: Container(
                           margin: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
@@ -290,51 +299,6 @@ class _HospitalDetailScreenState extends State<HospitalDetailScreen>
                         flexibleSpace: FlexibleSpaceBar(
                           titlePadding: EdgeInsets.zero,
                           centerTitle: false,
-                          title: Container(
-                            padding: const EdgeInsets.fromLTRB(56, 0, 16, 16),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  widget.hospital.name,
-                                  style: AppTheme.headingMedium.copyWith(
-                                    color: AppTheme.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    if (_averageRating > 0) ...[
-                                      Icon(
-                                        Icons.star_rounded,
-                                        color: AppTheme.accentYellow,
-                                        size: 16,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        _averageRating.toStringAsFixed(1),
-                                        style: AppTheme.bodyMedium.copyWith(
-                                          color: AppTheme.white,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '(${_reviews.length})',
-                                        style: AppTheme.bodySmall.copyWith(
-                                          color: AppTheme.white.withOpacity(0.9),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
                           background: Stack(
                             fit: StackFit.expand,
                             children: [
