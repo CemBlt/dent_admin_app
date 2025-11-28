@@ -20,11 +20,66 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
   String? _selectedProvince;
   String? _selectedDistrict;
   bool _isLoading = true;
+  
+  // Pagination
+  static const int _itemsPerPage = 20;
+  int _currentPage = 0;
+  bool _isLoadingMore = false;
+  bool _hasMoreItems = true;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent * 0.8) {
+      _loadMoreItems();
+    }
+  }
+
+  void _loadMoreItems() {
+    if (_isLoadingMore || !_hasMoreItems) return;
+
+    final totalItems = _filteredHospitals.length;
+    final displayedItems = (_currentPage + 1) * _itemsPerPage;
+
+    if (displayedItems >= totalItems) {
+      setState(() {
+        _hasMoreItems = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    // Simüle edilmiş yükleme (gerçek uygulamada API çağrısı yapılabilir)
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() {
+          _currentPage++;
+          _isLoadingMore = false;
+        });
+      }
+    });
+  }
+
+  List<Hospital> get _displayedHospitals {
+    final endIndex = ((_currentPage + 1) * _itemsPerPage).clamp(0, _filteredHospitals.length);
+    return _filteredHospitals.take(endIndex).toList();
   }
 
   Future<void> _loadData() async {
@@ -247,6 +302,9 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
         return true;
       }).toList();
       _applySorting();
+      // Filtre değiştiğinde pagination'ı sıfırla
+      _currentPage = 0;
+      _hasMoreItems = _filteredHospitals.length > _itemsPerPage;
     });
   }
 
@@ -489,11 +547,6 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -632,8 +685,12 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                               Expanded(
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    color: AppTheme.lightTurquoise.withOpacity(0.5),
+                                    color: AppTheme.white,
                                     borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: AppTheme.dividerLight,
+                                      width: 1,
+                                    ),
                                   ),
                                   child: Material(
                                     color: Colors.transparent,
@@ -642,30 +699,35 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                                       borderRadius: BorderRadius.circular(16),
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 14,
+                                          horizontal: 12,
+                                          vertical: 12,
                                         ),
                                         child: Row(
+                                          mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Icon(
                                               Icons.location_city_rounded,
-                                              color: AppTheme.tealBlue,
-                                              size: 20,
+                                              color: AppTheme.darkText,
+                                              size: 16,
                                             ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
+                                            const SizedBox(width: 6),
+                                            Flexible(
                                               child: Text(
                                                 _selectedProvince ?? 'İl',
-                                                style: AppTheme.bodyMedium.copyWith(
-                                                  color: AppTheme.tealBlue,
+                                                style: AppTheme.bodySmall.copyWith(
+                                                  color: AppTheme.darkText,
                                                   fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
                                                 ),
                                                 overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
                                               ),
                                             ),
+                                            const SizedBox(width: 2),
                                             Icon(
                                               Icons.arrow_drop_down_rounded,
-                                              color: AppTheme.tealBlue,
+                                              color: AppTheme.darkText,
+                                              size: 18,
                                             ),
                                           ],
                                         ),
@@ -679,8 +741,12 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                               Expanded(
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    color: AppTheme.lightTurquoise.withOpacity(0.5),
+                                    color: AppTheme.white,
                                     borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: AppTheme.dividerLight,
+                                      width: 1,
+                                    ),
                                   ),
                                   child: Material(
                                     color: Colors.transparent,
@@ -689,30 +755,35 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                                       borderRadius: BorderRadius.circular(16),
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 14,
+                                          horizontal: 12,
+                                          vertical: 12,
                                         ),
                                         child: Row(
+                                          mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Icon(
                                               Icons.location_on_rounded,
-                                              color: AppTheme.tealBlue,
-                                              size: 20,
+                                              color: AppTheme.darkText,
+                                              size: 16,
                                             ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
+                                            const SizedBox(width: 6),
+                                            Flexible(
                                               child: Text(
                                                 _selectedDistrict ?? 'İlçe',
-                                                style: AppTheme.bodyMedium.copyWith(
-                                                  color: AppTheme.tealBlue,
+                                                style: AppTheme.bodySmall.copyWith(
+                                                  color: AppTheme.darkText,
                                                   fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
                                                 ),
                                                 overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
                                               ),
                                             ),
+                                            const SizedBox(width: 2),
                                             Icon(
                                               Icons.arrow_drop_down_rounded,
-                                              color: AppTheme.tealBlue,
+                                              color: AppTheme.darkText,
+                                              size: 18,
                                             ),
                                           ],
                                         ),
@@ -725,8 +796,12 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                               // Sıralama Butonu
                               Container(
                                 decoration: BoxDecoration(
-                                  color: AppTheme.lightTurquoise.withOpacity(0.5),
+                                  color: AppTheme.white,
                                   borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: AppTheme.dividerLight,
+                                    width: 1,
+                                  ),
                                 ),
                                 child: Material(
                                   color: Colors.transparent,
@@ -735,29 +810,35 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                                     borderRadius: BorderRadius.circular(16),
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 14,
+                                        horizontal: 12,
+                                        vertical: 12,
                                       ),
                                       child: Row(
+                                        mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Icon(
                                             Icons.tune_rounded,
-                                            color: AppTheme.tealBlue,
-                                            size: 20,
+                                            color: AppTheme.darkText,
+                                            size: 16,
                                           ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            _getSortLabel(),
-                                            style: AppTheme.bodyMedium.copyWith(
-                                              color: AppTheme.tealBlue,
-                                              fontWeight: FontWeight.w600,
+                                          const SizedBox(width: 6),
+                                          Flexible(
+                                            child: Text(
+                                              _getSortLabel(),
+                                              style: AppTheme.bodySmall.copyWith(
+                                                color: AppTheme.darkText,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 13,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                              maxLines: 1,
                                             ),
                                           ),
-                                          const SizedBox(width: 4),
+                                          const SizedBox(width: 2),
                                           Icon(
                                             Icons.arrow_drop_down_rounded,
-                                            color: AppTheme.tealBlue,
-                                            size: 20,
+                                            color: AppTheme.darkText,
+                                            size: 18,
                                           ),
                                         ],
                                       ),
@@ -805,10 +886,22 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                           : RefreshIndicator(
                               onRefresh: _loadData,
                               child: ListView.builder(
+                                controller: _scrollController,
                                 padding: const EdgeInsets.all(20),
-                                itemCount: _filteredHospitals.length,
+                                itemCount: _displayedHospitals.length + (_hasMoreItems ? 1 : 0),
                                 itemBuilder: (context, index) {
-                                  final hospital = _filteredHospitals[index];
+                                  if (index == _displayedHospitals.length) {
+                                    // Loading indicator
+                                    return Padding(
+                                      padding: const EdgeInsets.all(20),
+                                      child: Center(
+                                        child: CircularProgressIndicator(
+                                          color: AppTheme.tealBlue,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  final hospital = _displayedHospitals[index];
                                   return _buildHospitalCard(hospital);
                                 },
                               ),

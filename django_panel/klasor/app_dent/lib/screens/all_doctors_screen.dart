@@ -22,11 +22,66 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
   String? _selectedProvince;
   String? _selectedDistrict;
   bool _isLoading = true;
+  
+  // Pagination
+  static const int _itemsPerPage = 20;
+  int _currentPage = 0;
+  bool _isLoadingMore = false;
+  bool _hasMoreItems = true;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent * 0.8) {
+      _loadMoreItems();
+    }
+  }
+
+  void _loadMoreItems() {
+    if (_isLoadingMore || !_hasMoreItems) return;
+
+    final totalItems = _filteredDoctors.length;
+    final displayedItems = (_currentPage + 1) * _itemsPerPage;
+
+    if (displayedItems >= totalItems) {
+      setState(() {
+        _hasMoreItems = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    // Simüle edilmiş yükleme (gerçek uygulamada API çağrısı yapılabilir)
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() {
+          _currentPage++;
+          _isLoadingMore = false;
+        });
+      }
+    });
+  }
+
+  List<Doctor> get _displayedDoctors {
+    final endIndex = ((_currentPage + 1) * _itemsPerPage).clamp(0, _filteredDoctors.length);
+    return _filteredDoctors.take(endIndex).toList();
   }
 
   Future<void> _loadData() async {
@@ -80,6 +135,9 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
         return true;
       }).toList();
       _applySorting();
+      // Filtre değiştiğinde pagination'ı sıfırla
+      _currentPage = 0;
+      _hasMoreItems = _filteredDoctors.length > _itemsPerPage;
     });
   }
 
@@ -323,12 +381,6 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
   }
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
@@ -465,8 +517,12 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                               Expanded(
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    color: AppTheme.lightTurquoise.withOpacity(0.5),
+                                    color: AppTheme.white,
                                     borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: AppTheme.dividerLight,
+                                      width: 1,
+                                    ),
                                   ),
                                   child: Material(
                                     color: Colors.transparent,
@@ -475,30 +531,35 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                                       borderRadius: BorderRadius.circular(16),
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 14,
+                                          horizontal: 12,
+                                          vertical: 12,
                                         ),
                                         child: Row(
+                                          mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Icon(
                                               Icons.location_city_rounded,
-                                              color: AppTheme.tealBlue,
-                                              size: 20,
+                                              color: AppTheme.darkText,
+                                              size: 16,
                                             ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
+                                            const SizedBox(width: 6),
+                                            Flexible(
                                               child: Text(
                                                 _selectedProvince ?? 'İl',
-                                                style: AppTheme.bodyMedium.copyWith(
-                                                  color: AppTheme.tealBlue,
+                                                style: AppTheme.bodySmall.copyWith(
+                                                  color: AppTheme.darkText,
                                                   fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
                                                 ),
                                                 overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
                                               ),
                                             ),
+                                            const SizedBox(width: 2),
                                             Icon(
                                               Icons.arrow_drop_down_rounded,
-                                              color: AppTheme.tealBlue,
+                                              color: AppTheme.darkText,
+                                              size: 18,
                                             ),
                                           ],
                                         ),
@@ -512,8 +573,12 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                               Expanded(
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    color: AppTheme.lightTurquoise.withOpacity(0.5),
+                                    color: AppTheme.white,
                                     borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: AppTheme.dividerLight,
+                                      width: 1,
+                                    ),
                                   ),
                                   child: Material(
                                     color: Colors.transparent,
@@ -522,30 +587,35 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                                       borderRadius: BorderRadius.circular(16),
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 14,
+                                          horizontal: 12,
+                                          vertical: 12,
                                         ),
                                         child: Row(
+                                          mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Icon(
                                               Icons.location_on_rounded,
-                                              color: AppTheme.tealBlue,
-                                              size: 20,
+                                              color: AppTheme.darkText,
+                                              size: 16,
                                             ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
+                                            const SizedBox(width: 6),
+                                            Flexible(
                                               child: Text(
                                                 _selectedDistrict ?? 'İlçe',
-                                                style: AppTheme.bodyMedium.copyWith(
-                                                  color: AppTheme.tealBlue,
+                                                style: AppTheme.bodySmall.copyWith(
+                                                  color: AppTheme.darkText,
                                                   fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
                                                 ),
                                                 overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
                                               ),
                                             ),
+                                            const SizedBox(width: 2),
                                             Icon(
                                               Icons.arrow_drop_down_rounded,
-                                              color: AppTheme.tealBlue,
+                                              color: AppTheme.darkText,
+                                              size: 18,
                                             ),
                                           ],
                                         ),
@@ -568,29 +638,35 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                                     borderRadius: BorderRadius.circular(16),
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 14,
+                                        horizontal: 12,
+                                        vertical: 12,
                                       ),
                                       child: Row(
+                                        mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Icon(
                                             Icons.tune_rounded,
-                                            color: AppTheme.tealBlue,
-                                            size: 20,
+                                            color: AppTheme.darkText,
+                                            size: 16,
                                           ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            _getSortLabel(),
-                                            style: AppTheme.bodyMedium.copyWith(
-                                              color: AppTheme.tealBlue,
-                                              fontWeight: FontWeight.w600,
+                                          const SizedBox(width: 6),
+                                          Flexible(
+                                            child: Text(
+                                              _getSortLabel(),
+                                              style: AppTheme.bodySmall.copyWith(
+                                                color: AppTheme.darkText,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 13,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                              maxLines: 1,
                                             ),
                                           ),
-                                          const SizedBox(width: 4),
+                                          const SizedBox(width: 2),
                                           Icon(
                                             Icons.arrow_drop_down_rounded,
-                                            color: AppTheme.tealBlue,
-                                            size: 20,
+                                            color: AppTheme.darkText,
+                                            size: 18,
                                           ),
                                         ],
                                       ),
@@ -638,10 +714,22 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                           : RefreshIndicator(
                               onRefresh: _loadData,
                               child: ListView.builder(
+                                controller: _scrollController,
                                 padding: const EdgeInsets.all(20),
-                                itemCount: _filteredDoctors.length,
+                                itemCount: _displayedDoctors.length + (_hasMoreItems ? 1 : 0),
                                 itemBuilder: (context, index) {
-                                  final doctor = _filteredDoctors[index];
+                                  if (index == _displayedDoctors.length) {
+                                    // Loading indicator
+                                    return Padding(
+                                      padding: const EdgeInsets.all(20),
+                                      child: Center(
+                                        child: CircularProgressIndicator(
+                                          color: AppTheme.tealBlue,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  final doctor = _displayedDoctors[index];
                                   return _buildDoctorCard(doctor);
                                 },
                               ),
