@@ -11,10 +11,12 @@ import 'login_screen.dart';
 
 class CreateAppointmentScreen extends StatefulWidget {
   final String? preselectedHospitalId;
+  final String? preselectedDoctorId;
   
   const CreateAppointmentScreen({
     super.key,
     this.preselectedHospitalId,
+    this.preselectedDoctorId,
   });
 
   @override
@@ -369,6 +371,61 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
           _onHospitalSelected(preselectedHospital);
         } catch (e) {
           // Hastane bulunamadı
+        }
+      }
+      
+      // Eğer preselectedDoctorId varsa, doktoru seç ve randevuları göster
+      if (widget.preselectedDoctorId != null) {
+        try {
+          final preselectedDoctor = doctors.firstWhere(
+            (d) => d.id == widget.preselectedDoctorId,
+          );
+          
+          // Doktorun hastanesini seç
+          if (_selectedHospital == null) {
+            try {
+              final doctorHospital = hospitals.firstWhere(
+                (h) => h.id == preselectedDoctor.hospitalId,
+              );
+              final addressInfo = _getLocationInfo(doctorHospital);
+              _selectedCity = addressInfo['city'];
+              _selectedDistrict = addressInfo['district'];
+              _selectedHospital = doctorHospital;
+              _updateFilteredHospitals();
+            } catch (e) {
+              // Hastane bulunamadı
+            }
+          }
+          
+          // Doktoru seç
+          _selectedDoctor = preselectedDoctor;
+          
+          // Doktorun hizmetlerinden birini otomatik seç (varsa)
+          if (preselectedDoctor.services.isNotEmpty) {
+            final doctorServiceId = preselectedDoctor.services.first;
+            try {
+              _selectedService = services.firstWhere(
+                (s) => s.id == doctorServiceId,
+              );
+            } catch (e) {
+              // Hizmet bulunamadı
+            }
+          }
+          
+          // Filtrelenmiş doktorları güncelle
+          _filteredDoctors = _getDoctorsForSelection(
+            hospital: _selectedHospital,
+            service: _selectedService,
+          );
+          
+          // Randevuları otomatik göster
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _selectedService != null) {
+              _searchAvailableSlots();
+            }
+          });
+        } catch (e) {
+          // Doktor bulunamadı
         }
       }
       

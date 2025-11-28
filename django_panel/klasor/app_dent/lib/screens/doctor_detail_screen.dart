@@ -457,6 +457,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen>
               MaterialPageRoute(
                 builder: (context) => CreateAppointmentScreen(
                   preselectedHospitalId: widget.doctor.hospitalId,
+                  preselectedDoctorId: widget.doctor.id,
                 ),
               ),
             );
