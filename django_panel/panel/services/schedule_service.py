@@ -17,6 +17,14 @@ def get_hospital_working_hours(request=None) -> dict:
         return {}
 
 
+def get_hospital_info(request=None) -> dict:
+    """Hastane bilgilerini getirir (7/24 açık durumu dahil)."""
+    try:
+        return get_hospital(request)
+    except:
+        return {}
+
+
 def get_doctor_working_hours(doctor_id: str | None = None) -> dict:
     """Doktor çalışma saatlerini getirir."""
     if not doctor_id:
@@ -93,9 +101,22 @@ def build_calendar_data(year: int, month: int, selected_doctor_id: str | None = 
                 "doctor_hours": None,
             }
             weekday_name = _get_weekday_name(current.weekday())
+            
+            # Hastane bilgilerini al (7/24 açık durumu için)
+            hospital_info = get_hospital_info(request)
+            is_open_24_hours = hospital_info.get("is_open_24_hours", False)
+            
             hospital_hours = get_hospital_working_hours(request).get(weekday_name, {})
             if hospital_hours.get("isAvailable"):
-                day_data["hospital_hours"] = f"{hospital_hours.get('start')} - {hospital_hours.get('end')}"
+                # 7/24 açıksa "Tüm Gün" göster
+                if is_open_24_hours:
+                    day_data["hospital_hours"] = "Tüm Gün"
+                else:
+                    start = hospital_hours.get('start')
+                    end = hospital_hours.get('end')
+                    # Sadece geçerli saatler varsa göster
+                    if start and end:
+                        day_data["hospital_hours"] = f"{start} - {end}"
             
             if selected_doctor_id:
                 doctor_hours = get_doctor_working_hours(selected_doctor_id).get(weekday_name, {})
