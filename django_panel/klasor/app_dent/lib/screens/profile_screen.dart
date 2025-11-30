@@ -55,46 +55,91 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showLogoutDialog() {
+    bool isLoggingOut = false;
+    
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Çıkış Yap', style: AppTheme.headingSmall),
-        content: Text(
-          'Çıkış yapmak istediğinize emin misiniz?',
-          style: AppTheme.bodyMedium,
+      barrierDismissible: false, // Dialog dışına tıklayınca kapanmasın
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text('Çıkış Yap', style: AppTheme.headingSmall),
+          content: Text(
+            'Çıkış yapmak istediğinize emin misiniz?',
+            style: AppTheme.bodyMedium,
+          ),
+          actions: [
+            TextButton(
+              onPressed: isLoggingOut
+                  ? null
+                  : () => Navigator.pop(dialogContext),
+              child: Text(
+                'İptal',
+                style: AppTheme.bodyMedium.copyWith(color: AppTheme.grayText),
+              ),
+            ),
+            TextButton(
+              onPressed: isLoggingOut
+                  ? null
+                  : () async {
+                      // Çift tıklamayı önle
+                      setState(() {
+                        isLoggingOut = true;
+                      });
+                      
+                      try {
+                        // Çıkış işlemini yap
+                        await AuthService.signOut();
+                        
+                        // Dialog'u kapat
+                        Navigator.pop(dialogContext);
+                        
+                        // Context'in hala geçerli olduğundan emin ol
+                        if (!mounted) return;
+                        
+                        // Ana sayfaya dön
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (context) => const MainScreen()),
+                          (route) => false,
+                        );
+                        
+                        // SnackBar'ı ana sayfada göster
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Çıkış yapıldı'),
+                              backgroundColor: AppTheme.successGreen,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        // Hata durumunda dialog'u kapat ve hata mesajı göster
+                        Navigator.pop(dialogContext);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Çıkış yapılırken bir hata oluştu'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+              child: isLoggingOut
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                      ),
+                    )
+                  : Text(
+                      'Çıkış Yap',
+                      style: AppTheme.bodyMedium.copyWith(color: Colors.red),
+                    ),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'İptal',
-              style: AppTheme.bodyMedium.copyWith(color: AppTheme.grayText),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await AuthService.signOut();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Çıkış yapıldı'),
-                    backgroundColor: AppTheme.successGreen,
-                  ),
-                );
-                // Ana sayfaya dön
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => const MainScreen()),
-                  (route) => false,
-                );
-              }
-            },
-            child: Text(
-              'Çıkış Yap',
-              style: AppTheme.bodyMedium.copyWith(color: Colors.red),
-            ),
-          ),
-        ],
       ),
     );
   }
