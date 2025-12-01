@@ -22,6 +22,8 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
   String? _selectedProvince;
   String? _selectedDistrict;
   bool _isLoading = true;
+  // Doktor ID -> {reviewCount, averageRating}
+  Map<String, Map<String, dynamic>> _doctorRatings = {};
   
   // Pagination
   static const int _itemsPerPage = 20;
@@ -91,10 +93,29 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
     // Alfabetik sırala
     doctors.sort((a, b) => a.fullName.compareTo(b.fullName));
 
+    // Her doktor için yorum sayısı ve ortalama puanı yükle
+    final doctorRatingsMap = <String, Map<String, dynamic>>{};
+    for (final doctor in doctors) {
+      try {
+        final reviews = await JsonService.getReviewsByDoctor(doctor.id);
+        final averageRating = await JsonService.getDoctorAverageRating(doctor.id);
+        doctorRatingsMap[doctor.id] = {
+          'reviewCount': reviews.length,
+          'averageRating': averageRating,
+        };
+      } catch (e) {
+        doctorRatingsMap[doctor.id] = {
+          'reviewCount': 0,
+          'averageRating': 0.0,
+        };
+      }
+    }
+
     setState(() {
       _allDoctors = doctors;
       _hospitals = hospitals;
       _filteredDoctors = doctors;
+      _doctorRatings = doctorRatingsMap;
       _isLoading = false;
     });
     _applyFilters();
@@ -141,13 +162,47 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
     });
   }
 
+  Widget _buildDoctorRatingBadge(String doctorId) {
+    final ratingData = _doctorRatings[doctorId];
+    if (ratingData == null) return const SizedBox.shrink();
+    
+    final reviewCount = ratingData['reviewCount'] as int;
+    final averageRating = ratingData['averageRating'] as double;
+    
+    // Eğer yorum yoksa gösterme
+    if (reviewCount == 0 || averageRating == 0.0) return const SizedBox.shrink();
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppTheme.lightTurquoise,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.star_rounded, size: 14, color: AppTheme.accentYellow),
+          const SizedBox(width: 2),
+          Text(
+            averageRating.toStringAsFixed(1),
+            style: AppTheme.bodySmall.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _applySorting() {
     setState(() {
       switch (_sortBy) {
         case 'rating':
-          // Şimdilik sabit puan kullanıyoruz, gerçek puan sistemi eklendiğinde güncellenir
-          // Geçici olarak alfabetik ters sıralama (gerçek puan sistemi eklendiğinde değiştirilecek)
-          _filteredDoctors.sort((a, b) => b.fullName.compareTo(a.fullName));
+          _filteredDoctors.sort((a, b) {
+            final ratingA = _doctorRatings[a.id]?['averageRating'] as double? ?? 0.0;
+            final ratingB = _doctorRatings[b.id]?['averageRating'] as double? ?? 0.0;
+            return ratingB.compareTo(ratingA); // Yüksekten düşüğe
+          });
           break;
         case 'name':
           _filteredDoctors.sort((a, b) => a.fullName.compareTo(b.fullName));
@@ -830,26 +885,8 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppTheme.lightTurquoise,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.star_rounded, size: 14, color: AppTheme.accentYellow),
-                                  const SizedBox(width: 2),
-                                  Text(
-                                    '4.8',
-                                    style: AppTheme.bodySmall.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            if (_doctorRatings.containsKey(doctor.id))
+                              _buildDoctorRatingBadge(doctor.id),
                           ],
                         ),
                         if (hospital != null) ...[
