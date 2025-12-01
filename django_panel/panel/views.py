@@ -746,7 +746,7 @@ class AppointmentManagementView(View):
             doctor = doctor_map.get(apt["doctorId"])
             service = service_map.get(apt["service"])
             user = user_map.get(apt["userId"])
-            status = apt["status"] or "completed"
+            status = apt["status"] or "planned"  # Varsayılan olarak "planned"
             try:
                 date_str = apt.get("date", "")
                 time_str = apt.get("time", "00:00")
@@ -756,9 +756,19 @@ class AppointmentManagementView(View):
             except (ValueError, TypeError):
                 apt_datetime = None
 
+            # Status kontrolü: Önce DB'deki status'a bak, yoksa tarih/saat kontrolü yap
             if status == "cancelled":
                 status_label, status_class = self.STATUS_LABELS["cancelled"]
+            elif status == "planned":
+                # Eğer randevu saati geçmişse completed olarak göster (ama DB'de hala planned kalabilir)
+                if apt_datetime and apt_datetime < datetime.now():
+                    status_label, status_class = self.STATUS_LABELS["completed"]
+                else:
+                    status_label, status_class = self.STATUS_LABELS["planned"]
+            elif status == "completed":
+                status_label, status_class = self.STATUS_LABELS["completed"]
             else:
+                # Status belirsizse tarih/saat kontrolü yap
                 if apt_datetime and apt_datetime >= datetime.now():
                     status_label, status_class = self.STATUS_LABELS["planned"]
                 else:
@@ -766,6 +776,16 @@ class AppointmentManagementView(View):
             
             # Tarihi formatla (gün.ay.yıl)
             formatted_date = format_date(apt.get("date", ""), "%d.%m.%Y")
+            
+            # 5 gün kontrolü: Tamamlanmış randevuların üzerinden 5 gün geçmişse statü değiştirilemez
+            # Randevu tarihi + saati üzerinden 5 gün geçmiş olmalı
+            can_change_status = True
+            if status == "completed" and apt_datetime:
+                time_difference = datetime.now() - apt_datetime
+                days_passed = time_difference.days
+                # 5 gün veya daha fazla geçmişse statü değiştirilemez
+                if days_passed >= 5:
+                    can_change_status = False
             
             enriched.append(
                 {
@@ -776,6 +796,7 @@ class AppointmentManagementView(View):
                     "status_label": status_label,
                     "status_class": status_class,
                     "formatted_date": formatted_date,
+                    "can_change_status": can_change_status,
                     "status_form": AppointmentStatusForm(
                         initial={
                             "appointment_id": apt["id"],

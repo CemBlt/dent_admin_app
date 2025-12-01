@@ -78,12 +78,18 @@
                             </td>
                             <td>
                                 <span class="status-chip status-{{ item.status_class }}">{{ item.status_label }}</span>
-                                <form method="post" class="status-form">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="form_type" value="update_status">
-                                    {{ item.status_form.as_p }}
-                                    <button type="submit" class="link">Güncelle</button>
-                                </form>
+                                {% if item.can_change_status %}
+                                    <form method="post" class="status-form">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="form_type" value="update_status">
+                                        {{ item.status_form.as_p }}
+                                        <button type="submit" class="link">Güncelle</button>
+                                    </form>
+                                {% else %}
+                                    <p style="color: var(--text-secondary); font-size: 12px; margin-top: 8px; font-style: italic;">
+                                        Bu randevunun statüsü değiştirilemez (5 gün geçti)
+                                    </p>
+                                {% endif %}
                             </td>
                             <td>
                                 <form method="post" class="inline-form" onsubmit="return confirm('Bu randevuyu silmek istediğinize emin misiniz?');">

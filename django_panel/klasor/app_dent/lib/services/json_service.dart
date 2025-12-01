@@ -452,7 +452,7 @@ class JsonService {
             'doctor_id': doctorId,
             'date': date,
             'time': time,
-            'status': 'completed',
+            'status': 'planned',
             'service_id': serviceId,
             'notes': notes,
           })

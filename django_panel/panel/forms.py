@@ -355,6 +355,7 @@ class AppointmentStatusForm(forms.Form):
     status = forms.ChoiceField(
         label="Durum",
         choices=[
+            ("planned", "Planlandı"),
             ("completed", "Tamamlandı"),
             ("cancelled", "İptal"),
         ],
