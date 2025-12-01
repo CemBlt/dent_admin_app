@@ -108,6 +108,7 @@ class AuthService {
 
   /// Email'in daha önce kayıtlı olup olmadığını kontrol eder
   /// Hem user_profiles hem de Supabase Auth'da kontrol eder
+  /// Supabase Auth kontrolü için signUp işlemini deneyip hata mesajına bakıyoruz
   static Future<bool> isEmailTaken(String email) async {
     try {
       // Email boşsa veya geçersizse kontrol yapma
@@ -123,24 +124,24 @@ class AuthService {
           .eq('email', trimmedEmail)
           .maybeSingle();
       
+      // Eğer user_profiles'da bulunduysa, email alınmış demektir
       if (profileResponse != null) {
-        return true; // user_profiles'da bulundu
+        return true;
       }
 
       // 2. Supabase Auth'da kontrol et
-      // Supabase Auth'a direkt erişimimiz olmadığı için,
-      // signInWithPassword ile test ediyoruz (yanlış şifre ile)
-      // Eğer "Invalid login credentials" hatası alırsak, email var demektir
-      // Eğer "User not found" hatası alırsak, email yok demektir
+      // signInWithPassword ile yanlış şifre denemesi yaparak email'in var olup olmadığını kontrol ediyoruz
+      // Bu metod email göndermez, sadece kontrol yapar
       try {
         await SupabaseService.supabase.auth.signInWithPassword(
           email: trimmedEmail,
-          password: r'dummy_check_password_12345!@#$%',
+          password: 'dummy_check_password_that_does_not_exist_12345!@#\$%',
         );
         // Eğer buraya geldiyse (ki gelmemeli), email yok demektir
         return false;
       } catch (authError) {
         final errorString = authError.toString().toLowerCase();
+        
         // Eğer "user not found" veya "email not found" hatası alırsak,
         // email Supabase Auth'da yok demektir
         if (errorString.contains('user not found') ||
@@ -148,14 +149,16 @@ class AuthService {
             errorString.contains('no user found')) {
           return false; // Email Supabase Auth'da yok
         }
+        
         // "Invalid login credentials" veya "Email not confirmed" gibi hatalar
-        // email'in var olduğunu gösterir
+        // email'in var olduğunu gösterir (sadece şifre yanlış)
+        // Bu durumda email Supabase Auth'da var demektir
         return true; // Email Supabase Auth'da var
       }
     } catch (e) {
       debugPrint('Email kontrolü hatası: $e');
-      // Hata durumunda güvenli tarafta kal (kayıt yapılmasın)
-      return true;
+      // Hata durumunda false döndür (kayıt denemesi yapılsın)
+      return false;
     }
   }
 }

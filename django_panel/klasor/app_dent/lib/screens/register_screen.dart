@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:intl_phone_field/phone_number.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 
@@ -28,8 +29,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscureConfirmPassword = true;
   bool _isCheckingPhone = false;
   bool? _phoneIsUnique; // null = kontrol edilmedi, true = unique, false = alınmış
-  bool _isCheckingEmail = false;
-  bool? _emailIsUnique; // null = kontrol edilmedi, true = unique, false = alınmış
+  bool? _emailIsUnique; // null = kontrol edilmedi, false = alınmış (sadece kayıt butonuna basıldığında kontrol edilir)
   PhoneNumber? _phoneNumber; // Country picker'dan gelen telefon numarası
   String? _phoneNumberError; // Telefon numarası hata mesajı
 
@@ -109,32 +109,92 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return;
       }
 
-      final isEmailTaken = await AuthService.isEmailTaken(email);
-      
-      if (isEmailTaken) {
+      // Email format kontrolü
+      final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+      if (!emailRegex.hasMatch(email)) {
+        setState(() {
+          _isLoading = false;
+        });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Bu email adresi zaten kayıtlı'),
+              content: Text('Geçerli bir email adresi giriniz'),
               backgroundColor: Colors.red,
             ),
           );
         }
-        setState(() {
-          _isLoading = false;
-        });
         return;
       }
 
-      final response = await AuthService.signUp(
-        email: email,
-        password: _passwordController.text,
-        name: _nameController.text.trim(),
-        surname: _surnameController.text.trim(),
-        phone: phoneE164, // E.164 formatında kaydet
-      );
+      // Kayıt işlemini dene (email kontrolü kayıt sırasında yapılacak)
+      AuthResponse? response;
+      try {
+        response = await AuthService.signUp(
+          email: email,
+          password: _passwordController.text,
+          name: _nameController.text.trim(),
+          surname: _surnameController.text.trim(),
+          phone: phoneE164, // E.164 formatında kaydet
+        );
+      } catch (signUpError) {
+        // Kayıt hatası - email zaten kayıtlı olabilir
+        final errorString = signUpError.toString().toLowerCase();
+        
+        // Email zaten kayıtlı hatası
+        if (errorString.contains('user already registered') || 
+            errorString.contains('already registered') ||
+            errorString.contains('email already registered') ||
+            errorString.contains('email address is already registered') ||
+            errorString.contains('user with this email already exists') ||
+            errorString.contains('email already exists') ||
+            errorString.contains('duplicate key value') ||
+            errorString.contains('unique constraint')) {
+          setState(() {
+            _emailIsUnique = false;
+            _isLoading = false;
+          });
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.cancel, color: Colors.white, size: 20),
+                    const SizedBox(width: 8),
+                    const Text('Bu email adresi zaten kayıtlı'),
+                  ],
+                ),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+            // Form validasyonunu tetikle
+            _formKey.currentState?.validate();
+          }
+          return;
+        }
+        
+        // Diğer hatalar için genel hata mesajı göster
+        setState(() {
+          _isLoading = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Kayıt olurken bir hata oluştu: ${signUpError.toString()}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
 
-      if (response.user != null) {
+      if (response != null && response.user != null) {
+        // Email kontrolünü sıfırla (kayıt başarılı)
+        setState(() {
+          _emailIsUnique = null;
+        });
+        
         // Kayıt başarılı olduğunda, kullanıcının otomatik giriş yapıp yapmadığını kontrol et
         if (!AuthService.isAuthenticated) {
           // Otomatik giriş yapılmamışsa, email ve şifre ile giriş yap
@@ -164,8 +224,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Kayıt başarılı! Hoş geldiniz.'),
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
+                  const Text('Kayıt başarılı!'),
+                ],
+              ),
               backgroundColor: AppTheme.successGreen,
+              duration: const Duration(seconds: 3),
             ),
           );
           
@@ -177,14 +244,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
       }
     } catch (e) {
+      // Bu catch bloğu sadece beklenmeyen hatalar için (signUp zaten kendi try-catch'inde)
       if (mounted) {
         String errorMessage = 'Kayıt olurken bir hata oluştu';
+        final errorString = e.toString().toLowerCase();
         
-        if (e.toString().contains('User already registered') || 
-            e.toString().contains('already registered')) {
-          errorMessage = 'Bu bilgilerle zaten bir kayıt mevcut';
-        } else if (e.toString().contains('phone') && e.toString().contains('unique')) {
+        // Telefon numarası zaten kayıtlı hatası
+        if (errorString.contains('phone') && errorString.contains('unique')) {
           errorMessage = 'Bu telefon numarası zaten kayıtlı';
+          setState(() {
+            _phoneIsUnique = false;
+            _phoneNumberError = 'Bu telefon numarası zaten kayıtlı';
+          });
+          // Form validasyonunu tetikle
+          _formKey.currentState?.validate();
+        }
+        // Diğer hatalar
+        else if (errorString.contains('invalid email')) {
+          errorMessage = 'Geçerli bir email adresi giriniz';
+        } else if (errorString.contains('password')) {
+          errorMessage = 'Şifre gereksinimlerini karşılamıyor';
         }
         
         ScaffoldMessenger.of(context).showSnackBar(
@@ -251,56 +330,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (mounted) {
         setState(() {
           _isCheckingPhone = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _checkEmail(String email) async {
-    final trimmedEmail = email.trim();
-    
-    // Email boşsa veya geçersizse kontrol yapma
-    if (trimmedEmail.isEmpty) {
-      setState(() {
-        _emailIsUnique = null;
-      });
-      return;
-    }
-
-    // Email formatı kontrolü
-    if (!trimmedEmail.contains('@') || !trimmedEmail.contains('.')) {
-      setState(() {
-        _emailIsUnique = null;
-      });
-      return;
-    }
-
-    setState(() {
-      _isCheckingEmail = true;
-      _emailIsUnique = null;
-    });
-
-    try {
-      final isTaken = await AuthService.isEmailTaken(trimmedEmail);
-      if (mounted) {
-        setState(() {
-          _emailIsUnique = !isTaken;
-        });
-        if (isTaken) {
-          _formKey.currentState?.validate();
-        }
-      }
-    } catch (e) {
-      // Hata durumunda sessizce devam et
-      if (mounted) {
-        setState(() {
-          _emailIsUnique = null;
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isCheckingEmail = false;
         });
       }
     }
@@ -683,18 +712,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           onChanged: (value) {
-                            setState(() {
-                              // Email değiştiğinde state'i sıfırla
-                              if (value.trim().isEmpty) {
+                            // Email değiştiğinde önceki hata durumunu temizle
+                            if (_emailIsUnique == false) {
+                              setState(() {
                                 _emailIsUnique = null;
-                              }
-                            });
-                            // Email değiştiğinde kontrol et (debounce için)
-                            Future.delayed(const Duration(milliseconds: 500), () {
-                              if (mounted && _emailController.text == value) {
-                                _checkEmail(value);
-                              }
-                            });
+                              });
+                            }
                           },
                           decoration: InputDecoration(
                             labelText: 'Email *',
@@ -707,32 +730,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               child: const Icon(Icons.email_rounded, color: AppTheme.tealBlue, size: 20),
                             ),
-                            suffixIcon: _isCheckingEmail
-                                ? const Padding(
-                                    padding: EdgeInsets.all(12),
-                                    child: SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.tealBlue),
-                                      ),
-                                    ),
-                                  )
-                                : _emailIsUnique == null
-                                    ? null
-                                    : Padding(
-                                        padding: const EdgeInsets.all(12),
-                                        child: Icon(
-                                          _emailIsUnique == true
-                                              ? Icons.check_circle
-                                              : Icons.cancel,
-                                          color: _emailIsUnique == true
-                                              ? AppTheme.successGreen
-                                              : Colors.red,
-                                          size: 20,
-                                        ),
-                                      ),
                             filled: true,
                             fillColor: AppTheme.inputFieldGray,
                             border: OutlineInputBorder(
@@ -746,6 +743,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
                               borderSide: const BorderSide(color: AppTheme.tealBlue, width: 2),
+                            ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(color: Colors.red, width: 2),
+                            ),
+                            focusedErrorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(color: Colors.red, width: 2),
                             ),
                           ),
                           style: AppTheme.bodyMedium,
@@ -761,7 +766,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               return 'Geçerli bir email adresi giriniz';
                             }
                             
-                            // Email unique kontrolü
+                            // Email unique kontrolü (sadece kayıt butonuna basıldığında kontrol edilir)
                             if (_emailIsUnique == false) {
                               return 'Bu email adresi zaten kayıtlı';
                             }
