@@ -229,7 +229,8 @@ class HospitalSettingsView(View):
                 else:
                     messages.success(request, "Genel bilgiler güncellendi.")
                     # Aynı sayfada kal (general sekmesinde)
-                    context = self._build_context(request, general_form=form)
+                    # Form'u geçirme, böylece _build_context güncel hastane verileriyle yeni form oluşturur
+                    context = self._build_context(request)
                     context["active_tab"] = "general"
                     return render(request, self.template_name, context)
             else:
@@ -402,6 +403,23 @@ class HospitalSettingsView(View):
                 district_choices=district_choices,
                 neighborhood_choices=neighborhood_choices,
             )
+        else:
+            # Form geçirildiğinde (hata durumu), initial değerlerini güncelle
+            # Böylece JavaScript data-initial attribute'larını doğru okuyabilir
+            if general_form.data:
+                # POST verilerinden initial değerleri güncelle
+                province_id = general_form.data.get("province", "")
+                district_id = general_form.data.get("district", "")
+                neighborhood_id = general_form.data.get("neighborhood", "")
+                general_form.initial.update({
+                    "province": province_id,
+                    "district": district_id,
+                    "neighborhood": neighborhood_id,
+                })
+                # Widget attribute'larını güncelle
+                general_form.fields["province"].widget.attrs["data-initial"] = province_id
+                general_form.fields["district"].widget.attrs["data-initial"] = district_id
+                general_form.fields["neighborhood"].widget.attrs["data-initial"] = neighborhood_id
 
         services_form = HospitalServicesForm(
             initial={"services": hospital.get("services", [])},

@@ -20,8 +20,6 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
   String? _selectedProvince;
   String? _selectedDistrict;
   bool _isLoading = true;
-  // Hastane ID -> {reviewCount, averageRating}
-  Map<String, Map<String, dynamic>> _hospitalRatings = {};
   
   // Pagination
   static const int _itemsPerPage = 20;
@@ -90,66 +88,29 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
     // Alfabetik sırala
     hospitals.sort((a, b) => a.name.compareTo(b.name));
 
-    // Her hastane için yorum sayısı ve ortalama puanı yükle
-    final hospitalRatingsMap = <String, Map<String, dynamic>>{};
-    for (final hospital in hospitals) {
-      try {
-        final reviews = await JsonService.getReviewsByHospital(hospital.id);
-        final averageRating = await JsonService.getHospitalAverageRating(hospital.id);
-        hospitalRatingsMap[hospital.id] = {
-          'reviewCount': reviews.length,
-          'averageRating': averageRating,
-        };
-      } catch (e) {
-        hospitalRatingsMap[hospital.id] = {
-          'reviewCount': 0,
-          'averageRating': 0.0,
-        };
-      }
-    }
-
     setState(() {
       _allHospitals = hospitals;
       _filteredHospitals = hospitals;
-      _hospitalRatings = hospitalRatingsMap;
       _isLoading = false;
     });
     _applyFilters();
   }
 
-  Widget _buildHospitalRatingBadge(String hospitalId) {
-    final ratingData = _hospitalRatings[hospitalId];
-    if (ratingData == null) return const SizedBox.shrink();
-    
-    final reviewCount = ratingData['reviewCount'] as int;
-    final averageRating = ratingData['averageRating'] as double;
-    
-    // Eğer yorum yoksa gösterme
-    if (reviewCount == 0 || averageRating == 0.0) return const SizedBox.shrink();
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.55),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.star_rounded, size: 12, color: Colors.white),
-          const SizedBox(width: 2),
-          Text(
-            averageRating.toStringAsFixed(1),
-            style: AppTheme.bodySmall.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
+  // Uzaklık değerini sayısal olarak döndür
+  double _getDistanceValue(Hospital hospital) {
+    final distances = {
+      '1': 1.2,
+      '2': 0.8,
+      '3': 2.5,
+    };
+    return distances[hospital.id] ?? 1.6;
   }
 
+  // Uzaklık hesaplama (string formatında)
+  String _getDistance(Hospital hospital) {
+    final distance = _getDistanceValue(hospital);
+    return '${distance.toStringAsFixed(1)} km';
+  }
 
   /// Bugünün gününü İngilizce gün adına çevirir (monday, tuesday, vb.)
   String _getTodayDayName() {
@@ -350,12 +311,17 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
   void _applySorting() {
     setState(() {
       switch (_sortBy) {
-        case 'rating':
+        case 'distance':
           _filteredHospitals.sort((a, b) {
-            final ratingA = _hospitalRatings[a.id]?['averageRating'] as double? ?? 0.0;
-            final ratingB = _hospitalRatings[b.id]?['averageRating'] as double? ?? 0.0;
-            return ratingB.compareTo(ratingA); // Yüksekten düşüğe
+            final distanceA = _getDistanceValue(a);
+            final distanceB = _getDistanceValue(b);
+            return distanceA.compareTo(distanceB);
           });
+          break;
+        case 'rating':
+          // Şimdilik sabit puan kullanıyoruz, gerçek puan sistemi eklendiğinde güncellenir
+          // Geçici olarak alfabetik ters sıralama (gerçek puan sistemi eklendiğinde değiştirilecek)
+          _filteredHospitals.sort((a, b) => b.name.compareTo(a.name));
           break;
         case 'name':
           _filteredHospitals.sort((a, b) => a.name.compareTo(b.name));
@@ -536,6 +502,7 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
             ),
             const SizedBox(height: 20),
             _buildSortOption('name', 'Alfabetik', Icons.sort_by_alpha),
+            _buildSortOption('distance', 'En Yakın', Icons.near_me),
             _buildSortOption('rating', 'En Yüksek Puan', Icons.star),
           ],
         ),
@@ -569,6 +536,8 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
 
   String _getSortLabel() {
     switch (_sortBy) {
+      case 'distance':
+        return 'En Yakın';
       case 'rating':
         return 'En Yüksek Puan';
       case 'name':
@@ -981,12 +950,31 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                 Stack(
                   children: [
                     HospitalLogo(imageUrl: hospital.image, size: 84),
-                    if (_hospitalRatings.containsKey(hospital.id))
-                      Positioned(
-                        top: 4,
-                        right: 4,
-                        child: _buildHospitalRatingBadge(hospital.id),
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.55),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.star_rounded, size: 12, color: Colors.white),
+                            const SizedBox(width: 2),
+                            Text(
+                              '4.5',
+                              style: AppTheme.bodySmall.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                    ),
                   ],
                 ),
                 const SizedBox(width: 16),
@@ -1029,6 +1017,27 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                 spacing: 8,
                 runSpacing: 6,
                 children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.lightTurquoise,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.near_me_rounded, size: 12, color: AppTheme.tealBlue),
+                        const SizedBox(width: 4),
+                        Text(
+                          _getDistance(hospital),
+                          style: AppTheme.bodySmall.copyWith(
+                            color: AppTheme.tealBlue,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   _buildWorkingHoursBadge(hospital),
                 ],
               ),
