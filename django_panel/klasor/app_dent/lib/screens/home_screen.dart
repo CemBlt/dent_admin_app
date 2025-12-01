@@ -4,6 +4,7 @@ import '../models/appointment.dart';
 import '../models/doctor.dart';
 import '../models/hospital.dart';
 import '../models/tip.dart';
+import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/json_service.dart';
 import '../theme/app_theme.dart';
@@ -48,6 +49,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   Appointment? _upcomingAppointment;
   Doctor? _upcomingDoctor;
+  // Kullanıcı bilgisi
+  User? _user;
   // Hastane ID -> {reviewCount, averageRating}
   Map<String, Map<String, dynamic>> _hospitalRatings = {};
   // Doktor ID -> {reviewCount, averageRating}
@@ -497,9 +500,14 @@ class _HomeScreenState extends State<HomeScreen> {
     Appointment? upcomingAppointment;
     Doctor? upcomingDoctor;
 
+    User? user;
     if (AuthService.isAuthenticated) {
       final userId = AuthService.currentUserId;
       if (userId != null) {
+        // Kullanıcı bilgilerini yükle
+        user = await JsonService.getUser(userId);
+        
+        // Yaklaşan randevuyu yükle
         upcomingAppointment = await JsonService.getUpcomingAppointmentForUser(userId);
         if (upcomingAppointment != null) {
           upcomingDoctor = await JsonService.getDoctorById(upcomingAppointment.doctorId);
@@ -554,6 +562,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _upcomingAppointment = upcomingAppointment;
       _upcomingDoctor = upcomingDoctor;
       _hospitalDistances = hospitalDistances;
+      _user = user;
       _isLoading = false;
     });
   }
@@ -954,7 +963,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Merhaba, Cem!',
+                          _user != null && _user!.name.isNotEmpty
+                              ? 'Merhaba, ${_user!.name}!'
+                              : 'Merhaba!',
                           style: AppTheme.headingLarge.copyWith(
                             color: AppTheme.white,
                           ),

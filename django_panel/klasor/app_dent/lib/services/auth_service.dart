@@ -32,20 +32,21 @@ class AuthService {
     );
   }
 
-  /// Email (opsiyonel) ve şifre ile kayıt olur
-  /// Telefon numarası zorunludur
+  /// Email (zorunlu) ve şifre ile kayıt olur
+  /// Telefon numarası zorunludur ve E.164 formatında olmalıdır
   static Future<AuthResponse> signUp({
-    String? email,
+    required String email,
     required String password,
     String? name,
     String? surname,
-    required String phone,
+    required String phone, // E.164 formatında: +905321234567
   }) async {
-    // Email boşsa, telefon numarasından geçici email oluştur
-    // Supabase Auth email zorunlu olduğu için
-    final finalEmail = email?.trim().isEmpty ?? true
-        ? 'phone_${phone.replaceAll(RegExp(r'[^0-9]'), '')}@temp.dentapp.com'
-        : email!.trim();
+    // Email zorunlu, trim yap
+    final finalEmail = email.trim();
+    
+    if (finalEmail.isEmpty) {
+      throw Exception('Email adresi gerekli');
+    }
 
     final response = await SupabaseService.supabase.auth.signUp(
       email: finalEmail,
@@ -106,14 +107,13 @@ class AuthService {
   }
 
   /// Email'in daha önce kayıtlı olup olmadığını kontrol eder
-  /// Email boşsa false döner (opsiyonel olduğu için)
   /// Hem user_profiles hem de Supabase Auth'da kontrol eder
   static Future<bool> isEmailTaken(String email) async {
     try {
       // Email boşsa veya geçersizse kontrol yapma
       final trimmedEmail = email.trim();
       if (trimmedEmail.isEmpty || !trimmedEmail.contains('@')) {
-        return false;
+        return false; // Geçersiz email, kontrol yapma
       }
 
       // 1. user_profiles tablosunda kontrol et

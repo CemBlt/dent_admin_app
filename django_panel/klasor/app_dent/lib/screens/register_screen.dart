@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:intl_phone_field/intl_phone_field.dart';
+import 'package:intl_phone_field/phone_number.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 
@@ -19,7 +21,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _surnameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
@@ -29,13 +30,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool? _phoneIsUnique; // null = kontrol edilmedi, true = unique, false = alınmış
   bool _isCheckingEmail = false;
   bool? _emailIsUnique; // null = kontrol edilmedi, true = unique, false = alınmış
+  PhoneNumber? _phoneNumber; // Country picker'dan gelen telefon numarası
+  String? _phoneNumberError; // Telefon numarası hata mesajı
 
   @override
   void dispose() {
     _nameController.dispose();
     _surnameController.dispose();
     _emailController.dispose();
-    _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -52,8 +54,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       // Telefon numarası kontrolü
-      final phone = _phoneController.text.trim();
-      final isPhoneTaken = await AuthService.isPhoneNumberTaken(phone);
+      if (_phoneNumber == null) {
+        setState(() {
+          _phoneNumberError = 'Telefon numarası gerekli';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // E.164 formatında telefon numarası (boşluksuz)
+      final phoneE164 = _phoneNumber!.completeNumber; // +905321234567 formatında
+      
+      // "0" ile başlayan numaraları kontrol et
+      final localNumber = _phoneNumber!.number;
+      if (localNumber.startsWith('0')) {
+        setState(() {
+          _phoneNumberError = 'Telefon numarası 0 ile başlayamaz. Ülke kodu kullanın (+90 gibi)';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final isPhoneTaken = await AuthService.isPhoneNumberTaken(phoneE164);
       
       if (isPhoneTaken) {
         if (mounted) {
@@ -70,33 +92,46 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return;
       }
 
-      // Email kontrolü (email girilmişse)
+      // Email kontrolü (email artık zorunlu)
       final email = _emailController.text.trim();
-      if (email.isNotEmpty) {
-        final isEmailTaken = await AuthService.isEmailTaken(email);
-        
-        if (isEmailTaken) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Bu email adresi zaten kayıtlı'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-          setState(() {
-            _isLoading = false;
-          });
-          return;
+      if (email.isEmpty) {
+        setState(() {
+          _isLoading = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Email adresi gerekli'),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
+        return;
+      }
+
+      final isEmailTaken = await AuthService.isEmailTaken(email);
+      
+      if (isEmailTaken) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Bu email adresi zaten kayıtlı'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        setState(() {
+          _isLoading = false;
+        });
+        return;
       }
 
       final response = await AuthService.signUp(
-        email: email.isEmpty ? null : email,
+        email: email,
         password: _passwordController.text,
         name: _nameController.text.trim(),
         surname: _surnameController.text.trim(),
-        phone: phone,
+        phone: phoneE164, // E.164 formatında kaydet
       );
 
       if (response.user != null) {
@@ -104,13 +139,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (!AuthService.isAuthenticated) {
           // Otomatik giriş yapılmamışsa, email ve şifre ile giriş yap
           try {
-            // Email boşsa, geçici email ile giriş yap
-            final loginEmail = email.isEmpty
-                ? 'phone_${phone.replaceAll(RegExp(r'[^0-9]'), '')}@temp.dentapp.com'
-                : email;
-            
             await AuthService.signInWithEmail(
-              email: loginEmail,
+              email: email,
               password: _passwordController.text,
             );
           } catch (e) {
@@ -173,19 +203,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  Future<void> _checkPhoneNumber(String phone) async {
-    if (phone.trim().isEmpty) {
+  Future<void> _checkPhoneNumber(String phoneE164) async {
+    if (phoneE164.trim().isEmpty) {
       setState(() {
         _phoneIsUnique = null;
+        _phoneNumberError = null;
       });
       return;
     }
 
-    // Telefon formatı kontrolü
-    final phoneRegex = RegExp(r'^[0-9\s\+\-\(\)]{10,}$');
-    if (!phoneRegex.hasMatch(phone.replaceAll(' ', ''))) {
+    // E.164 format kontrolü (örn: +905321234567)
+    if (!phoneE164.startsWith('+')) {
       setState(() {
         _phoneIsUnique = null;
+        _phoneNumberError = 'Ülke kodu gerekli (+90 gibi)';
       });
       return;
     }
@@ -193,13 +224,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() {
       _isCheckingPhone = true;
       _phoneIsUnique = null;
+      _phoneNumberError = null;
     });
 
     try {
-      final isTaken = await AuthService.isPhoneNumberTaken(phone);
+      final isTaken = await AuthService.isPhoneNumberTaken(phoneE164);
       if (mounted) {
         setState(() {
           _phoneIsUnique = !isTaken;
+          if (isTaken) {
+            _phoneNumberError = 'Bu telefon numarası zaten kayıtlı';
+          }
         });
         if (isTaken) {
           _formKey.currentState?.validate();
@@ -538,91 +573,112 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           },
                         ),
                         const SizedBox(height: 20),
-                        // Phone input (ZORUNLU)
-                        TextFormField(
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                          decoration: InputDecoration(
-                            labelText: 'Telefon Numarası *',
-                            hintText: '05XX XXX XX XX',
-                            prefixIcon: Container(
-                              margin: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                gradient: AppTheme.cardGradient,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(Icons.phone_rounded, color: AppTheme.tealBlue, size: 20),
-                            ),
-                            suffixIcon: _isCheckingPhone
-                                ? const Padding(
-                                    padding: EdgeInsets.all(12),
-                                    child: SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.tealBlue),
-                                      ),
-                                    ),
-                                  )
-                                : _phoneIsUnique == null
-                                    ? null
-                                    : Padding(
-                                        padding: const EdgeInsets.all(12),
-                                        child: Icon(
-                                          _phoneIsUnique == true
-                                              ? Icons.check_circle
-                                              : Icons.cancel,
-                                          color: _phoneIsUnique == true
-                                              ? AppTheme.successGreen
-                                              : Colors.red,
-                                          size: 20,
+                        // Phone input (ZORUNLU - Country Picker ile)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            IntlPhoneField(
+                              decoration: InputDecoration(
+                                labelText: 'Telefon Numarası *',
+                                hintText: '532 123 45 67',
+                                filled: true,
+                                fillColor: AppTheme.inputFieldGray,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide.none,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide.none,
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(color: AppTheme.tealBlue, width: 2),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(color: Colors.red, width: 2),
+                                ),
+                                focusedErrorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(color: Colors.red, width: 2),
+                                ),
+                                errorText: _phoneNumberError,
+                                suffixIcon: _isCheckingPhone
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(12),
+                                        child: SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation<Color>(AppTheme.tealBlue),
+                                          ),
                                         ),
-                                      ),
-                            filled: true,
-                            fillColor: AppTheme.inputFieldGray,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
+                                      )
+                                    : _phoneIsUnique == null
+                                        ? null
+                                        : Padding(
+                                            padding: const EdgeInsets.all(12),
+                                            child: Icon(
+                                              _phoneIsUnique == true
+                                                  ? Icons.check_circle
+                                                  : Icons.cancel,
+                                              color: _phoneIsUnique == true
+                                                  ? AppTheme.successGreen
+                                                  : Colors.red,
+                                              size: 20,
+                                            ),
+                                          ),
+                              ),
+                              initialCountryCode: 'TR', // Türkiye varsayılan
+                              onChanged: (phone) {
+                                setState(() {
+                                  _phoneNumber = phone;
+                                  _phoneNumberError = null;
+                                  _phoneIsUnique = null;
+                                  
+                                  // "0" ile başlayan numaraları kontrol et
+                                  if (phone.number.startsWith('0')) {
+                                    _phoneNumberError = 'Telefon numarası 0 ile başlayamaz. Ülke kodu otomatik eklenir.';
+                                  }
+                                });
+                                
+                                // Telefon numarası değiştiğinde kontrol et (debounce için)
+                                if (phone.completeNumber.isNotEmpty && !phone.number.startsWith('0')) {
+                                  Future.delayed(const Duration(milliseconds: 500), () {
+                                    if (mounted && _phoneNumber?.completeNumber == phone.completeNumber) {
+                                      _checkPhoneNumber(phone.completeNumber);
+                                    }
+                                  });
+                                }
+                              },
+                              validator: (phone) {
+                                if (phone == null || phone.completeNumber.isEmpty) {
+                                  return 'Telefon numarası gerekli';
+                                }
+                                
+                                // "0" ile başlayan numaraları reddet
+                                if (phone.number.startsWith('0')) {
+                                  return 'Telefon numarası 0 ile başlayamaz. Ülke kodu otomatik eklenir.';
+                                }
+                                
+                                // E.164 format kontrolü
+                                if (!phone.completeNumber.startsWith('+')) {
+                                  return 'Ülke kodu gerekli';
+                                }
+                                
+                                if (_phoneNumberError != null) {
+                                  return _phoneNumberError;
+                                }
+                                
+                                return null;
+                              },
                             ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(color: AppTheme.tealBlue, width: 2),
-                            ),
-                          ),
-                          style: AppTheme.bodyMedium,
-                          onChanged: (value) {
-                            setState(() {
-                              // Telefon numarası değiştiğinde state'i sıfırla
-                              if (value.trim().isEmpty) {
-                                _phoneIsUnique = null;
-                              }
-                            });
-                            // Telefon numarası değiştiğinde kontrol et (debounce için)
-                            Future.delayed(const Duration(milliseconds: 500), () {
-                              if (mounted && _phoneController.text == value) {
-                                _checkPhoneNumber(value);
-                              }
-                            });
-                          },
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Telefon numarası gerekli';
-                            }
-                            // Basit telefon formatı kontrolü
-                            final phoneRegex = RegExp(r'^[0-9\s\+\-\(\)]{10,}$');
-                            if (!phoneRegex.hasMatch(value.replaceAll(' ', ''))) {
-                              return 'Geçerli bir telefon numarası giriniz';
-                            }
-                            return null;
-                          },
+                          ],
                         ),
                         const SizedBox(height: 20),
-                        // Email input (OPSİYONEL)
+                        // Email input (ZORUNLU)
                         TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
@@ -641,7 +697,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             });
                           },
                           decoration: InputDecoration(
-                            labelText: 'Email (Opsiyonel)',
+                            labelText: 'Email *',
                             hintText: 'ornek@email.com',
                             prefixIcon: Container(
                               margin: const EdgeInsets.all(12),
@@ -694,16 +750,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           style: AppTheme.bodyMedium,
                           validator: (value) {
-                            // Email opsiyonel, ama girilmişse geçerli olmalı
-                            if (value != null && value.trim().isNotEmpty) {
-                              if (!value.contains('@') || !value.contains('.')) {
-                                return 'Geçerli bir email adresi giriniz';
-                              }
-                              // Email unique kontrolü
-                              if (_emailIsUnique == false) {
-                                return 'Bu email adresi zaten kayıtlı';
-                              }
+                            // Email artık zorunlu
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Email adresi gerekli';
                             }
+                            
+                            // Email format kontrolü
+                            final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                            if (!emailRegex.hasMatch(value.trim())) {
+                              return 'Geçerli bir email adresi giriniz';
+                            }
+                            
+                            // Email unique kontrolü
+                            if (_emailIsUnique == false) {
+                              return 'Bu email adresi zaten kayıtlı';
+                            }
+                            
                             return null;
                           },
                         ),
