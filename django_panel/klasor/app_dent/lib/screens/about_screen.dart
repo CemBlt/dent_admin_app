@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+
 import '../theme/app_theme.dart';
 import '../widgets/app_logo.dart';
 
@@ -117,7 +118,7 @@ class _AboutScreenState extends State<AboutScreen> {
                               const SizedBox(height: 24),
                               // Uygulama Adı
                               Text(
-                                'Dent Admin',
+                                'Dişçi Bul',
                                 style: AppTheme.headingLarge.copyWith(
                                   color: AppTheme.darkText,
                                 ),
@@ -157,7 +158,7 @@ class _AboutScreenState extends State<AboutScreen> {
                                     ),
                                     const SizedBox(height: 12),
                                     Text(
-                                      'Dent Admin, diş hekimi randevu yönetimi için geliştirilmiş modern bir mobil uygulamadır. '
+                                      'Dişçi Bul, diş hekimi randevu yönetimi için geliştirilmiş modern bir mobil uygulamadır. '
                                       'Hastalar kolayca randevu oluşturabilir, doktor ve klinik bilgilerine erişebilir, '
                                       'randevularını yönetebilir ve değerlendirmeler yapabilir.',
                                       style: AppTheme.bodyMedium.copyWith(
@@ -173,7 +174,7 @@ class _AboutScreenState extends State<AboutScreen> {
                               _buildInfoCard(
                                 icon: Icons.email,
                                 title: 'E-posta',
-                                subtitle: 'destek@dentadmin.com',
+                                subtitle: 'info@bumel.com.tr',
                                 onTap: () {
                                   // TODO: E-posta açma
                                 },
@@ -182,7 +183,7 @@ class _AboutScreenState extends State<AboutScreen> {
                               _buildInfoCard(
                                 icon: Icons.phone,
                                 title: 'Telefon',
-                                subtitle: '+90 (212) 123 45 67',
+                                subtitle: '+90 (537) 224 71 06',
                                 onTap: () {
                                   // TODO: Telefon arama
                                 },
@@ -191,7 +192,7 @@ class _AboutScreenState extends State<AboutScreen> {
                               _buildInfoCard(
                                 icon: Icons.language,
                                 title: 'Web Sitesi',
-                                subtitle: 'www.dentadmin.com',
+                                subtitle: 'bumel.com.tr',
                                 onTap: () {
                                   // TODO: Web sitesi açma
                                 },
@@ -199,7 +200,7 @@ class _AboutScreenState extends State<AboutScreen> {
                               const SizedBox(height: 32),
                               // Telif Hakkı
                               Text(
-                                '© 2025 Dent Admin. Tüm hakları saklıdır.',
+                                '© 2025 Dişçi Bul. Tüm hakları saklıdır.',
                                 style: AppTheme.bodySmall.copyWith(
                                   color: AppTheme.grayText,
                                 ),
@@ -207,7 +208,7 @@ class _AboutScreenState extends State<AboutScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Geliştirildi ❤️ ile',
+                                '',
                                 style: AppTheme.bodySmall.copyWith(
                                   color: AppTheme.grayText,
                                 ),
@@ -282,10 +283,7 @@ class _AboutScreenState extends State<AboutScreen> {
                     ],
                   ),
                 ),
-                Icon(
-                  Icons.chevron_right,
-                  color: AppTheme.iconGray,
-                ),
+                Icon(Icons.chevron_right, color: AppTheme.iconGray),
               ],
             ),
           ),
@@ -294,4 +292,3 @@ class _AboutScreenState extends State<AboutScreen> {
     );
   }
 }
-

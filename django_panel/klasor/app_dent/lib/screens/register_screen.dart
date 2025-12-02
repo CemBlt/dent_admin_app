@@ -27,9 +27,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  bool _isCheckingPhone = false;
   bool? _phoneIsUnique; // null = kontrol edilmedi, true = unique, false = alınmış
-  bool? _emailIsUnique; // null = kontrol edilmedi, false = alınmış (sadece kayıt butonuna basıldığında kontrol edilir)
+  bool? _emailIsUnique; // null = kontrol edilmedi, true = unique, false = alınmış
   PhoneNumber? _phoneNumber; // Country picker'dan gelen telefon numarası
   String? _phoneNumberError; // Telefon numarası hata mesajı
 
@@ -78,19 +77,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final isPhoneTaken = await AuthService.isPhoneNumberTaken(phoneE164);
       
       if (isPhoneTaken) {
+        setState(() {
+          _phoneIsUnique = false;
+          _phoneNumberError = 'Bu telefon numarası zaten kayıtlı';
+          _isLoading = false;
+        });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Bu telefon numarası zaten kayıtlı'),
+              content: Row(
+                children: [
+                  const Icon(Icons.cancel, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
+                  const Text('Bu telefon numarası zaten kayıtlı'),
+                ],
+              ),
               backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
             ),
           );
+          // Form validasyonunu tetikle
+          _formKey.currentState?.validate();
         }
-        setState(() {
-          _isLoading = false;
-        });
         return;
       }
+      
+      // Telefon numarası unique
+      setState(() {
+        _phoneIsUnique = true;
+        _phoneNumberError = null;
+      });
 
       // Email kontrolü (email artık zorunlu)
       final email = _emailController.text.trim();
@@ -126,7 +142,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return;
       }
 
-      // Kayıt işlemini dene (email kontrolü kayıt sırasında yapılacak)
+      // Email kontrolü (kayıt öncesi)
+      final isEmailTaken = await AuthService.isEmailTaken(email);
+      if (isEmailTaken) {
+        setState(() {
+          _emailIsUnique = false;
+          _isLoading = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.cancel, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
+                  const Text('Bu email adresi zaten kayıtlı'),
+                ],
+              ),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          // Form validasyonunu tetikle
+          _formKey.currentState?.validate();
+        }
+        return;
+      }
+
+      // Kayıt işlemini dene
       AuthResponse? response;
       try {
         response = await AuthService.signUp(
@@ -282,58 +325,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  Future<void> _checkPhoneNumber(String phoneE164) async {
-    if (phoneE164.trim().isEmpty) {
-      setState(() {
-        _phoneIsUnique = null;
-        _phoneNumberError = null;
-      });
-      return;
-    }
-
-    // E.164 format kontrolü (örn: +905321234567)
-    if (!phoneE164.startsWith('+')) {
-      setState(() {
-        _phoneIsUnique = null;
-        _phoneNumberError = 'Ülke kodu gerekli (+90 gibi)';
-      });
-      return;
-    }
-
-    setState(() {
-      _isCheckingPhone = true;
-      _phoneIsUnique = null;
-      _phoneNumberError = null;
-    });
-
-    try {
-      final isTaken = await AuthService.isPhoneNumberTaken(phoneE164);
-      if (mounted) {
-        setState(() {
-          _phoneIsUnique = !isTaken;
-          if (isTaken) {
-            _phoneNumberError = 'Bu telefon numarası zaten kayıtlı';
-          }
-        });
-        if (isTaken) {
-          _formKey.currentState?.validate();
-        }
-      }
-    } catch (e) {
-      // Hata durumunda sessizce devam et
-      if (mounted) {
-        setState(() {
-          _phoneIsUnique = null;
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isCheckingPhone = false;
-        });
-      }
-    }
-  }
 
   /// Şifre kurallarını kontrol eder
   Map<String, bool> _checkPasswordRules(String password) {
@@ -633,32 +624,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   borderSide: const BorderSide(color: Colors.red, width: 2),
                                 ),
                                 errorText: _phoneNumberError,
-                                suffixIcon: _isCheckingPhone
-                                    ? const Padding(
-                                        padding: EdgeInsets.all(12),
-                                        child: SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor: AlwaysStoppedAnimation<Color>(AppTheme.tealBlue),
-                                          ),
-                                        ),
-                                      )
-                                    : _phoneIsUnique == null
-                                        ? null
-                                        : Padding(
-                                            padding: const EdgeInsets.all(12),
-                                            child: Icon(
-                                              _phoneIsUnique == true
-                                                  ? Icons.check_circle
-                                                  : Icons.cancel,
-                                              color: _phoneIsUnique == true
-                                                  ? AppTheme.successGreen
-                                                  : Colors.red,
-                                              size: 20,
-                                            ),
-                                          ),
+                                // suffixIcon yok - kontrol sadece kayıt butonuna basıldığında yapılacak
                               ),
                               initialCountryCode: 'TR', // Türkiye varsayılan
                               onChanged: (phone) {
@@ -672,15 +638,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     _phoneNumberError = 'Telefon numarası 0 ile başlayamaz. Ülke kodu otomatik eklenir.';
                                   }
                                 });
-                                
-                                // Telefon numarası değiştiğinde kontrol et (debounce için)
-                                if (phone.completeNumber.isNotEmpty && !phone.number.startsWith('0')) {
-                                  Future.delayed(const Duration(milliseconds: 500), () {
-                                    if (mounted && _phoneNumber?.completeNumber == phone.completeNumber) {
-                                      _checkPhoneNumber(phone.completeNumber);
-                                    }
-                                  });
-                                }
+                                // Real-time kontrol yok, sadece kayıt butonuna basıldığında kontrol edilecek
                               },
                               validator: (phone) {
                                 if (phone == null || phone.completeNumber.isEmpty) {
@@ -713,11 +671,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           keyboardType: TextInputType.emailAddress,
                           onChanged: (value) {
                             // Email değiştiğinde önceki hata durumunu temizle
-                            if (_emailIsUnique == false) {
-                              setState(() {
-                                _emailIsUnique = null;
-                              });
-                            }
+                            setState(() {
+                              _emailIsUnique = null;
+                            });
+                            // Real-time kontrol yok, sadece kayıt butonuna basıldığında kontrol edilecek
                           },
                           decoration: InputDecoration(
                             labelText: 'Email *',
@@ -730,6 +687,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               child: const Icon(Icons.email_rounded, color: AppTheme.tealBlue, size: 20),
                             ),
+                            // suffixIcon yok - kontrol sadece kayıt butonuna basıldığında yapılacak
                             filled: true,
                             fillColor: AppTheme.inputFieldGray,
                             border: OutlineInputBorder(
@@ -766,7 +724,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               return 'Geçerli bir email adresi giriniz';
                             }
                             
-                            // Email unique kontrolü (sadece kayıt butonuna basıldığında kontrol edilir)
+                            // Email unique kontrolü (real-time kontrol sonucu)
                             if (_emailIsUnique == false) {
                               return 'Bu email adresi zaten kayıtlı';
                             }
