@@ -155,8 +155,9 @@ class AppointmentBlockingTests(TestCase):
         query.eq.assert_any_call("date", "2024-04-01")
         query.eq.assert_any_call("hospital_id", "hospital-1")
 
+    @patch("panel.services.appointment_service._get_active_hospital_id", return_value="hospital-1")
     @patch("panel.services.appointment_service.get_supabase_client")
-    def test_is_appointment_time_blocked_returns_false_for_outside_range(self, mock_get_client):
+    def test_is_appointment_time_blocked_returns_false_for_outside_range(self, mock_get_client, _):
         query = _build_query(
             [
                 {
