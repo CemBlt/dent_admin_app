@@ -1,38 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../models/hospital.dart';
-import '../services/json_service.dart';
+import '../providers/hospitals_directory_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/hospital_logo.dart';
 import 'hospital_detail_screen.dart';
 
-class AllHospitalsScreen extends StatefulWidget {
+class AllHospitalsScreen extends ConsumerStatefulWidget {
   const AllHospitalsScreen({super.key});
 
   @override
-  State<AllHospitalsScreen> createState() => _AllHospitalsScreenState();
+  ConsumerState<AllHospitalsScreen> createState() => _AllHospitalsScreenState();
 }
 
-class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
-  List<Hospital> _allHospitals = [];
-  List<Hospital> _filteredHospitals = [];
+class _AllHospitalsScreenState extends ConsumerState<AllHospitalsScreen> {
   final TextEditingController _searchController = TextEditingController();
-  String _sortBy = 'name'; // distance, rating, name
-  String? _selectedProvince;
-  String? _selectedDistrict;
-  bool _isLoading = true;
-  
-  // Pagination
-  static const int _itemsPerPage = 20;
-  int _currentPage = 0;
-  bool _isLoadingMore = false;
-  bool _hasMoreItems = true;
   final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _loadData();
   }
 
   @override
@@ -45,55 +34,8 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent * 0.8) {
-      _loadMoreItems();
+      ref.read(hospitalsDirectoryProvider.notifier).loadMore();
     }
-  }
-
-  void _loadMoreItems() {
-    if (_isLoadingMore || !_hasMoreItems) return;
-
-    final totalItems = _filteredHospitals.length;
-    final displayedItems = (_currentPage + 1) * _itemsPerPage;
-
-    if (displayedItems >= totalItems) {
-      setState(() {
-        _hasMoreItems = false;
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoadingMore = true;
-    });
-
-    // Simüle edilmiş yükleme (gerçek uygulamada API çağrısı yapılabilir)
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted) {
-        setState(() {
-          _currentPage++;
-          _isLoadingMore = false;
-        });
-      }
-    });
-  }
-
-  List<Hospital> get _displayedHospitals {
-    final endIndex = ((_currentPage + 1) * _itemsPerPage).clamp(0, _filteredHospitals.length);
-    return _filteredHospitals.take(endIndex).toList();
-  }
-
-  Future<void> _loadData() async {
-    final hospitals = await JsonService.getHospitals();
-
-    // Alfabetik sırala
-    hospitals.sort((a, b) => a.name.compareTo(b.name));
-
-    setState(() {
-      _allHospitals = hospitals;
-      _filteredHospitals = hospitals;
-      _isLoading = false;
-    });
-    _applyFilters();
   }
 
   // Uzaklık değerini sayısal olarak döndür
@@ -274,85 +216,11 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
     }
   }
 
-  void _onSearchChanged(String query) {
-    _applyFilters();
-  }
-
-  void _applyFilters() {
-    setState(() {
-      _filteredHospitals = _allHospitals.where((hospital) {
-        // Arama filtresi
-        final searchQuery = _searchController.text.toLowerCase();
-        if (searchQuery.isNotEmpty) {
-          final matchesSearch = hospital.name.toLowerCase().contains(searchQuery) ||
-              hospital.address.toLowerCase().contains(searchQuery);
-          if (!matchesSearch) return false;
-        }
-
-        // İl filtresi
-        if (_selectedProvince != null && hospital.provinceName != _selectedProvince) {
-          return false;
-        }
-
-        // İlçe filtresi
-        if (_selectedDistrict != null && hospital.districtName != _selectedDistrict) {
-          return false;
-        }
-
-        return true;
-      }).toList();
-      _applySorting();
-      // Filtre değiştiğinde pagination'ı sıfırla
-      _currentPage = 0;
-      _hasMoreItems = _filteredHospitals.length > _itemsPerPage;
-    });
-  }
-
-  void _applySorting() {
-    setState(() {
-      switch (_sortBy) {
-        case 'distance':
-          _filteredHospitals.sort((a, b) {
-            final distanceA = _getDistanceValue(a);
-            final distanceB = _getDistanceValue(b);
-            return distanceA.compareTo(distanceB);
-          });
-          break;
-        case 'rating':
-          // Şimdilik sabit puan kullanıyoruz, gerçek puan sistemi eklendiğinde güncellenir
-          // Geçici olarak alfabetik ters sıralama (gerçek puan sistemi eklendiğinde değiştirilecek)
-          _filteredHospitals.sort((a, b) => b.name.compareTo(a.name));
-          break;
-        case 'name':
-          _filteredHospitals.sort((a, b) => a.name.compareTo(b.name));
-          break;
-      }
-    });
-  }
-
-  List<String> _getProvinces() {
-    final provinces = _allHospitals
-        .where((h) => h.provinceName != null)
-        .map((h) => h.provinceName!)
-        .toSet()
-        .toList();
-    provinces.sort();
-    return provinces;
-  }
-
-  List<String> _getDistricts() {
-    if (_selectedProvince == null) return [];
-    final districts = _allHospitals
-        .where((h) => h.provinceName == _selectedProvince && h.districtName != null)
-        .map((h) => h.districtName!)
-        .toSet()
-        .toList();
-    districts.sort();
-    return districts;
-  }
-
-  void _showProvinceFilter() {
-    final provinces = _getProvinces();
+  void _showProvinceFilter(
+    HospitalsDirectoryController controller,
+    HospitalsDirectoryState state,
+  ) {
+    final provinces = controller.provinces;
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -373,19 +241,15 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
               title: Text(
                 'Tümü',
                 style: AppTheme.bodyMedium.copyWith(
-                  fontWeight: _selectedProvince == null ? FontWeight.bold : FontWeight.normal,
-                  color: _selectedProvince == null ? AppTheme.tealBlue : AppTheme.darkText,
+                  fontWeight: state.selectedProvince == null ? FontWeight.bold : FontWeight.normal,
+                  color: state.selectedProvince == null ? AppTheme.tealBlue : AppTheme.darkText,
                 ),
               ),
-              trailing: _selectedProvince == null
+              trailing: state.selectedProvince == null
                   ? Icon(Icons.check, color: AppTheme.tealBlue)
                   : null,
               onTap: () {
-                setState(() {
-                  _selectedProvince = null;
-                  _selectedDistrict = null;
-                });
-                _applyFilters();
+                controller.selectProvince(null);
                 Navigator.pop(context);
               },
             ),
@@ -394,19 +258,15 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                   title: Text(
                     province,
                     style: AppTheme.bodyMedium.copyWith(
-                      fontWeight: _selectedProvince == province ? FontWeight.bold : FontWeight.normal,
-                      color: _selectedProvince == province ? AppTheme.tealBlue : AppTheme.darkText,
+                      fontWeight: state.selectedProvince == province ? FontWeight.bold : FontWeight.normal,
+                      color: state.selectedProvince == province ? AppTheme.tealBlue : AppTheme.darkText,
                     ),
                   ),
-                  trailing: _selectedProvince == province
+                  trailing: state.selectedProvince == province
                       ? Icon(Icons.check, color: AppTheme.tealBlue)
                       : null,
                   onTap: () {
-                    setState(() {
-                      _selectedProvince = province;
-                      _selectedDistrict = null;
-                    });
-                    _applyFilters();
+                    controller.selectProvince(province);
                     Navigator.pop(context);
                   },
                 )),
@@ -416,8 +276,11 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
     );
   }
 
-  void _showDistrictFilter() {
-    final districts = _getDistricts();
+  void _showDistrictFilter(
+    HospitalsDirectoryController controller,
+    HospitalsDirectoryState state,
+  ) {
+    final districts = controller.districts;
     if (districts.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Önce bir il seçiniz')),
@@ -444,18 +307,15 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
               title: Text(
                 'Tümü',
                 style: AppTheme.bodyMedium.copyWith(
-                  fontWeight: _selectedDistrict == null ? FontWeight.bold : FontWeight.normal,
-                  color: _selectedDistrict == null ? AppTheme.tealBlue : AppTheme.darkText,
+                  fontWeight: state.selectedDistrict == null ? FontWeight.bold : FontWeight.normal,
+                  color: state.selectedDistrict == null ? AppTheme.tealBlue : AppTheme.darkText,
                 ),
               ),
-              trailing: _selectedDistrict == null
+              trailing: state.selectedDistrict == null
                   ? Icon(Icons.check, color: AppTheme.tealBlue)
                   : null,
               onTap: () {
-                setState(() {
-                  _selectedDistrict = null;
-                });
-                _applyFilters();
+                controller.selectDistrict(null);
                 Navigator.pop(context);
               },
             ),
@@ -464,18 +324,15 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                   title: Text(
                     district,
                     style: AppTheme.bodyMedium.copyWith(
-                      fontWeight: _selectedDistrict == district ? FontWeight.bold : FontWeight.normal,
-                      color: _selectedDistrict == district ? AppTheme.tealBlue : AppTheme.darkText,
+                      fontWeight: state.selectedDistrict == district ? FontWeight.bold : FontWeight.normal,
+                      color: state.selectedDistrict == district ? AppTheme.tealBlue : AppTheme.darkText,
                     ),
                   ),
-                  trailing: _selectedDistrict == district
+                  trailing: state.selectedDistrict == district
                       ? Icon(Icons.check, color: AppTheme.tealBlue)
                       : null,
                   onTap: () {
-                    setState(() {
-                      _selectedDistrict = district;
-                    });
-                    _applyFilters();
+                    controller.selectDistrict(district);
                     Navigator.pop(context);
                   },
                 )),
@@ -485,7 +342,10 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
     );
   }
 
-  void _showSortOptions() {
+  void _showSortOptions(
+    HospitalsDirectoryController controller,
+    HospitalsDirectoryState state,
+  ) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -501,17 +361,23 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
               style: AppTheme.headingSmall,
             ),
             const SizedBox(height: 20),
-            _buildSortOption('name', 'Alfabetik', Icons.sort_by_alpha),
-            _buildSortOption('distance', 'En Yakın', Icons.near_me),
-            _buildSortOption('rating', 'En Yüksek Puan', Icons.star),
+            _buildSortOption(state, controller, 'name', 'Alfabetik', Icons.sort_by_alpha),
+            _buildSortOption(state, controller, 'distance', 'En Yakın', Icons.near_me),
+            _buildSortOption(state, controller, 'rating', 'En Yüksek Puan', Icons.star),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSortOption(String value, String label, IconData icon) {
-    final isSelected = _sortBy == value;
+  Widget _buildSortOption(
+    HospitalsDirectoryState state,
+    HospitalsDirectoryController controller,
+    String value,
+    String label,
+    IconData icon,
+  ) {
+    final isSelected = state.sortBy == value;
     return ListTile(
       leading: Icon(icon, color: isSelected ? AppTheme.tealBlue : AppTheme.iconGray),
       title: Text(
@@ -525,17 +391,14 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
           ? Icon(Icons.check, color: AppTheme.tealBlue)
           : null,
       onTap: () {
-        setState(() {
-          _sortBy = value;
-        });
-        _applySorting();
+        controller.updateSort(value);
         Navigator.pop(context);
       },
     );
   }
 
-  String _getSortLabel() {
-    switch (_sortBy) {
+  String _getSortLabel(String sortBy) {
+    switch (sortBy) {
       case 'distance':
         return 'En Yakın';
       case 'rating':
@@ -550,6 +413,10 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(hospitalsDirectoryProvider);
+    final controller = ref.read(hospitalsDirectoryProvider.notifier);
+    _syncSearchField(state.searchQuery);
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -563,7 +430,7 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
           ),
         ),
         child: SafeArea(
-          child: _isLoading
+          child: state.isLoading
               ? const Center(child: CircularProgressIndicator())
               : Column(
                   children: [
@@ -605,7 +472,7 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '${_filteredHospitals.length} hastane bulundu',
+                                  '${state.filteredHospitals.length} hastane bulundu',
                                   style: AppTheme.bodySmall.copyWith(
                                     color: AppTheme.white.withOpacity(0.9),
                                   ),
@@ -657,14 +524,11 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                                   ),
                                   child: const Icon(Icons.search_rounded, color: AppTheme.tealBlue, size: 20),
                                 ),
-                                suffixIcon: _searchController.text.isNotEmpty
+                                suffixIcon: state.searchQuery.isNotEmpty
                                     ? IconButton(
                                         icon: Icon(Icons.clear_rounded, color: AppTheme.iconGray),
                                         onPressed: () {
-                                          setState(() {
-                                            _searchController.clear();
-                                            _onSearchChanged('');
-                                          });
+                                          controller.updateSearch('');
                                         },
                                       )
                                     : null,
@@ -674,7 +538,7 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                                   vertical: 18,
                                 ),
                               ),
-                              onChanged: _onSearchChanged,
+                              onChanged: controller.updateSearch,
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -695,7 +559,8 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                                   child: Material(
                                     color: Colors.transparent,
                                     child: InkWell(
-                                      onTap: _showProvinceFilter,
+                                      onTap: () =>
+                                          _showProvinceFilter(controller, state),
                                       borderRadius: BorderRadius.circular(16),
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
@@ -713,7 +578,7 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                                             const SizedBox(width: 6),
                                             Flexible(
                                               child: Text(
-                                                _selectedProvince ?? 'İl',
+                                                state.selectedProvince ?? 'İl',
                                                 style: AppTheme.bodySmall.copyWith(
                                                   color: AppTheme.darkText,
                                                   fontWeight: FontWeight.w600,
@@ -751,7 +616,8 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                                   child: Material(
                                     color: Colors.transparent,
                                     child: InkWell(
-                                      onTap: _showDistrictFilter,
+                                      onTap: () =>
+                                          _showDistrictFilter(controller, state),
                                       borderRadius: BorderRadius.circular(16),
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
@@ -769,7 +635,7 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                                             const SizedBox(width: 6),
                                             Flexible(
                                               child: Text(
-                                                _selectedDistrict ?? 'İlçe',
+                                                state.selectedDistrict ?? 'İlçe',
                                                 style: AppTheme.bodySmall.copyWith(
                                                   color: AppTheme.darkText,
                                                   fontWeight: FontWeight.w600,
@@ -806,7 +672,8 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                                 child: Material(
                                   color: Colors.transparent,
                                   child: InkWell(
-                                    onTap: _showSortOptions,
+                                    onTap: () =>
+                                        _showSortOptions(controller, state),
                                     borderRadius: BorderRadius.circular(16),
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(
@@ -824,7 +691,7 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                                           const SizedBox(width: 6),
                                           Flexible(
                                             child: Text(
-                                              _getSortLabel(),
+                                              _getSortLabel(state.sortBy),
                                               style: AppTheme.bodySmall.copyWith(
                                                 color: AppTheme.darkText,
                                                 fontWeight: FontWeight.w600,
@@ -853,7 +720,7 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                     ),
                     // Hastane Listesi
                     Expanded(
-                      child: _filteredHospitals.isEmpty
+                      child: state.filteredHospitals.isEmpty
                           ? Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -870,7 +737,7 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                                       color: AppTheme.grayText,
                                     ),
                                   ),
-                                  if (_searchController.text.isNotEmpty)
+                                  if (state.searchQuery.isNotEmpty)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 8),
                                       child: Text(
@@ -884,14 +751,14 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                               ),
                             )
                           : RefreshIndicator(
-                              onRefresh: _loadData,
+                              onRefresh: controller.loadHospitals,
                               child: ListView.builder(
                                 controller: _scrollController,
                                 padding: const EdgeInsets.all(20),
-                                itemCount: _displayedHospitals.length + (_hasMoreItems ? 1 : 0),
+                                itemCount: controller.displayedHospitals.length +
+                                    (state.hasMoreItems ? 1 : 0),
                                 itemBuilder: (context, index) {
-                                  if (index == _displayedHospitals.length) {
-                                    // Loading indicator
+                                  if (index == controller.displayedHospitals.length) {
                                     return Padding(
                                       padding: const EdgeInsets.all(20),
                                       child: Center(
@@ -901,7 +768,7 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
                                       ),
                                     );
                                   }
-                                  final hospital = _displayedHospitals[index];
+                                  final hospital = controller.displayedHospitals[index];
                                   return _buildHospitalCard(hospital);
                                 },
                               ),
@@ -1053,6 +920,14 @@ class _AllHospitalsScreenState extends State<AllHospitalsScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _syncSearchField(String value) {
+    if (_searchController.text == value) return;
+    _searchController.value = TextEditingValue(
+      text: value,
+      selection: TextSelection.collapsed(offset: value.length),
     );
   }
 }

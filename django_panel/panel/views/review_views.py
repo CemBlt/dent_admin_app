@@ -6,7 +6,7 @@ from django.contrib import messages
 from .auth_views import login_required
 from ..forms import ReviewReplyForm, ReviewFilterForm
 from ..utils import build_doctor_choices
-from ..services import doctor_service, review_service
+from ..services import doctor_service, review_service, event_service
 
 class ReviewManagementView(View):
     template_name = "panel/review_management.html"
@@ -29,6 +29,11 @@ class ReviewManagementView(View):
                 reply_text = form.cleaned_data["reply"]
                 review_service.add_reply(review_id, reply_text)
                 messages.success(request, "Yanıt eklendi.")
+                event_service.log_event(
+                    "review_reply_added",
+                    request=request,
+                    properties={"review_id": review_id},
+                )
                 return redirect("review_management")
 
         elif action == "edit_reply":
@@ -38,6 +43,11 @@ class ReviewManagementView(View):
                 reply_text = form.cleaned_data["reply"]
                 review_service.add_reply(review_id, reply_text)
                 messages.success(request, "Yanıt güncellendi.")
+                event_service.log_event(
+                    "review_reply_updated",
+                    request=request,
+                    properties={"review_id": review_id},
+                )
                 return redirect("review_management")
 
         elif action == "delete_reply":
@@ -45,6 +55,11 @@ class ReviewManagementView(View):
             if review_id:
                 review_service.delete_reply(review_id)
                 messages.success(request, "Yanıt silindi.")
+                event_service.log_event(
+                    "review_reply_deleted",
+                    request=request,
+                    properties={"review_id": review_id},
+                )
                 return redirect("review_management")
 
         context = self._build_context(request)

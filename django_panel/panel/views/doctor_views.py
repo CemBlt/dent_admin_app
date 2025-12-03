@@ -5,7 +5,7 @@ from django.contrib import messages
 from .auth_views import login_required
 from ..forms import DoctorForm, DoctorWorkingHoursForm, DoctorHolidayForm, DAYS
 from ..utils import build_service_choices, validate_working_hours_form
-from ..services import doctor_service, hospital_service
+from ..services import doctor_service, hospital_service, event_service
 
 class DoctorManagementView(View):
     template_name = "panel/doctor_management.html"
@@ -27,6 +27,11 @@ class DoctorManagementView(View):
             if form.is_valid():
                 doctor_service.add_doctor(form.cleaned_data, request.FILES.get("image"), request=request)
                 messages.success(request, "Doktor eklendi.")
+                event_service.log_event(
+                    "doctor_created",
+                    request=request,
+                    properties={"doctor_name": form.cleaned_data.get("name")},
+                )
                 return redirect("doctor_management")
             messages.error(request, "Doktor eklenemedi. Formu kontrol edin.")
 
@@ -35,6 +40,11 @@ class DoctorManagementView(View):
             if form.is_valid():
                 doctor_service.update_doctor(form.cleaned_data["doctor_id"], form.cleaned_data, request.FILES.get("image"))
                 messages.success(request, "Doktor bilgileri güncellendi.")
+                event_service.log_event(
+                    "doctor_updated",
+                    request=request,
+                    properties={"doctor_id": form.cleaned_data.get("doctor_id")},
+                )
                 return redirect("doctor_management")
             messages.error(request, "Doktor güncellenemedi.")
 
@@ -42,6 +52,11 @@ class DoctorManagementView(View):
             doctor_id = request.POST.get("doctor_id")
             doctor_service.delete_doctor(doctor_id)
             messages.success(request, "Doktor silindi.")
+            event_service.log_event(
+                "doctor_deleted",
+                request=request,
+                properties={"doctor_id": doctor_id},
+            )
             return redirect("doctor_management")
 
         elif action == "working_hours":
@@ -50,6 +65,11 @@ class DoctorManagementView(View):
                 working_hours = doctor_service.build_working_hours_from_form(form.cleaned_data)
                 doctor_service.update_working_hours(form.cleaned_data["doctor_id"], working_hours)
                 messages.success(request, "Çalışma saatleri güncellendi.")
+                event_service.log_event(
+                    "doctor_hours_updated",
+                    request=request,
+                    properties={"doctor_id": form.cleaned_data.get("doctor_id")},
+                )
                 return redirect("doctor_management")
 
         elif action == "toggle_active":
@@ -57,6 +77,11 @@ class DoctorManagementView(View):
             is_active = request.POST.get("is_active") == "true"
             doctor_service.toggle_active(doctor_id, is_active)
             messages.success(request, "Doktor durumu güncellendi.")
+            event_service.log_event(
+                "doctor_toggle_active",
+                request=request,
+                properties={"doctor_id": doctor_id, "is_active": is_active},
+            )
             return redirect("doctor_management")
 
         elif action == "add_holiday":
@@ -69,12 +94,25 @@ class DoctorManagementView(View):
                     request=request,
                 )
                 messages.success(request, "Doktor tatili eklendi.")
+                event_service.log_event(
+                    "doctor_holiday_added",
+                    request=request,
+                    properties={
+                        "doctor_id": form.cleaned_data.get("doctor_id"),
+                        "date": form.cleaned_data.get("date").isoformat(),
+                    },
+                )
                 return redirect("doctor_management")
             messages.error(request, "Tatil eklenemedi.")
 
         elif action == "delete_holiday":
             doctor_service.delete_doctor_holiday(request.POST.get("holiday_id"))
             messages.success(request, "Tatil kaydı silindi.")
+            event_service.log_event(
+                "doctor_holiday_deleted",
+                request=request,
+                properties={"holiday_id": request.POST.get("holiday_id")},
+            )
             return redirect("doctor_management")
 
         context = self._build_context(request)

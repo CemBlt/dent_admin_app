@@ -11,7 +11,7 @@ from ..forms import (
     SecuritySettingsForm,
     AppearanceSettingsForm
 )
-from ..services import settings_service
+from ..services import settings_service, event_service
 
 class SettingsView(View):
     template_name = "panel/settings.html"
@@ -40,6 +40,11 @@ class SettingsView(View):
                 }
                 settings_service.update_settings("general", updates)
                 messages.success(request, "Genel ayarlar güncellendi.")
+                event_service.log_event(
+                    "panel_settings_general_updated",
+                    request=request,
+                    properties={"active_hospital_id": updates["active_hospital_id"]},
+                )
                 return redirect("settings")
 
         elif action == "notifications":
@@ -54,6 +59,11 @@ class SettingsView(View):
                 }
                 settings_service.update_settings("notifications", updates)
                 messages.success(request, "Bildirim ayarları güncellendi.")
+                event_service.log_event(
+                    "panel_settings_notifications_updated",
+                    request=request,
+                    properties={"email_enabled": updates["email_enabled"]},
+                )
                 return redirect("settings")
 
         elif action == "data_management":
@@ -65,6 +75,11 @@ class SettingsView(View):
                 }
                 settings_service.update_settings("data_management", updates)
                 messages.success(request, "Veri yönetimi ayarları güncellendi.")
+                event_service.log_event(
+                    "panel_settings_data_management_updated",
+                    request=request,
+                    properties={"backup_enabled": updates["backup_enabled"]},
+                )
                 return redirect("settings")
 
         elif action == "security":
@@ -75,6 +90,11 @@ class SettingsView(View):
                 }
                 settings_service.update_settings("security", updates)
                 messages.success(request, "Güvenlik ayarları güncellendi.")
+                event_service.log_event(
+                    "panel_settings_security_updated",
+                    request=request,
+                    properties={"session_timeout_minutes": updates["session_timeout_minutes"]},
+                )
                 return redirect("settings")
 
         elif action == "appearance":
@@ -87,12 +107,18 @@ class SettingsView(View):
                 }
                 settings_service.update_settings("appearance", updates)
                 messages.success(request, "Görünüm ayarları güncellendi.")
+                event_service.log_event(
+                    "panel_settings_appearance_updated",
+                    request=request,
+                    properties={"theme": updates["theme"]},
+                )
                 return redirect("settings")
 
         elif action == "export_data":
             json_data = settings_service.export_data_as_json()
             response = HttpResponse(json_data, content_type="application/json")
             response["Content-Disposition"] = 'attachment; filename="panel_backup.json"'
+            event_service.log_event("panel_settings_export_data", request=request)
             return response
 
         context = self._build_context(request)

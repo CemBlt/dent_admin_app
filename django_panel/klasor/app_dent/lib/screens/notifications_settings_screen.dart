@@ -1,47 +1,17 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class NotificationsSettingsScreen extends StatefulWidget {
+import '../providers/notification_settings_provider.dart';
+import '../theme/app_theme.dart';
+
+class NotificationsSettingsScreen extends ConsumerWidget {
   const NotificationsSettingsScreen({super.key});
 
   @override
-  State<NotificationsSettingsScreen> createState() => _NotificationsSettingsScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(notificationSettingsProvider);
+    final controller = ref.read(notificationSettingsProvider.notifier);
 
-class _NotificationsSettingsScreenState extends State<NotificationsSettingsScreen> {
-  bool _appointmentReminders = true;
-  bool _appointmentUpdates = true;
-  bool _promotions = false;
-  bool _news = false;
-  bool _soundEnabled = true;
-  bool _vibrationEnabled = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSettings();
-  }
-
-  Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _appointmentReminders = prefs.getBool('notif_appointment_reminders') ?? true;
-      _appointmentUpdates = prefs.getBool('notif_appointment_updates') ?? true;
-      _promotions = prefs.getBool('notif_promotions') ?? false;
-      _news = prefs.getBool('notif_news') ?? false;
-      _soundEnabled = prefs.getBool('notif_sound') ?? true;
-      _vibrationEnabled = prefs.getBool('notif_vibration') ?? true;
-    });
-  }
-
-  Future<void> _saveSetting(String key, bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(key, value);
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -108,52 +78,32 @@ class _NotificationsSettingsScreenState extends State<NotificationsSettingsScree
                           title: 'Randevu Hatırlatıcıları',
                           subtitle: 'Randevunuzdan önce bildirim alın',
                           icon: Icons.calendar_today,
-                          value: _appointmentReminders,
-                          onChanged: (value) {
-                            setState(() {
-                              _appointmentReminders = value;
-                            });
-                            _saveSetting('notif_appointment_reminders', value);
-                          },
+                          value: state.appointmentReminders,
+                          onChanged: controller.toggleAppointmentReminders,
                         ),
                         const SizedBox(height: 12),
                         _buildNotificationCard(
                           title: 'Randevu Güncellemeleri',
                           subtitle: 'Randevu durumu değişikliklerinde bildirim alın',
                           icon: Icons.update,
-                          value: _appointmentUpdates,
-                          onChanged: (value) {
-                            setState(() {
-                              _appointmentUpdates = value;
-                            });
-                            _saveSetting('notif_appointment_updates', value);
-                          },
+                          value: state.appointmentUpdates,
+                          onChanged: controller.toggleAppointmentUpdates,
                         ),
                         const SizedBox(height: 12),
                         _buildNotificationCard(
                           title: 'Kampanyalar ve İndirimler',
                           subtitle: 'Özel teklifler ve promosyonlar hakkında bilgi alın',
                           icon: Icons.local_offer,
-                          value: _promotions,
-                          onChanged: (value) {
-                            setState(() {
-                              _promotions = value;
-                            });
-                            _saveSetting('notif_promotions', value);
-                          },
+                          value: state.promotions,
+                          onChanged: controller.togglePromotions,
                         ),
                         const SizedBox(height: 12),
                         _buildNotificationCard(
                           title: 'Haberler ve Güncellemeler',
                           subtitle: 'Uygulama güncellemeleri ve haberler',
                           icon: Icons.newspaper,
-                          value: _news,
-                          onChanged: (value) {
-                            setState(() {
-                              _news = value;
-                            });
-                            _saveSetting('notif_news', value);
-                          },
+                          value: state.news,
+                          onChanged: controller.toggleNews,
                         ),
                         const SizedBox(height: 32),
                         // Bildirim Ayarları
@@ -168,26 +118,16 @@ class _NotificationsSettingsScreenState extends State<NotificationsSettingsScree
                           title: 'Ses',
                           subtitle: 'Bildirim seslerini aç/kapat',
                           icon: Icons.volume_up,
-                          value: _soundEnabled,
-                          onChanged: (value) {
-                            setState(() {
-                              _soundEnabled = value;
-                            });
-                            _saveSetting('notif_sound', value);
-                          },
+                          value: state.soundEnabled,
+                          onChanged: controller.toggleSound,
                         ),
                         const SizedBox(height: 12),
                         _buildSettingCard(
                           title: 'Titreşim',
                           subtitle: 'Bildirim titreşimlerini aç/kapat',
                           icon: Icons.vibration,
-                          value: _vibrationEnabled,
-                          onChanged: (value) {
-                            setState(() {
-                              _vibrationEnabled = value;
-                            });
-                            _saveSetting('notif_vibration', value);
-                          },
+                          value: state.vibrationEnabled,
+                          onChanged: controller.toggleVibration,
                         ),
                         const SizedBox(height: 24),
                       ],

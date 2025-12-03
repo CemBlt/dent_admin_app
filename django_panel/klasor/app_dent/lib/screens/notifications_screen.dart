@@ -1,128 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../providers/notifications_provider.dart';
 import '../theme/app_theme.dart';
 
-class NotificationItem {
-  final String id;
-  final String title;
-  final String message;
-  final String time;
-  final bool isRead;
-  final String type; // appointment, reminder, system
-
-  NotificationItem({
-    required this.id,
-    required this.title,
-    required this.message,
-    required this.time,
-    this.isRead = false,
-    required this.type,
-  });
-}
-
-class NotificationsScreen extends StatefulWidget {
+class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
-
-  @override
-  State<NotificationsScreen> createState() => _NotificationsScreenState();
-}
-
-class _NotificationsScreenState extends State<NotificationsScreen> {
-  List<NotificationItem> _notifications = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadNotifications();
-  }
-
-  Future<void> _loadNotifications() async {
-    // Örnek bildirimler (ileride JSON'dan gelecek)
-    await Future.delayed(const Duration(milliseconds: 500));
-    
-    setState(() {
-      _notifications = [
-        NotificationItem(
-          id: '1',
-          title: 'Randevu Hatırlatması',
-          message: 'Yarın saat 10:00\'da Gülümseme Diş Kliniği\'nde randevunuz var.',
-          time: '2 saat önce',
-          isRead: false,
-          type: 'reminder',
-        ),
-        NotificationItem(
-          id: '2',
-          title: 'Randevu Onaylandı',
-          message: 'Randevunuz başarıyla oluşturuldu. 20 Şubat 2024, 14:00',
-          time: '1 gün önce',
-          isRead: false,
-          type: 'appointment',
-        ),
-        NotificationItem(
-          id: '3',
-          title: 'Randevu Hatırlatması',
-          message: 'Yaklaşan randevunuz: 15 Şubat 2024, 10:00',
-          time: '2 gün önce',
-          isRead: true,
-          type: 'reminder',
-        ),
-        NotificationItem(
-          id: '4',
-          title: 'Sistem Güncellemesi',
-          message: 'Yeni özellikler eklendi! Uygulamayı güncelleyin.',
-          time: '3 gün önce',
-          isRead: true,
-          type: 'system',
-        ),
-        NotificationItem(
-          id: '5',
-          title: 'Randevu İptal Edildi',
-          message: 'Randevunuz iptal edildi. Yeni bir randevu oluşturabilirsiniz.',
-          time: '5 gün önce',
-          isRead: true,
-          type: 'appointment',
-        ),
-      ];
-      _isLoading = false;
-    });
-  }
-
-  void _markAsRead(String id) {
-    setState(() {
-      final index = _notifications.indexWhere((n) => n.id == id);
-      if (index != -1) {
-        _notifications[index] = NotificationItem(
-          id: _notifications[index].id,
-          title: _notifications[index].title,
-          message: _notifications[index].message,
-          time: _notifications[index].time,
-          isRead: true,
-          type: _notifications[index].type,
-        );
-      }
-    });
-  }
-
-  void _markAllAsRead() {
-    setState(() {
-      _notifications = _notifications.map((notification) {
-        return NotificationItem(
-          id: notification.id,
-          title: notification.title,
-          message: notification.message,
-          time: notification.time,
-          isRead: true,
-          type: notification.type,
-        );
-      }).toList();
-    });
-  }
-
-  void _deleteNotification(String id) {
-    setState(() {
-      _notifications.removeWhere((n) => n.id == id);
-    });
-  }
 
   IconData _getNotificationIcon(String type) {
     switch (type) {
@@ -150,12 +33,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  int get _unreadCount {
-    return _notifications.where((n) => !n.isRead).length;
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(notificationsProvider);
+    final controller = ref.read(notificationsProvider.notifier);
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -169,7 +51,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
         ),
         child: SafeArea(
-          child: _isLoading
+          child: state.isLoading
               ? const Center(child: CircularProgressIndicator())
               : Column(
                   children: [
@@ -203,9 +85,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               ),
                             ),
                           ),
-                          if (_unreadCount > 0)
+                          if (state.unreadCount > 0)
                             TextButton(
-                              onPressed: _markAllAsRead,
+                              onPressed: controller.markAllAsRead,
                               child: Text(
                                 'Tümünü Okundu İşaretle',
                                 style: AppTheme.bodySmall.copyWith(
@@ -218,7 +100,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     ),
                     // Bildirim Listesi
                     Expanded(
-                      child: _notifications.isEmpty
+                      child: state.notifications.isEmpty
                           ? Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -239,13 +121,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               ),
                             )
                           : RefreshIndicator(
-                              onRefresh: _loadNotifications,
+                              onRefresh: controller.loadNotifications,
                               child: ListView.builder(
                                 padding: const EdgeInsets.all(20),
-                                itemCount: _notifications.length,
+                                itemCount: state.notifications.length,
                                 itemBuilder: (context, index) {
-                                  final notification = _notifications[index];
-                                  return _buildNotificationCard(notification);
+                                  final notification = state.notifications[index];
+                                  return _buildNotificationCard(
+                                    context,
+                                    notification,
+                                    controller,
+                                  );
                                 },
                               ),
                             ),
@@ -257,7 +143,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildNotificationCard(NotificationItem notification) {
+  Widget _buildNotificationCard(
+    BuildContext context,
+    NotificationItem notification,
+    NotificationsController controller,
+  ) {
     return Dismissible(
       key: Key(notification.id),
       direction: DismissDirection.endToStart,
@@ -275,7 +165,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ),
       ),
       onDismissed: (direction) {
-        _deleteNotification(notification.id);
+        controller.deleteNotification(notification.id);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Bildirim silindi'),
@@ -307,7 +197,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           child: InkWell(
             onTap: () {
               if (!notification.isRead) {
-                _markAsRead(notification.id);
+                  controller.markAsRead(notification.id);
               }
             },
             borderRadius: BorderRadius.circular(16),

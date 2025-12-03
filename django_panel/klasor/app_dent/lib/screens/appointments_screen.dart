@@ -1,164 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/appointment.dart';
 import '../models/doctor.dart';
 import '../models/hospital.dart';
 import '../models/service.dart';
-import '../models/rating.dart';
-import '../services/json_service.dart';
+import '../providers/appointments_provider.dart';
 import '../services/auth_service.dart';
+import '../services/event_service.dart';
 import '../theme/app_theme.dart';
 import 'login_screen.dart';
 
-class AppointmentsScreen extends StatefulWidget {
+class AppointmentsScreen extends ConsumerStatefulWidget {
   const AppointmentsScreen({super.key});
 
   @override
-  State<AppointmentsScreen> createState() => _AppointmentsScreenState();
+  ConsumerState<AppointmentsScreen> createState() => _AppointmentsScreenState();
 }
 
-class _AppointmentsScreenState extends State<AppointmentsScreen> {
-  List<Appointment> _appointments = [];
-  List<Hospital> _hospitals = [];
-  List<Doctor> _doctors = [];
-  List<Service> _services = [];
-  bool _isLoading = true;
-  int _selectedTab = 0; // 0: Yaklaşan, 1: Geçmiş
-
+class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    if (!AuthService.isAuthenticated) {
-      setState(() {
-        _appointments = [];
-        _hospitals = [];
-        _doctors = [];
-        _services = [];
-        _isLoading = false;
-      });
-      return;
-    }
-
-    final userId = AuthService.currentUserId;
-    if (userId == null) {
-      setState(() {
-        _appointments = [];
-        _hospitals = [];
-        _doctors = [];
-        _services = [];
-        _isLoading = false;
-      });
-      return;
-    }
-
-    final appointments = await JsonService.getUserAppointments(userId);
-    final hospitals = await JsonService.getHospitals();
-    final doctors = await JsonService.getDoctors();
-    final services = await JsonService.getServices();
-
-    setState(() {
-      _appointments = appointments;
-      _hospitals = hospitals;
-      _doctors = doctors;
-      _services = services;
-      _isLoading = false;
-    });
-  }
-
-  List<Appointment> get _upcomingAppointments {
-    final now = DateTime.now();
-    return _appointments
-        .where((apt) {
-          if (apt.status == 'cancelled') return false;
-          final dateTime = _parseAppointmentDateTime(apt);
-          if (dateTime == null) return true;
-          return !dateTime.isBefore(now);
-        })
-        .toList()
-      ..sort((a, b) {
-        final dateA = _parseAppointmentDateTime(a) ?? DateTime.now();
-        final dateB = _parseAppointmentDateTime(b) ?? DateTime.now();
-        return dateA.compareTo(dateB);
-      });
-  }
-
-  List<Appointment> get _historyAppointments {
-    final now = DateTime.now();
-    return _appointments
-        .where((apt) {
-          if (apt.status == 'cancelled') return true;
-          final dateTime = _parseAppointmentDateTime(apt);
-          if (dateTime == null) return false;
-          return dateTime.isBefore(now);
-        })
-        .toList()
-      ..sort((a, b) {
-        final dateA = _parseAppointmentDateTime(a) ?? DateTime.now();
-        final dateB = _parseAppointmentDateTime(b) ?? DateTime.now();
-        return dateB.compareTo(dateA);
-      });
-  }
-
-  Hospital? _getHospital(String hospitalId) {
-    try {
-      return _hospitals.firstWhere((h) => h.id == hospitalId);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  Doctor? _getDoctor(String doctorId) {
-    try {
-      return _doctors.firstWhere((d) => d.id == doctorId);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  Service? _getService(String serviceId) {
-    try {
-      return _services.firstWhere((s) => s.id == serviceId);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  DateTime? _parseAppointmentDateTime(Appointment appointment) {
-    if (appointment.date.isEmpty) return null;
-    final timeValue = appointment.time.isEmpty ? '00:00' : appointment.time;
-    final normalized = timeValue.length == 5 ? '$timeValue:00' : timeValue;
-    return DateTime.tryParse('${appointment.date}T$normalized');
-  }
-
-  bool _isFutureAppointment(Appointment appointment) {
-    final dateTime = _parseAppointmentDateTime(appointment);
-    if (dateTime == null) return false;
-    return dateTime.isAfter(DateTime.now());
-  }
-
-  bool _canManageAppointment(Appointment appointment) {
-    if (appointment.status == 'cancelled') return false;
-    return _isFutureAppointment(appointment);
-  }
-
-  String _getStatusText(Appointment appointment) {
-    if (appointment.status == 'cancelled') {
-      return 'İptal Edildi';
-    }
-    return _isFutureAppointment(appointment) ? 'Planlandı' : 'Tamamlandı';
-  }
-
-  Color _getStatusColor(Appointment appointment) {
-    if (appointment.status == 'cancelled') {
-      return Colors.red;
-    }
-    return _isFutureAppointment(appointment)
-        ? AppTheme.tealBlue
-        : AppTheme.successGreen;
+    AppEventService.log('screen_appointments_opened');
   }
 
   void _cancelAppointment(Appointment appointment) {
@@ -194,38 +58,24 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   }
 
   Future<void> _confirmCancelAppointment(Appointment appointment) async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    final success = await JsonService.cancelAppointment(appointment.id);
-
-    if (success) {
-      await _loadData();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Randevu iptal edildi'),
-          backgroundColor: AppTheme.successGreen,
-        ),
-      );
-    } else {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Randevu iptal edilirken hata oluştu'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+    final controller = ref.read(appointmentsControllerProvider.notifier);
+    final result = await controller.cancelAppointment(appointment);
+    if (!mounted) return;
+    _showSnackBar(
+      result.message,
+      result.success ? AppTheme.successGreen : Colors.red,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(appointmentsControllerProvider);
+    final controller = ref.read(appointmentsControllerProvider.notifier);
+    final upcoming = _upcomingAppointments(state);
+    final history = _historyAppointments(state);
+    final visibleAppointments =
+        state.selectedTab == 0 ? upcoming : history;
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -239,7 +89,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           ),
         ),
         child: SafeArea(
-          child: _isLoading
+          child: state.isLoading
               ? const Center(child: CircularProgressIndicator())
               : Column(
                   children: [
@@ -296,30 +146,59 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                         children: [
                           Expanded(
                             child: _buildTabButton(
+                              state,
+                              controller,
                               0,
                               'Yaklaşan',
-                              _upcomingAppointments.length,
+                              upcoming.length,
                             ),
                           ),
                           Expanded(
                             child: _buildTabButton(
+                              state,
+                              controller,
                               1,
                               'Geçmiş',
-                              _historyAppointments.length,
+                              history.length,
                             ),
                           ),
                         ],
                       ),
                     ),
+                    if (state.errorMessage != null && !state.isLoading)
+                      Container(
+                        width: double.infinity,
+                        color: Colors.red.withOpacity(0.08),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline, color: Colors.red),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                state.errorMessage!,
+                                style: AppTheme.bodySmall.copyWith(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     // List
                     Expanded(
                       child: !AuthService.isAuthenticated
-                          ? _buildNotLoggedInView()
+                          ? _buildNotLoggedInView(controller)
                           : RefreshIndicator(
-                              onRefresh: _loadData,
-                              child: _selectedTab == 0
-                                  ? _buildAppointmentsList(_upcomingAppointments)
-                                  : _buildAppointmentsList(_historyAppointments),
+                              onRefresh: controller.refresh,
+                              child: _buildAppointmentsList(
+                                state,
+                                visibleAppointments,
+                              ),
                             ),
                     ),
                   ],
@@ -329,16 +208,18 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     );
   }
 
-  Widget _buildTabButton(int index, String label, int count) {
-    final isSelected = _selectedTab == index;
+  Widget _buildTabButton(
+    AppointmentsState state,
+    AppointmentsController controller,
+    int index,
+    String label,
+    int count,
+  ) {
+    final isSelected = state.selectedTab == index;
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () {
-          setState(() {
-            _selectedTab = index;
-          });
-        },
+        onTap: () => controller.selectTab(index),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
@@ -382,7 +263,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     );
   }
 
-  Widget _buildNotLoggedInView() {
+  Widget _buildNotLoggedInView(AppointmentsController controller) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -416,7 +297,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                     builder: (context) => LoginScreen(
                       onLoginSuccess: () {
                         Navigator.pop(context);
-                        _loadData();
+                        controller.refresh();
                       },
                     ),
                   ),
@@ -444,7 +325,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     );
   }
 
-  Widget _buildAppointmentsList(List<Appointment> appointments) {
+  Widget _buildAppointmentsList(
+    AppointmentsState state,
+    List<Appointment> appointments,
+  ) {
     if (appointments.isEmpty) {
       return Center(
         child: Column(
@@ -470,15 +354,18 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       itemCount: appointments.length,
       itemBuilder: (context, index) {
         final appointment = appointments[index];
-        return _buildAppointmentCard(appointment);
+        return _buildAppointmentCard(state, appointment);
       },
     );
   }
 
-  Widget _buildAppointmentCard(Appointment appointment) {
-    final hospital = _getHospital(appointment.hospitalId);
-    final doctor = _getDoctor(appointment.doctorId);
-    final service = _getService(appointment.service);
+  Widget _buildAppointmentCard(
+    AppointmentsState state,
+    Appointment appointment,
+  ) {
+    final hospital = _getHospital(state, appointment.hospitalId);
+    final doctor = _getDoctor(state, appointment.doctorId);
+    final service = _getService(state, appointment.service);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -523,7 +410,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                   IconButton(
                     icon: const Icon(Icons.more_vert, color: AppTheme.iconGray),
                     onPressed: () {
-                      _showAppointmentOptions(appointment);
+                      _showAppointmentOptions(state, appointment);
                     },
                   ),
               ],
@@ -634,7 +521,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () => _showReviewDialog(appointment),
+                  onPressed: () => _showReviewDialog(state, appointment),
                   icon: Icon(Icons.rate_review, size: 18, color: AppTheme.tealBlue),
                   label: Text(
                     'Yorum Ekle / Düzenle',
@@ -656,7 +543,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () => _showAppointmentDetails(appointment),
+                onPressed: () => _showAppointmentDetails(state, appointment),
                 icon: const Icon(Icons.info_outline, size: 18, color: AppTheme.tealBlue),
                 label: Text(
                   'Detayları Gör',
@@ -679,7 +566,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     );
   }
 
-  void _showAppointmentOptions(Appointment appointment) {
+  void _showAppointmentOptions(
+    AppointmentsState state,
+    Appointment appointment,
+  ) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -712,10 +602,13 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     );
   }
 
-  void _showAppointmentDetails(Appointment appointment) {
-    final hospital = _getHospital(appointment.hospitalId);
-    final doctor = _getDoctor(appointment.doctorId);
-    final service = _getService(appointment.service);
+  void _showAppointmentDetails(
+    AppointmentsState state,
+    Appointment appointment,
+  ) {
+    final hospital = _getHospital(state, appointment.hospitalId);
+    final doctor = _getDoctor(state, appointment.doctorId);
+    final service = _getService(state, appointment.service);
 
     showModalBottomSheet(
       context: context,
@@ -865,210 +758,152 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     );
   }
 
-  Future<void> _showReviewDialog(Appointment appointment) async {
-    // Mevcut yorumu reviews tablosundan çek
-    String? existingReview;
-    Rating? existingRating;
-    try {
-      final reviewResponse = await JsonService.getReviewByAppointmentId(appointment.id);
-      existingReview = reviewResponse?.comment;
-      
-      final ratingResponse = await JsonService.getRatingByAppointmentId(appointment.id);
-      existingRating = ratingResponse;
-    } catch (e) {
-      print('Yorum/Puanlama çekme hatası: $e');
-    }
-    
-    final reviewController = TextEditingController(text: existingReview ?? '');
-    int hospitalRating = existingRating?.hospitalRating ?? 0;
-    int? doctorRating = existingRating?.doctorRating;
-    
-    // Hastane ve doktor bilgilerini al
-    final hospital = _getHospital(appointment.hospitalId);
-    final doctor = _getDoctor(appointment.doctorId);
-    
-    if (mounted) {
-      showDialog(
-        context: context,
-        builder: (context) => StatefulBuilder(
-          builder: (context, setDialogState) => AlertDialog(
-            title: Text(existingReview != null ? 'Yorumu Düzenle' : 'Yorum Ekle', style: AppTheme.headingSmall),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Hastane Puanlama
-                  if (hospital != null) ...[
-                    Text('Hastane Puanı', style: AppTheme.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: List.generate(5, (index) {
-                        return GestureDetector(
-                          onTap: () {
-                            setDialogState(() {
-                              hospitalRating = index + 1;
-                            });
-                          },
-                          child: Icon(
-                            index < hospitalRating ? Icons.star : Icons.star_border,
-                            color: index < hospitalRating ? Colors.amber : AppTheme.iconGray,
-                            size: 32,
-                          ),
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  // Doktor Puanlama
-                  if (doctor != null) ...[
-                    Text('Doktor Puanı', style: AppTheme.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: List.generate(5, (index) {
-                        return GestureDetector(
-                          onTap: () {
-                            setDialogState(() {
-                              doctorRating = index + 1;
-                            });
-                          },
-                          child: Icon(
-                            index < (doctorRating ?? 0) ? Icons.star : Icons.star_border,
-                            color: index < (doctorRating ?? 0) ? Colors.amber : AppTheme.iconGray,
-                            size: 32,
-                          ),
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  // Yorum
-                  Text('Yorum', style: AppTheme.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: reviewController,
-                    maxLines: 5,
-                    decoration: InputDecoration(
-                      hintText: 'Randevunuz hakkında yorumunuzu yazın...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      filled: true,
-                      fillColor: AppTheme.inputFieldGray,
-                    ),
-                    style: AppTheme.bodyMedium,
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('İptal', style: AppTheme.bodyMedium.copyWith(color: AppTheme.grayText)),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  final review = reviewController.text.trim();
-                  await _updateAppointmentReviewAndRating(
-                    appointment,
-                    review,
-                    hospitalRating,
-                    doctorRating,
-                  );
-                  if (mounted) {
-                    Navigator.pop(context);
-                    _loadData(); // Listeyi yenile
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.tealBlue,
-                  foregroundColor: AppTheme.white,
-                ),
-                child: Text('Kaydet', style: AppTheme.bodyMedium.copyWith(color: AppTheme.white)),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-  }
-
-  Future<void> _updateAppointmentReview(String appointmentId, String review) async {
-    try {
-      await JsonService.updateAppointmentReview(appointmentId, review);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(review.isEmpty ? 'Yorum silindi' : 'Yorum kaydedildi'),
-            backgroundColor: AppTheme.successGreen,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Yorum kaydedilirken bir hata oluştu'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _updateAppointmentReviewAndRating(
+  Future<void> _showReviewDialog(
+    AppointmentsState state,
     Appointment appointment,
-    String review,
-    int hospitalRating,
-    int? doctorRating,
   ) async {
-    try {
-      final userId = AuthService.currentUserId;
-      if (userId == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Kullanıcı bilgisi alınamadı'),
-              backgroundColor: Colors.red,
+    final controller = ref.read(appointmentsControllerProvider.notifier);
+    final draft = await controller.fetchReviewDraft(appointment);
+    if (!mounted) return;
+
+    final reviewController = TextEditingController(text: draft.comment ?? '');
+    int hospitalRating = draft.hospitalRating;
+    int? doctorRating = draft.doctorRating;
+
+    final hospital = _getHospital(state, appointment.hospitalId);
+    final doctor = _getDoctor(state, appointment.doctorId);
+    if (!mounted) return;
+
+    final hasExistingReview = (draft.comment?.isNotEmpty ?? false);
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(
+            hasExistingReview ? 'Yorumu Düzenle' : 'Yorum Ekle',
+            style: AppTheme.headingSmall,
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (hospital != null) ...[
+                  Text(
+                    'Hastane Puanı',
+                    style: AppTheme.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: List.generate(5, (index) {
+                      return GestureDetector(
+                        onTap: () {
+                          setDialogState(() {
+                            hospitalRating = index + 1;
+                          });
+                        },
+                        child: Icon(
+                          index < hospitalRating ? Icons.star : Icons.star_border,
+                          color: index < hospitalRating ? Colors.amber : AppTheme.iconGray,
+                          size: 32,
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (doctor != null) ...[
+                  Text(
+                    'Doktor Puanı',
+                    style: AppTheme.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: List.generate(5, (index) {
+                      return GestureDetector(
+                        onTap: () {
+                          setDialogState(() {
+                            doctorRating = index + 1;
+                          });
+                        },
+                        child: Icon(
+                          index < (doctorRating ?? 0) ? Icons.star : Icons.star_border,
+                          color: index < (doctorRating ?? 0) ? Colors.amber : AppTheme.iconGray,
+                          size: 32,
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                Text(
+                  'Yorum',
+                  style: AppTheme.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: reviewController,
+                  maxLines: 5,
+                  decoration: InputDecoration(
+                    hintText: 'Randevunuz hakkında yorumunuzu yazın...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    filled: true,
+                    fillColor: AppTheme.inputFieldGray,
+                  ),
+                  style: AppTheme.bodyMedium,
+                ),
+              ],
             ),
-          );
-        }
-        return;
-      }
-
-      // Yorumu kaydet
-      await JsonService.updateAppointmentReview(appointment.id, review);
-
-      // Puanlamayı kaydet (hastane puanı zorunlu, doktor puanı opsiyonel)
-      if (hospitalRating > 0) {
-        await JsonService.updateOrCreateRating(
-          userId: userId,
-          hospitalId: appointment.hospitalId,
-          doctorId: appointment.doctorId,
-          appointmentId: appointment.id,
-          hospitalRating: hospitalRating,
-          doctorRating: doctorRating,
-        );
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Yorum ve puanlama kaydedildi'),
-            backgroundColor: AppTheme.successGreen,
           ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Yorum ve puanlama kaydedilirken bir hata oluştu: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'İptal',
+                style: AppTheme.bodyMedium.copyWith(color: AppTheme.grayText),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final result = await controller.submitReview(
+                  appointment: appointment,
+                  review: reviewController.text.trim(),
+                  hospitalRating: hospitalRating,
+                  doctorRating: doctorRating,
+                );
+                if (!mounted) return;
+                Navigator.pop(context);
+                _showSnackBar(
+                  result.message,
+                  result.success ? AppTheme.successGreen : Colors.red,
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.tealBlue,
+                foregroundColor: AppTheme.white,
+              ),
+              child: Text(
+                'Kaydet',
+                style: AppTheme.bodyMedium.copyWith(color: AppTheme.white),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSnackBar(String message, Color backgroundColor) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: backgroundColor,
+      ),
+    );
   }
 
   String _formatDate(String date) {
@@ -1093,4 +928,96 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       return date;
     }
   }
+}
+
+List<Appointment> _upcomingAppointments(AppointmentsState state) {
+  final now = DateTime.now();
+  return state.appointments
+      .where((apt) {
+        if (apt.status == 'cancelled') return false;
+        final dateTime = _parseAppointmentDateTime(apt);
+        if (dateTime == null) return true;
+        return !dateTime.isBefore(now);
+      })
+      .toList()
+    ..sort((a, b) {
+      final dateA = _parseAppointmentDateTime(a) ?? DateTime.now();
+      final dateB = _parseAppointmentDateTime(b) ?? DateTime.now();
+      return dateA.compareTo(dateB);
+    });
+}
+
+List<Appointment> _historyAppointments(AppointmentsState state) {
+  final now = DateTime.now();
+  return state.appointments
+      .where((apt) {
+        if (apt.status == 'cancelled') return true;
+        final dateTime = _parseAppointmentDateTime(apt);
+        if (dateTime == null) return false;
+        return dateTime.isBefore(now);
+      })
+      .toList()
+    ..sort((a, b) {
+      final dateA = _parseAppointmentDateTime(a) ?? DateTime.now();
+      final dateB = _parseAppointmentDateTime(b) ?? DateTime.now();
+      return dateB.compareTo(dateA);
+    });
+}
+
+Hospital? _getHospital(AppointmentsState state, String hospitalId) {
+  try {
+    return state.hospitals.firstWhere((h) => h.id == hospitalId);
+  } catch (_) {
+    return null;
+  }
+}
+
+Doctor? _getDoctor(AppointmentsState state, String doctorId) {
+  try {
+    return state.doctors.firstWhere((d) => d.id == doctorId);
+  } catch (_) {
+    return null;
+  }
+}
+
+Service? _getService(AppointmentsState state, String serviceId) {
+  try {
+    return state.services.firstWhere((s) => s.id == serviceId);
+  } catch (_) {
+    return null;
+  }
+}
+
+DateTime? _parseAppointmentDateTime(Appointment appointment) {
+  if (appointment.date.isEmpty) return null;
+  final timeValue = appointment.time.isEmpty ? '00:00' : appointment.time;
+  final normalized = timeValue.length == 5 ? '$timeValue:00' : timeValue;
+  return DateTime.tryParse('${appointment.date}T$normalized');
+}
+
+bool _isFutureAppointment(Appointment appointment) {
+  final dateTime = _parseAppointmentDateTime(appointment);
+  if (dateTime == null) return false;
+  return dateTime.isAfter(DateTime.now());
+}
+
+bool _canManageAppointment(Appointment appointment) {
+  if (appointment.status == 'cancelled') return false;
+  return _isFutureAppointment(appointment);
+}
+
+String _getStatusText(Appointment appointment) {
+  if (appointment.status == 'cancelled') {
+    return 'İptal Edildi';
+  }
+  return _isFutureAppointment(appointment) ? 'Planlandı' : 'Tamamlandı';
+}
+
+Color _getStatusColor(Appointment appointment) {
+  if (appointment.status == 'cancelled') {
+    return Colors.red;
+  }
+  return _isFutureAppointment(appointment)
+      ? AppTheme.tealBlue
+      : AppTheme.successGreen;
 }

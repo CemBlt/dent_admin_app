@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../providers/navigation_provider.dart';
 import '../services/event_service.dart';
 import '../theme/app_theme.dart';
 import 'appointments_screen.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
 
-class MainScreen extends ConsumerStatefulWidget {
+class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
   @override
-  ConsumerState<MainScreen> createState() => _MainScreenState();
+  State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends ConsumerState<MainScreen> {
-  static const List<Widget> _screens = [
+class _MainScreenState extends State<MainScreen> {
+  int _currentIndex = 0;
+
+  final List<Widget> _screens = const [
     HomeScreen(),
     AppointmentsScreen(),
     ProfileScreen(),
@@ -30,10 +30,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final ref = this.ref;
-    final currentIndex = ref.watch(navigationIndexProvider);
     return Scaffold(
-      body: _screens[currentIndex],
+      body: _screens[_currentIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: AppTheme.white,
@@ -46,15 +44,17 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           ],
         ),
         child: BottomNavigationBar(
-          currentIndex: currentIndex,
+          currentIndex: _currentIndex,
           onTap: (index) {
-            if (currentIndex != index) {
+            if (_currentIndex != index) {
               AppEventService.log(
                 'navigation_tab_changed',
                 properties: {'target_index': index},
               );
-              ref.read(navigationIndexProvider.notifier).state = index;
             }
+            setState(() {
+              _currentIndex = index;
+            });
           },
           type: BottomNavigationBarType.fixed,
           backgroundColor: AppTheme.white,
@@ -86,4 +86,5 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     );
   }
 }
+
 

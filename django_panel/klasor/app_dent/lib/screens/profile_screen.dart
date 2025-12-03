@@ -1,62 +1,32 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../models/user.dart';
-import '../services/json_service.dart';
+import '../providers/profile_provider.dart';
 import '../services/auth_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/image_widget.dart';
+import 'about_screen.dart';
+import 'account_settings_screen.dart';
+import 'language_settings_screen.dart';
 import 'login_screen.dart';
 import 'main_screen.dart';
-import 'account_settings_screen.dart';
 import 'notifications_settings_screen.dart';
-import 'language_settings_screen.dart';
-import 'about_screen.dart';
 
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
-  User? _user;
-  bool _isLoading = true;
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  void _showLogoutDialog(ProfileController controller) {
+    final state = ref.read(profileControllerProvider);
+    if (!state.isAuthenticated) return;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-  }
-
-  Future<void> _loadUserData() async {
-    if (!AuthService.isAuthenticated) {
-      setState(() {
-        _user = null;
-        _isLoading = false;
-      });
-      return;
-    }
-
-    final userId = AuthService.currentUserId;
-    if (userId == null) {
-      setState(() {
-        _user = null;
-        _isLoading = false;
-      });
-      return;
-    }
-    
-    final user = await JsonService.getUser(userId);
-    
-    setState(() {
-      _user = user;
-      _isLoading = false;
-    });
-  }
-
-  void _showLogoutDialog() {
     bool isLoggingOut = false;
-    
+
     showDialog(
       context: context,
       barrierDismissible: false, // Dialog dışına tıklayınca kapanmasın
@@ -86,42 +56,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         isLoggingOut = true;
                       });
                       
-                      try {
-                        // Çıkış işlemini yap
-                        await AuthService.signOut();
+                      final result = await controller.logout();
                         
-                        // Dialog'u kapat
-                        Navigator.pop(dialogContext);
+                      Navigator.pop(dialogContext);
                         
-                        // Context'in hala geçerli olduğundan emin ol
-                        if (!mounted) return;
+                      if (!mounted) return;
                         
-                        // Ana sayfaya dön
+                      if (result.success) {
                         Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(builder: (context) => const MainScreen()),
                           (route) => false,
                         );
-                        
-                        // SnackBar'ı ana sayfada göster
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Çıkış yapıldı'),
-                              backgroundColor: AppTheme.successGreen,
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        // Hata durumunda dialog'u kapat ve hata mesajı göster
-                        Navigator.pop(dialogContext);
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Çıkış yapılırken bir hata oluştu'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
+                      }
+
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(result.message),
+                            backgroundColor:
+                                result.success ? AppTheme.successGreen : Colors.red,
+                          ),
+                        );
                       }
                     },
               child: isLoggingOut
@@ -146,6 +101,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(profileControllerProvider);
+    final controller = ref.read(profileControllerProvider.notifier);
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -159,10 +117,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         child: SafeArea(
-          child: _isLoading
+          child: state.isLoading
               ? const Center(child: CircularProgressIndicator())
               : RefreshIndicator(
-                  onRefresh: _loadUserData,
+                  onRefresh: controller.refreshProfile,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: Column(
@@ -208,13 +166,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(height: 24),
                         // Profil Bilgileri Kartı
-                        if (_user != null) 
-                          _buildProfileCard(_user!)
-                        else if (!_isLoading && !AuthService.isAuthenticated)
-                          _buildNotLoggedInCard(),
+                        if (state.user != null)
+                          _buildProfileCard(state.user!, controller)
+                        else if (!state.isAuthenticated)
+                          _buildNotLoggedInCard(controller),
                         const SizedBox(height: 24),
                         // Menü Seçenekleri
-                        _buildMenuSection(),
+                        _buildMenuSection(state, controller),
                         const SizedBox(height: 24),
                       ],
                     ),
@@ -225,7 +183,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileCard(User user) {
+  Widget _buildProfileCard(User user, ProfileController controller) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
@@ -356,7 +314,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildMenuSection() {
+  Widget _buildMenuSection(
+    ProfileState state,
+    ProfileController controller,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
@@ -374,7 +335,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           children: [
             // Hesap Bilgileri - Sadece giriş yapmış kullanıcılar için
-            if (AuthService.isAuthenticated && _user != null) ...[
+            if (state.isAuthenticated && state.user != null) ...[
               _buildMenuItem(
                 icon: Icons.person_outline,
                 title: 'Hesap Bilgileri',
@@ -386,7 +347,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   );
                   if (result == true) {
-                    _loadUserData();
+                    controller.loadProfile();
                   }
                 },
               ),
@@ -431,13 +392,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               },
             ),
             // Çıkış Yap - Sadece giriş yapmış kullanıcılar için
-            if (AuthService.isAuthenticated && _user != null) ...[
+            if (state.isAuthenticated && state.user != null) ...[
               _buildDivider(),
               _buildMenuItem(
                 icon: Icons.logout,
                 title: 'Çıkış Yap',
                 titleColor: Colors.red,
-                onTap: _showLogoutDialog,
+                onTap: () => _showLogoutDialog(controller),
               ),
             ],
           ],
@@ -497,7 +458,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildNotLoggedInCard() {
+  Widget _buildNotLoggedInCard(ProfileController controller) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
@@ -553,7 +514,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           builder: (context) => LoginScreen(
                             onLoginSuccess: () {
                               Navigator.pop(context);
-                              _loadUserData();
+                              controller.loadProfile();
                             },
                           ),
                         ),

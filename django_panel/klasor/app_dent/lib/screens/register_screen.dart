@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:intl_phone_field/phone_number.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
-import '../services/auth_service.dart';
 import '../utils/validators.dart';
 
-class RegisterScreen extends StatefulWidget {
+class RegisterScreen extends ConsumerStatefulWidget {
   final VoidCallback? onRegisterSuccess;
   
   const RegisterScreen({
@@ -15,23 +16,17 @@ class RegisterScreen extends StatefulWidget {
   });
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _surnameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  bool _isLoading = false;
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
-  bool? _phoneIsUnique; // null = kontrol edilmedi, true = unique, false = alınmış
-  bool? _emailIsUnique; // null = kontrol edilmedi, true = unique, false = alınmış
-  PhoneNumber? _phoneNumber; // Country picker'dan gelen telefon numarası
-  String? _phoneNumberError; // Telefon numarası hata mesajı
+  PhoneNumber? _phoneNumber;
 
   @override
   void dispose() {
@@ -43,279 +38,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  Future<void> _handleRegister() async {
+  Future<void> _handleRegister(RegisterController controller) async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // Telefon numarası kontrolü
-      if (_phoneNumber == null) {
-        setState(() {
-          _phoneNumberError = 'Telefon numarası gerekli';
-          _isLoading = false;
-        });
-        return;
-      }
-
-      // E.164 formatında telefon numarası (boşluksuz)
-      final phoneE164 = _phoneNumber!.completeNumber; // +905321234567 formatında
-      
-      // "0" ile başlayan numaraları kontrol et
-      final localNumber = _phoneNumber!.number;
-      if (localNumber.startsWith('0')) {
-        setState(() {
-          _phoneNumberError = 'Telefon numarası 0 ile başlayamaz. Ülke kodu kullanın (+90 gibi)';
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final isPhoneTaken = await AuthService.isPhoneNumberTaken(phoneE164);
-      
-      if (isPhoneTaken) {
-        setState(() {
-          _phoneIsUnique = false;
-          _phoneNumberError = 'Bu telefon numarası zaten kayıtlı';
-          _isLoading = false;
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.cancel, color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
-                  const Text('Bu telefon numarası zaten kayıtlı'),
-                ],
-              ),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-          // Form validasyonunu tetikle
-          _formKey.currentState?.validate();
-        }
-        return;
-      }
-      
-      // Telefon numarası unique
-      setState(() {
-        _phoneIsUnique = true;
-        _phoneNumberError = null;
-      });
-
-      // Email kontrolü (email artık zorunlu)
-      final email = _emailController.text.trim();
-      try {
-        Validators.requireEmail(email);
-      } on ValidationException catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(e.message),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        return;
-      }
-
-      // Email kontrolü (kayıt öncesi)
-      final isEmailTaken = await AuthService.isEmailTaken(email);
-      if (isEmailTaken) {
-        setState(() {
-          _emailIsUnique = false;
-          _isLoading = false;
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.cancel, color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
-                  const Text('Bu email adresi zaten kayıtlı'),
-                ],
-              ),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-          // Form validasyonunu tetikle
-          _formKey.currentState?.validate();
-        }
-        return;
-      }
-
-      // Kayıt işlemini dene
-      AuthResponse? response;
-      try {
-        response = await AuthService.signUpWithEmail(
-          email: email,
-          password: _passwordController.text,
-          name: _nameController.text.trim(),
-          surname: _surnameController.text.trim(),
-          phone: phoneE164, // E.164 formatında kaydet
-        );
-      } catch (signUpError) {
-        // Kayıt hatası - email zaten kayıtlı olabilir
-        final errorString = signUpError.toString().toLowerCase();
-        
-        // Email zaten kayıtlı hatası
-        if (errorString.contains('user already registered') || 
-            errorString.contains('already registered') ||
-            errorString.contains('email already registered') ||
-            errorString.contains('email address is already registered') ||
-            errorString.contains('user with this email already exists') ||
-            errorString.contains('email already exists') ||
-            errorString.contains('duplicate key value') ||
-            errorString.contains('unique constraint')) {
-          setState(() {
-            _emailIsUnique = false;
-            _isLoading = false;
-          });
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    const Icon(Icons.cancel, color: Colors.white, size: 20),
-                    const SizedBox(width: 8),
-                    const Text('Bu email adresi zaten kayıtlı'),
-                  ],
-                ),
-                backgroundColor: Colors.red,
-                duration: const Duration(seconds: 3),
-              ),
-            );
-            // Form validasyonunu tetikle
-            _formKey.currentState?.validate();
-          }
-          return;
-        }
-        
-        // Diğer hatalar için genel hata mesajı göster
-        setState(() {
-          _isLoading = false;
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Kayıt olurken bir hata oluştu: ${signUpError.toString()}'),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        }
-        return;
-      }
-
-      if (response != null && response.user != null) {
-        // Email kontrolünü sıfırla (kayıt başarılı)
-        setState(() {
-          _emailIsUnique = null;
-        });
-        
-        // Kayıt başarılı olduğunda, kullanıcının otomatik giriş yapıp yapmadığını kontrol et
-        if (!AuthService.isAuthenticated) {
-          // Otomatik giriş yapılmamışsa, email ve şifre ile giriş yap
-          try {
-            await AuthService.signInWithEmail(
-              email: email,
-              password: _passwordController.text,
-            );
-          } catch (e) {
-            // Giriş yapılamazsa, kullanıcıya bilgi ver
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Kayıt başarılı! Lütfen giriş yapın.'),
-                  backgroundColor: AppTheme.successGreen,
-                ),
-              );
-            }
-            if (mounted) {
-              Navigator.pop(context, false);
-            }
-            return;
-          }
-        }
-        
-        // Kullanıcı giriş yapmış durumda
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
-                  const Text('Kayıt başarılı!'),
-                ],
-              ),
-              backgroundColor: AppTheme.successGreen,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-          
-          if (widget.onRegisterSuccess != null) {
-            widget.onRegisterSuccess!();
-          } else {
-            Navigator.pop(context, true);
-          }
-        }
-      }
-    } on ValidationException catch (e) {
-      if (mounted) {
+    final success = await controller.register(
+      name: _nameController.text,
+      surname: _surnameController.text,
+      email: _emailController.text,
+      password: _passwordController.text,
+      confirmPassword: _confirmPasswordController.text,
+      phone: _phoneNumber,
+      showMessage: (message, {bool success = false}) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.message),
-            backgroundColor: Colors.orange,
+            content: Text(message),
+            backgroundColor: success ? AppTheme.successGreen : Colors.red,
           ),
         );
-      }
-    } catch (e) {
-      // Bu catch bloğu sadece beklenmeyen hatalar için (signUp zaten kendi try-catch'inde)
-      if (mounted) {
-        String errorMessage = 'Kayıt olurken bir hata oluştu';
-        final errorString = e.toString().toLowerCase();
-        
-        // Telefon numarası zaten kayıtlı hatası
-        if (errorString.contains('phone') && errorString.contains('unique')) {
-          errorMessage = 'Bu telefon numarası zaten kayıtlı';
-          setState(() {
-            _phoneIsUnique = false;
-            _phoneNumberError = 'Bu telefon numarası zaten kayıtlı';
-          });
-          // Form validasyonunu tetikle
-          _formKey.currentState?.validate();
-        }
-        // Diğer hatalar
-        else if (errorString.contains('invalid email')) {
-          errorMessage = 'Geçerli bir email adresi giriniz';
-        } else if (errorString.contains('password')) {
-          errorMessage = 'Şifre gereksinimlerini karşılamıyor';
-        }
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+      },
+    );
+
+    if (success && mounted) {
+      if (widget.onRegisterSuccess != null) {
+        widget.onRegisterSuccess!();
+      } else {
+        Navigator.pop(context, true);
       }
     }
   }
@@ -332,11 +82,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   /// Şifre kuralları widget'ı
-  Widget _buildPasswordStrengthMeter(String password) {
-    if (password.isEmpty) return const SizedBox.shrink();
-    
-    final rules = _checkPasswordRules(password);
-    
+  Widget _buildPasswordStrengthMeter(Map<String, bool> rules) {
+    if (_passwordController.text.isEmpty) return const SizedBox.shrink();
+
     // Tüm kurallar sağlandı mı?
     final allRulesMet = (rules['length'] ?? false) &&
                         (rules['upperCase'] ?? false) &&
@@ -404,6 +152,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(registerControllerProvider);
+    final controller = ref.read(registerControllerProvider.notifier);
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -622,22 +373,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   borderRadius: BorderRadius.circular(16),
                                   borderSide: const BorderSide(color: Colors.red, width: 2),
                                 ),
-                                errorText: _phoneNumberError,
+                                errorText: state.phoneError,
                                 // suffixIcon yok - kontrol sadece kayıt butonuna basıldığında yapılacak
                               ),
                               initialCountryCode: 'TR', // Türkiye varsayılan
                               onChanged: (phone) {
                                 setState(() {
                                   _phoneNumber = phone;
-                                  _phoneNumberError = null;
-                                  _phoneIsUnique = null;
-                                  
-                                  // "0" ile başlayan numaraları kontrol et
-                                  if (phone.number.startsWith('0')) {
-                                    _phoneNumberError = 'Telefon numarası 0 ile başlayamaz. Ülke kodu otomatik eklenir.';
-                                  }
                                 });
-                                // Real-time kontrol yok, sadece kayıt butonuna basıldığında kontrol edilecek
+                                controller.clearPhoneError();
                               },
                               validator: (phone) {
                                 final completeNumber = phone?.completeNumber;
@@ -661,9 +405,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   return 'Ülke kodu gerekli';
                                 }
 
-                                if (_phoneNumberError != null) {
-                                  return _phoneNumberError;
-                                }
+                        if (state.phoneError != null) {
+                          return state.phoneError;
+                        }
 
                                 return null;
                               },
@@ -672,15 +416,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         const SizedBox(height: 20),
                         // Email input (ZORUNLU)
-                        TextFormField(
+                            TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           onChanged: (value) {
-                            // Email değiştiğinde önceki hata durumunu temizle
-                            setState(() {
-                              _emailIsUnique = null;
-                            });
-                            // Real-time kontrol yok, sadece kayıt butonuna basıldığında kontrol edilecek
+                            controller.clearEmailError();
                           },
                           decoration: InputDecoration(
                             labelText: 'Email *',
@@ -725,7 +465,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               return e.message;
                             }
 
-                            if (_emailIsUnique == false) {
+                            if (state.isEmailUnique == false) {
                               return 'Bu email adresi zaten kayıtlı';
                             }
 
@@ -739,7 +479,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           children: [
                             TextFormField(
                               controller: _passwordController,
-                              obscureText: _obscurePassword,
+                              obscureText: state.obscurePassword,
                               onChanged: (value) {
                                 setState(() {
                                   // Sadece state'i güncelle, güç hesaplaması yok
@@ -758,13 +498,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                                 suffixIcon: IconButton(
                                   icon: Icon(
-                                    _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                    state.obscurePassword
+                                        ? Icons.visibility_outlined
+                                        : Icons.visibility_off_outlined,
                                     color: AppTheme.iconGray,
                                   ),
                                   onPressed: () {
-                                    setState(() {
-                                      _obscurePassword = !_obscurePassword;
-                                    });
+                                    controller.togglePasswordVisibility();
                                   },
                                 ),
                                 filled: true,
@@ -802,14 +542,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 return null;
                               },
                             ),
-                            _buildPasswordStrengthMeter(_passwordController.text),
+                            _buildPasswordStrengthMeter(
+                              controller.passwordRules(_passwordController.text),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 20),
                         // Confirm password input
                         TextFormField(
                           controller: _confirmPasswordController,
-                          obscureText: _obscureConfirmPassword,
+                          obscureText: state.obscureConfirmPassword,
                           onChanged: (value) {
                             setState(() {});
                           },
@@ -843,13 +585,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                 IconButton(
                                   icon: Icon(
-                                    _obscureConfirmPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                    state.obscureConfirmPassword
+                                        ? Icons.visibility_outlined
+                                        : Icons.visibility_off_outlined,
                                     color: AppTheme.iconGray,
                                   ),
                                   onPressed: () {
-                                    setState(() {
-                                      _obscureConfirmPassword = !_obscureConfirmPassword;
-                                    });
+                                    controller.toggleConfirmPasswordVisibility();
                                   },
                                 ),
                               ],
@@ -897,14 +639,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              onTap: _isLoading ? null : _handleRegister,
+                              onTap: state.isLoading
+                                  ? null
+                                  : () => _handleRegister(controller),
                               borderRadius: BorderRadius.circular(18),
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(vertical: 18),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    if (_isLoading)
+                                    if (state.isLoading)
                                       const SizedBox(
                                         height: 20,
                                         width: 20,

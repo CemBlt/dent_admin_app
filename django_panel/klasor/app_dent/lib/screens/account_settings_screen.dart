@@ -1,32 +1,24 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../models/user.dart';
-import '../services/json_service.dart';
-import '../services/auth_service.dart';
+import '../providers/account_settings_provider.dart';
+import '../theme/app_theme.dart';
 import '../widgets/image_widget.dart';
 
-class AccountSettingsScreen extends StatefulWidget {
+class AccountSettingsScreen extends ConsumerStatefulWidget {
   const AccountSettingsScreen({super.key});
 
   @override
-  State<AccountSettingsScreen> createState() => _AccountSettingsScreenState();
+  ConsumerState<AccountSettingsScreen> createState() => _AccountSettingsScreenState();
 }
 
-class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
-  User? _user;
-  bool _isLoading = true;
-  bool _isSaving = false;
-
+class _AccountSettingsScreenState
+    extends ConsumerState<AccountSettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-  }
 
   @override
   void dispose() {
@@ -36,100 +28,41 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     super.dispose();
   }
 
-  Future<void> _loadUserData() async {
-    if (!AuthService.isAuthenticated) {
-      setState(() {
-        _isLoading = false;
-      });
-      return;
-    }
-
-    final userId = AuthService.currentUserId;
-    if (userId == null) {
-      setState(() {
-        _isLoading = false;
-      });
-      return;
-    }
-
-    try {
-      final user = await JsonService.getUser(userId);
-      if (user != null) {
-        setState(() {
-          _user = user;
-          _nameController.text = user.fullName;
-          _emailController.text = user.email;
-          _phoneController.text = user.phone;
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Kullanıcı bilgileri yüklenemedi'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _saveChanges() async {
+  Future<void> _saveChanges(AccountSettingsController controller) async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    if (_user == null) return;
+    final state = ref.read(accountSettingsControllerProvider);
+    if (state.user == null) return;
 
-    setState(() {
-      _isSaving = true;
-    });
+    final result = await controller.saveProfile(
+      fullName: _nameController.text.trim(),
+      email: _emailController.text.trim(),
+      phone: _phoneController.text.trim(),
+    );
 
-    try {
-      // TODO: JsonService'e updateUser metodu eklenmeli
-      // await JsonService.updateUser(_user!.id, {
-      //   'full_name': _nameController.text.trim(),
-      //   'email': _emailController.text.trim(),
-      //   'phone': _phoneController.text.trim(),
-      // });
+    if (!mounted) return;
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Bilgiler güncellendi'),
-            backgroundColor: AppTheme.successGreen,
-          ),
-        );
-        Navigator.pop(context, true); // Profil ekranına geri dön ve yenile
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Güncelleme başarısız: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
-      }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result.message),
+        backgroundColor: result.success ? AppTheme.successGreen : Colors.red,
+      ),
+    );
+
+    if (result.success) {
+      Navigator.pop(context, true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(accountSettingsControllerProvider);
+    final controller = ref.read(accountSettingsControllerProvider.notifier);
+
+    _syncControllers(state.user);
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -143,9 +76,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           ),
         ),
         child: SafeArea(
-          child: _isLoading
+          child: state.isLoading
               ? const Center(child: CircularProgressIndicator())
-              : _user == null
+              : state.user == null
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -206,10 +139,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                                 width: 3,
                               ),
                             ),
-                            child: _user!.profileImage != null
+                            child: state.user!.profileImage != null
                                 ? ClipOval(
                                     child: buildImage(
-                                      _user!.profileImage!,
+                                      state.user!.profileImage!,
                                       fit: BoxFit.cover,
                                       width: 120,
                                       height: 120,
@@ -306,11 +239,13 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                                     child: Material(
                                       color: Colors.transparent,
                                       child: InkWell(
-                                        onTap: _isSaving ? null : _saveChanges,
+                                        onTap: state.isSaving
+                                            ? null
+                                            : () => _saveChanges(controller),
                                         borderRadius: BorderRadius.circular(12),
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(vertical: 16),
-                                          child: _isSaving
+                                          child: state.isSaving
                                               ? const SizedBox(
                                                   height: 20,
                                                   width: 20,
@@ -388,6 +323,20 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         ),
       ),
     );
+  }
+
+  void _syncControllers(User? user) {
+    if (user == null) return;
+    final fullName = user.fullName;
+    if (_nameController.text != fullName) {
+      _nameController.text = fullName;
+    }
+    if (_emailController.text != user.email) {
+      _emailController.text = user.email;
+    }
+    if (_phoneController.text != user.phone) {
+      _phoneController.text = user.phone;
+    }
   }
 }
 

@@ -1,40 +1,28 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../models/doctor.dart';
 import '../models/hospital.dart';
-import '../services/json_service.dart';
+import '../providers/doctors_directory_provider.dart';
+import '../theme/app_theme.dart';
 import '../widgets/image_widget.dart';
 import 'doctor_detail_screen.dart';
 
-class AllDoctorsScreen extends StatefulWidget {
+class AllDoctorsScreen extends ConsumerStatefulWidget {
   const AllDoctorsScreen({super.key});
 
   @override
-  State<AllDoctorsScreen> createState() => _AllDoctorsScreenState();
+  ConsumerState<AllDoctorsScreen> createState() => _AllDoctorsScreenState();
 }
 
-class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
-  List<Doctor> _allDoctors = [];
-  List<Doctor> _filteredDoctors = [];
-  List<Hospital> _hospitals = [];
+class _AllDoctorsScreenState extends ConsumerState<AllDoctorsScreen> {
   final TextEditingController _searchController = TextEditingController();
-  String _sortBy = 'name'; // rating, name
-  String? _selectedProvince;
-  String? _selectedDistrict;
-  bool _isLoading = true;
-  
-  // Pagination
-  static const int _itemsPerPage = 20;
-  int _currentPage = 0;
-  bool _isLoadingMore = false;
-  bool _hasMoreItems = true;
   final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _loadData();
   }
 
   @override
@@ -47,140 +35,15 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent * 0.8) {
-      _loadMoreItems();
+      ref.read(doctorsDirectoryProvider.notifier).loadMore();
     }
   }
 
-  void _loadMoreItems() {
-    if (_isLoadingMore || !_hasMoreItems) return;
-
-    final totalItems = _filteredDoctors.length;
-    final displayedItems = (_currentPage + 1) * _itemsPerPage;
-
-    if (displayedItems >= totalItems) {
-      setState(() {
-        _hasMoreItems = false;
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoadingMore = true;
-    });
-
-    // Simüle edilmiş yükleme (gerçek uygulamada API çağrısı yapılabilir)
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted) {
-        setState(() {
-          _currentPage++;
-          _isLoadingMore = false;
-        });
-      }
-    });
-  }
-
-  List<Doctor> get _displayedDoctors {
-    final endIndex = ((_currentPage + 1) * _itemsPerPage).clamp(0, _filteredDoctors.length);
-    return _filteredDoctors.take(endIndex).toList();
-  }
-
-  Future<void> _loadData() async {
-    final doctors = await JsonService.getDoctors();
-    final hospitals = await JsonService.getHospitals();
-
-    // Alfabetik sırala
-    doctors.sort((a, b) => a.fullName.compareTo(b.fullName));
-
-    setState(() {
-      _allDoctors = doctors;
-      _hospitals = hospitals;
-      _filteredDoctors = doctors;
-      _isLoading = false;
-    });
-    _applyFilters();
-  }
-
-  void _onSearchChanged(String query) {
-    _applyFilters();
-  }
-
-  void _applyFilters() {
-    setState(() {
-      _filteredDoctors = _allDoctors.where((doctor) {
-        // Arama filtresi
-        final searchQuery = _searchController.text.toLowerCase();
-        if (searchQuery.isNotEmpty) {
-          final hospital = _getHospitalByDoctor(doctor);
-          final matchesSearch = doctor.fullName.toLowerCase().contains(searchQuery) ||
-              (hospital != null && hospital.name.toLowerCase().contains(searchQuery));
-          if (!matchesSearch) return false;
-        }
-
-        // İl filtresi (doktorun hastanesinin il bilgisine göre)
-        if (_selectedProvince != null) {
-          final hospital = _getHospitalByDoctor(doctor);
-          if (hospital == null || hospital.provinceName != _selectedProvince) {
-            return false;
-          }
-        }
-
-        // İlçe filtresi (doktorun hastanesinin ilçe bilgisine göre)
-        if (_selectedDistrict != null) {
-          final hospital = _getHospitalByDoctor(doctor);
-          if (hospital == null || hospital.districtName != _selectedDistrict) {
-            return false;
-          }
-        }
-
-        return true;
-      }).toList();
-      _applySorting();
-      // Filtre değiştiğinde pagination'ı sıfırla
-      _currentPage = 0;
-      _hasMoreItems = _filteredDoctors.length > _itemsPerPage;
-    });
-  }
-
-  void _applySorting() {
-    setState(() {
-      switch (_sortBy) {
-        case 'rating':
-          // Şimdilik sabit puan kullanıyoruz, gerçek puan sistemi eklendiğinde güncellenir
-          // Geçici olarak alfabetik ters sıralama (gerçek puan sistemi eklendiğinde değiştirilecek)
-          _filteredDoctors.sort((a, b) => b.fullName.compareTo(a.fullName));
-          break;
-        case 'name':
-          _filteredDoctors.sort((a, b) => a.fullName.compareTo(b.fullName));
-          break;
-      }
-    });
-  }
-
-  List<String> _getProvinces() {
-    final provinces = _allDoctors
-        .map((d) => _getHospitalByDoctor(d))
-        .where((h) => h != null && h.provinceName != null)
-        .map((h) => h!.provinceName!)
-        .toSet()
-        .toList();
-    provinces.sort();
-    return provinces;
-  }
-
-  List<String> _getDistricts() {
-    if (_selectedProvince == null) return [];
-    final districts = _allDoctors
-        .map((d) => _getHospitalByDoctor(d))
-        .where((h) => h != null && h.provinceName == _selectedProvince && h.districtName != null)
-        .map((h) => h!.districtName!)
-        .toSet()
-        .toList();
-    districts.sort();
-    return districts;
-  }
-
-  void _showProvinceFilter() {
-    final provinces = _getProvinces();
+  void _showProvinceFilter(
+    DoctorsDirectoryController controller,
+    DoctorsDirectoryState state,
+  ) {
+    final provinces = controller.provinces;
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -201,19 +64,15 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
               title: Text(
                 'Tümü',
                 style: AppTheme.bodyMedium.copyWith(
-                  fontWeight: _selectedProvince == null ? FontWeight.bold : FontWeight.normal,
-                  color: _selectedProvince == null ? AppTheme.tealBlue : AppTheme.darkText,
+                  fontWeight: state.selectedProvince == null ? FontWeight.bold : FontWeight.normal,
+                  color: state.selectedProvince == null ? AppTheme.tealBlue : AppTheme.darkText,
                 ),
               ),
-              trailing: _selectedProvince == null
+              trailing: state.selectedProvince == null
                   ? Icon(Icons.check, color: AppTheme.tealBlue)
                   : null,
               onTap: () {
-                setState(() {
-                  _selectedProvince = null;
-                  _selectedDistrict = null;
-                });
-                _applyFilters();
+                controller.selectProvince(null);
                 Navigator.pop(context);
               },
             ),
@@ -222,19 +81,15 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                   title: Text(
                     province,
                     style: AppTheme.bodyMedium.copyWith(
-                      fontWeight: _selectedProvince == province ? FontWeight.bold : FontWeight.normal,
-                      color: _selectedProvince == province ? AppTheme.tealBlue : AppTheme.darkText,
+                      fontWeight: state.selectedProvince == province ? FontWeight.bold : FontWeight.normal,
+                      color: state.selectedProvince == province ? AppTheme.tealBlue : AppTheme.darkText,
                     ),
                   ),
-                  trailing: _selectedProvince == province
+                  trailing: state.selectedProvince == province
                       ? Icon(Icons.check, color: AppTheme.tealBlue)
                       : null,
                   onTap: () {
-                    setState(() {
-                      _selectedProvince = province;
-                      _selectedDistrict = null;
-                    });
-                    _applyFilters();
+                    controller.selectProvince(province);
                     Navigator.pop(context);
                   },
                 )),
@@ -244,8 +99,11 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
     );
   }
 
-  void _showDistrictFilter() {
-    final districts = _getDistricts();
+  void _showDistrictFilter(
+    DoctorsDirectoryController controller,
+    DoctorsDirectoryState state,
+  ) {
+    final districts = controller.districts;
     if (districts.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Önce bir il seçiniz')),
@@ -272,18 +130,15 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
               title: Text(
                 'Tümü',
                 style: AppTheme.bodyMedium.copyWith(
-                  fontWeight: _selectedDistrict == null ? FontWeight.bold : FontWeight.normal,
-                  color: _selectedDistrict == null ? AppTheme.tealBlue : AppTheme.darkText,
+                  fontWeight: state.selectedDistrict == null ? FontWeight.bold : FontWeight.normal,
+                  color: state.selectedDistrict == null ? AppTheme.tealBlue : AppTheme.darkText,
                 ),
               ),
-              trailing: _selectedDistrict == null
+              trailing: state.selectedDistrict == null
                   ? Icon(Icons.check, color: AppTheme.tealBlue)
                   : null,
               onTap: () {
-                setState(() {
-                  _selectedDistrict = null;
-                });
-                _applyFilters();
+                controller.selectDistrict(null);
                 Navigator.pop(context);
               },
             ),
@@ -292,18 +147,15 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                   title: Text(
                     district,
                     style: AppTheme.bodyMedium.copyWith(
-                      fontWeight: _selectedDistrict == district ? FontWeight.bold : FontWeight.normal,
-                      color: _selectedDistrict == district ? AppTheme.tealBlue : AppTheme.darkText,
+                      fontWeight: state.selectedDistrict == district ? FontWeight.bold : FontWeight.normal,
+                      color: state.selectedDistrict == district ? AppTheme.tealBlue : AppTheme.darkText,
                     ),
                   ),
-                  trailing: _selectedDistrict == district
+                  trailing: state.selectedDistrict == district
                       ? Icon(Icons.check, color: AppTheme.tealBlue)
                       : null,
                   onTap: () {
-                    setState(() {
-                      _selectedDistrict = district;
-                    });
-                    _applyFilters();
+                    controller.selectDistrict(district);
                     Navigator.pop(context);
                   },
                 )),
@@ -313,7 +165,10 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
     );
   }
 
-  void _showSortOptions() {
+  void _showSortOptions(
+    DoctorsDirectoryController controller,
+    DoctorsDirectoryState state,
+  ) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -329,16 +184,22 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
               style: AppTheme.headingSmall,
             ),
             const SizedBox(height: 20),
-            _buildSortOption('name', 'Alfabetik', Icons.sort_by_alpha),
-            _buildSortOption('rating', 'En Yüksek Puan', Icons.star),
+            _buildSortOption(state, controller, 'name', 'Alfabetik', Icons.sort_by_alpha),
+            _buildSortOption(state, controller, 'rating', 'En Yüksek Puan', Icons.star),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSortOption(String value, String label, IconData icon) {
-    final isSelected = _sortBy == value;
+  Widget _buildSortOption(
+    DoctorsDirectoryState state,
+    DoctorsDirectoryController controller,
+    String value,
+    String label,
+    IconData icon,
+  ) {
+    final isSelected = state.sortBy == value;
     return ListTile(
       leading: Icon(icon, color: isSelected ? AppTheme.tealBlue : AppTheme.iconGray),
       title: Text(
@@ -352,17 +213,14 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
           ? Icon(Icons.check, color: AppTheme.tealBlue)
           : null,
       onTap: () {
-        setState(() {
-          _sortBy = value;
-        });
-        _applySorting();
+        controller.updateSort(value);
         Navigator.pop(context);
       },
     );
   }
 
-  String _getSortLabel() {
-    switch (_sortBy) {
+  String _getSortLabel(String sortBy) {
+    switch (sortBy) {
       case 'rating':
         return 'En Yüksek Puan';
       case 'name':
@@ -372,16 +230,12 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
     }
   }
 
-  Hospital? _getHospitalByDoctor(Doctor doctor) {
-    try {
-      return _hospitals.firstWhere((h) => h.id == doctor.hospitalId);
-    } catch (e) {
-      return null;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(doctorsDirectoryProvider);
+    final controller = ref.read(doctorsDirectoryProvider.notifier);
+    _syncSearchField(state.searchQuery);
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -395,7 +249,7 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
           ),
         ),
         child: SafeArea(
-          child: _isLoading
+          child: state.isLoading
               ? const Center(child: CircularProgressIndicator())
               : Column(
                   children: [
@@ -437,7 +291,7 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '${_filteredDoctors.length} doktor bulundu',
+                                  '${state.filteredDoctors.length} doktor bulundu',
                                   style: AppTheme.bodySmall.copyWith(
                                     color: AppTheme.white.withOpacity(0.9),
                                   ),
@@ -489,14 +343,11 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                                   ),
                                   child: const Icon(Icons.search_rounded, color: AppTheme.tealBlue, size: 20),
                                 ),
-                                suffixIcon: _searchController.text.isNotEmpty
+                                suffixIcon: state.searchQuery.isNotEmpty
                                     ? IconButton(
                                         icon: Icon(Icons.clear_rounded, color: AppTheme.iconGray),
                                         onPressed: () {
-                                          setState(() {
-                                            _searchController.clear();
-                                            _onSearchChanged('');
-                                          });
+                                          controller.updateSearch('');
                                         },
                                       )
                                     : null,
@@ -506,7 +357,7 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                                   vertical: 18,
                                 ),
                               ),
-                              onChanged: _onSearchChanged,
+                              onChanged: controller.updateSearch,
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -527,7 +378,8 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                                   child: Material(
                                     color: Colors.transparent,
                                     child: InkWell(
-                                      onTap: _showProvinceFilter,
+                                      onTap: () =>
+                                          _showProvinceFilter(controller, state),
                                       borderRadius: BorderRadius.circular(16),
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
@@ -545,7 +397,7 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                                             const SizedBox(width: 6),
                                             Flexible(
                                               child: Text(
-                                                _selectedProvince ?? 'İl',
+                                                state.selectedProvince ?? 'İl',
                                                 style: AppTheme.bodySmall.copyWith(
                                                   color: AppTheme.darkText,
                                                   fontWeight: FontWeight.w600,
@@ -583,7 +435,8 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                                   child: Material(
                                     color: Colors.transparent,
                                     child: InkWell(
-                                      onTap: _showDistrictFilter,
+                                      onTap: () =>
+                                          _showDistrictFilter(controller, state),
                                       borderRadius: BorderRadius.circular(16),
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
@@ -601,7 +454,7 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                                             const SizedBox(width: 6),
                                             Flexible(
                                               child: Text(
-                                                _selectedDistrict ?? 'İlçe',
+                                                state.selectedDistrict ?? 'İlçe',
                                                 style: AppTheme.bodySmall.copyWith(
                                                   color: AppTheme.darkText,
                                                   fontWeight: FontWeight.w600,
@@ -634,7 +487,8 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                                 child: Material(
                                   color: Colors.transparent,
                                   child: InkWell(
-                                    onTap: _showSortOptions,
+                                    onTap: () =>
+                                        _showSortOptions(controller, state),
                                     borderRadius: BorderRadius.circular(16),
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(
@@ -652,7 +506,7 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                                           const SizedBox(width: 6),
                                           Flexible(
                                             child: Text(
-                                              _getSortLabel(),
+                                              _getSortLabel(state.sortBy),
                                               style: AppTheme.bodySmall.copyWith(
                                                 color: AppTheme.darkText,
                                                 fontWeight: FontWeight.w600,
@@ -681,7 +535,7 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                     ),
                     // Doktor Listesi
                     Expanded(
-                      child: _filteredDoctors.isEmpty
+                      child: state.filteredDoctors.isEmpty
                           ? Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -698,7 +552,7 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                                       color: AppTheme.grayText,
                                     ),
                                   ),
-                                  if (_searchController.text.isNotEmpty)
+                                  if (state.searchQuery.isNotEmpty)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 8),
                                       child: Text(
@@ -712,14 +566,14 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                               ),
                             )
                           : RefreshIndicator(
-                              onRefresh: _loadData,
+                              onRefresh: controller.loadDoctors,
                               child: ListView.builder(
                                 controller: _scrollController,
                                 padding: const EdgeInsets.all(20),
-                                itemCount: _displayedDoctors.length + (_hasMoreItems ? 1 : 0),
+                                itemCount: controller.displayedDoctors.length +
+                                    (state.hasMoreItems ? 1 : 0),
                                 itemBuilder: (context, index) {
-                                  if (index == _displayedDoctors.length) {
-                                    // Loading indicator
+                                  if (index == controller.displayedDoctors.length) {
                                     return Padding(
                                       padding: const EdgeInsets.all(20),
                                       child: Center(
@@ -729,8 +583,10 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
                                       ),
                                     );
                                   }
-                                  final doctor = _displayedDoctors[index];
-                                  return _buildDoctorCard(doctor);
+                                  final doctor = controller.displayedDoctors[index];
+                                  final hospital =
+                                      controller.hospitalFor(doctor.hospitalId);
+                                  return _buildDoctorCard(doctor, hospital);
                                 },
                               ),
                             ),
@@ -742,9 +598,7 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
     );
   }
 
-  Widget _buildDoctorCard(Doctor doctor) {
-    final hospital = _getHospitalByDoctor(doctor);
-
+  Widget _buildDoctorCard(Doctor doctor, Hospital? hospital) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -909,6 +763,14 @@ class _AllDoctorsScreenState extends State<AllDoctorsScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _syncSearchField(String value) {
+    if (_searchController.text == value) return;
+    _searchController.value = TextEditingValue(
+      text: value,
+      selection: TextSelection.collapsed(offset: value.length),
     );
   }
 }

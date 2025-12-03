@@ -10,6 +10,7 @@ import '../models/rating.dart';
 import 'supabase_service.dart';
 import 'auth_service.dart';
 import 'location_service.dart';
+import 'event_service.dart';
 
 class JsonService {
   // ==================== HASTANELER ====================
@@ -458,8 +459,13 @@ class JsonService {
           })
           .select()
           .single();
-      
-      return _appointmentFromDb(response);
+      final appointment = _appointmentFromDb(response);
+      AppEventService.log('appointment_created_backend', properties: {
+        'appointment_id': appointment.id,
+        'doctor_id': appointment.doctorId,
+        'hospital_id': appointment.hospitalId,
+      });
+      return appointment;
     } catch (e) {
       // Hata detayını logla
       print('Randevu oluşturma hatası: $e');

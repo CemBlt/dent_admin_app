@@ -7,7 +7,7 @@ from django.core.paginator import Paginator
 from .auth_views import login_required
 from ..forms import AppointmentFilterForm, AppointmentStatusForm
 from ..utils import build_doctor_choices, build_service_choices, format_date
-from ..services import appointment_service, doctor_service, hospital_service, user_service
+from ..services import appointment_service, doctor_service, hospital_service, user_service, event_service
 
 class AppointmentManagementView(View):
     template_name = "panel/appointment_management.html"
@@ -36,12 +36,25 @@ class AppointmentManagementView(View):
                     status=form.cleaned_data["status"],
                 )
                 messages.success(request, "Randevu durumu güncellendi.")
+                event_service.log_event(
+                    "appointment_status_updated",
+                    request=request,
+                    properties={
+                        "appointment_id": form.cleaned_data["appointment_id"],
+                        "status": form.cleaned_data["status"],
+                    },
+                )
                 return redirect("appointment_management")
             messages.error(request, "Durum güncellenemedi.")
 
         elif action == "delete_appointment":
             appointment_service.delete_appointment(request.POST.get("appointment_id"))
             messages.success(request, "Randevu silindi.")
+            event_service.log_event(
+                "appointment_deleted",
+                request=request,
+                properties={"appointment_id": request.POST.get("appointment_id")},
+            )
             return redirect("appointment_management")
 
         context = self._build_context(request)

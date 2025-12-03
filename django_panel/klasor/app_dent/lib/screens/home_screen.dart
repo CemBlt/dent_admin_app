@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
-import '../models/appointment.dart';
-import '../models/doctor.dart';
 import '../models/hospital.dart';
-import '../models/tip.dart';
-import '../models/user.dart';
+import '../providers/home_provider.dart';
 import '../services/auth_service.dart';
-import '../services/json_service.dart';
 import '../services/location_service.dart';
 import '../theme/app_theme.dart';
 import 'appointments_screen.dart';
@@ -22,57 +19,39 @@ import '../widgets/home/nearby_hospitals_section.dart';
 import '../widgets/home/popular_doctors_section.dart';
 import '../widgets/home/tips_section.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  List<Hospital> _hospitals = [];
-  List<Doctor> _popularDoctors = [];
-  List<Tip> _tips = [];
-  List<Tip> _displayedTips = [];
-  int _currentTipIndex = 0;
-  bool _isLoading = true;
-  Appointment? _upcomingAppointment;
-  Doctor? _upcomingDoctor;
-  
-  // Kullanıcı bilgisi
-  User? _user;
-  
-  // Hastane ID -> {reviewCount, averageRating}
-  Map<String, Map<String, dynamic>> _hospitalRatings = {};
-  // Doktor ID -> {reviewCount, averageRating}
-  Map<String, Map<String, dynamic>> _doctorRatings = {};
-  
-  // Kullanıcı konumu
-  Position? _userPosition;
-  // Mesafe bilgisi (hastane ID -> mesafe km)
-  Map<String, double> _hospitalDistances = {};
-
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _checkLocationAndLoadData();
-    _startTipCarousel();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkLocationAndLoadData();
+    });
   }
 
-  /// Konum kontrolü yap ve verileri yükle
   Future<void> _checkLocationAndLoadData() async {
+    final controller = ref.read(homeControllerProvider.notifier);
     final hasRequested = await LocationService.hasRequestedPermission();
-    
+
+    Position? position;
     if (!hasRequested) {
       final shouldRequest = await _showLocationPermissionDialog();
       if (shouldRequest) {
-        await _requestLocationPermission();
+        position = await _requestLocationPermission();
       }
     } else {
-      await _loadUserLocation();
+      position = await _loadUserLocation();
     }
-    
-    await _loadData();
+
+    if (!mounted) return;
+
+    await controller.loadInitial(position: position);
   }
 
   /// İlk açılış konum izni dialogu
@@ -118,28 +97,27 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Konum izni iste
-  Future<void> _requestLocationPermission() async {
+  Future<Position?> _requestLocationPermission() async {
     final permission = await LocationService.requestPermission();
     if (permission == LocationPermission.whileInUse ||
         permission == LocationPermission.always) {
-      await _loadUserLocation();
-      await _loadData();
+      return await _loadUserLocation();
     }
+    return null;
   }
 
   /// Kullanıcı konumunu yükle
-  Future<void> _loadUserLocation() async {
+  Future<Position?> _loadUserLocation() async {
     final position = await LocationService.getCurrentLocation();
-    if (mounted) {
-      setState(() {
-        _userPosition = position;
-      });
-      if (position != null) {
-        debugPrint('✅ Konum alındı: ${position.latitude}, ${position.longitude}');
-      } else {
-        debugPrint('❌ Konum alınamadı');
-      }
+    if (!mounted) return position;
+
+    if (position != null) {
+      ref.read(homeControllerProvider.notifier).setUserPosition(position);
+      debugPrint('✅ Konum alındı: ${position.latitude}, ${position.longitude}');
+    } else {
+      debugPrint('❌ Konum alınamadı');
     }
+    return position;
   }
 
   /// Konum izni yoksa tekrar iste
@@ -148,7 +126,8 @@ class _HomeScreenState extends State<HomeScreen> {
     if (permission == LocationPermission.whileInUse ||
         permission == LocationPermission.always) {
       await _loadUserLocation();
-      await _loadData();
+      if (!mounted) return;
+      await ref.read(homeControllerProvider.notifier).refresh();
     } else if (permission == LocationPermission.deniedForever) {
       await _showOpenSettingsDialog();
     }
@@ -189,126 +168,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _loadData() async {
-    List<Hospital> hospitals;
-    Map<String, double> hospitalDistances = {};
 
-    if (_userPosition != null) {
-      debugPrint('📍 Konum var, yakındaki hastaneler getiriliyor...');
-      hospitals = await JsonService.getNearbyHospitals(
-        userLat: _userPosition!.latitude,
-        userLon: _userPosition!.longitude,
-        radiusKm: 50,
-      );
-      debugPrint('✅ ${hospitals.length} yakındaki hastane bulundu');
-      
-      for (final hospital in hospitals) {
-        final distance = LocationService.calculateDistance(
-          _userPosition!.latitude,
-          _userPosition!.longitude,
-          hospital.latitude,
-          hospital.longitude,
-        );
-        hospitalDistances[hospital.id] = distance;
-      }
-    } else {
-      debugPrint('📍 Konum yok, tüm hastaneler getiriliyor...');
-      hospitals = await JsonService.getHospitals();
-      hospitals.sort((a, b) => a.name.compareTo(b.name));
-      debugPrint('✅ ${hospitals.length} hastane bulundu');
-    }
+  bool _shouldShowAppointmentReminder(HomeState state) =>
+      AuthService.isAuthenticated && state.upcomingAppointment != null;
 
-    final doctors = await JsonService.getPopularDoctors();
-    final tips = await JsonService.getTips();
-    Appointment? upcomingAppointment;
-    Doctor? upcomingDoctor;
-
-    User? user;
-    if (AuthService.isAuthenticated) {
-      final userId = AuthService.currentUserId;
-      if (userId != null) {
-        user = await JsonService.getUser(userId);
-        
-        upcomingAppointment = await JsonService.getUpcomingAppointmentForUser(userId);
-        if (upcomingAppointment != null) {
-          upcomingDoctor = await JsonService.getDoctorById(upcomingAppointment.doctorId);
-        }
-      }
-    }
-
-    final hospitalRatingsMap = <String, Map<String, dynamic>>{};
-    for (final hospital in hospitals) {
-      try {
-        final reviews = await JsonService.getReviewsByHospital(hospital.id);
-        final averageRating = await JsonService.getHospitalAverageRating(hospital.id);
-        hospitalRatingsMap[hospital.id] = {
-          'reviewCount': reviews.length,
-          'averageRating': averageRating,
-        };
-      } catch (e) {
-        hospitalRatingsMap[hospital.id] = {
-          'reviewCount': 0,
-          'averageRating': 0.0,
-        };
-      }
-    }
-
-    final doctorRatingsMap = <String, Map<String, dynamic>>{};
-    for (final doctor in doctors) {
-      try {
-        final reviews = await JsonService.getReviewsByDoctor(doctor.id);
-        final averageRating = await JsonService.getDoctorAverageRating(doctor.id);
-        doctorRatingsMap[doctor.id] = {
-          'reviewCount': reviews.length,
-          'averageRating': averageRating,
-        };
-      } catch (e) {
-        doctorRatingsMap[doctor.id] = {
-          'reviewCount': 0,
-          'averageRating': 0.0,
-        };
-      }
-    }
-
-    if (!mounted) return;
-    setState(() {
-      _hospitals = hospitals;
-      _popularDoctors = doctors;
-      _tips = tips;
-      _displayedTips = tips;
-      _hospitalRatings = hospitalRatingsMap;
-      _doctorRatings = doctorRatingsMap;
-      _upcomingAppointment = upcomingAppointment;
-      _upcomingDoctor = upcomingDoctor;
-      _hospitalDistances = hospitalDistances;
-      _user = user;
-      _isLoading = false;
-    });
-  }
-
-  void _startTipCarousel() {
-    Future.delayed(const Duration(seconds: 5), () {
-      if (mounted && _tips.isNotEmpty) {
-        setState(() {
-          _currentTipIndex = (_currentTipIndex + 1) % _tips.length;
-        });
-        _startTipCarousel();
-      }
-    });
-  }
-
-  bool get _shouldShowAppointmentReminder =>
-      AuthService.isAuthenticated && _upcomingAppointment != null;
-
-  Hospital? _getHospitalById(String hospitalId) {
-    try {
-      return _hospitals.firstWhere((h) => h.id == hospitalId);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  Future<void> _openAppointments() async {
+  Future<void> _openAppointments(HomeState state, HomeController controller) async {
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -316,11 +180,14 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
     if (!mounted) return;
-    await _loadData();
+    await controller.refresh();
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(homeControllerProvider);
+    final controller = ref.read(homeControllerProvider.notifier);
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -334,17 +201,17 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         child: SafeArea(
-          child: _isLoading
+          child: state.isLoading
               ? const Center(child: CircularProgressIndicator())
               : RefreshIndicator(
-                  onRefresh: _loadData,
+                  onRefresh: controller.refresh,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         HomeHeader(
-                          user: _user,
+                          user: state.user,
                           onNotificationPressed: () {
                             Navigator.push(
                               context,
@@ -356,12 +223,41 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 24),
                         
-                        if (_shouldShowAppointmentReminder) ...[
+                        if (state.errorMessage != null) ...[
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.error_outline, color: Colors.red),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      state.errorMessage!,
+                                      style: AppTheme.bodySmall.copyWith(
+                                        color: Colors.red,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        if (_shouldShowAppointmentReminder(state)) ...[
                           AppointmentReminderCard(
-                            appointment: _upcomingAppointment,
-                            hospital: _getHospitalById(_upcomingAppointment!.hospitalId),
-                            doctor: _upcomingDoctor,
-                            onOpenAppointments: _openAppointments,
+                            appointment: state.upcomingAppointment,
+                            hospital: _getHospitalById(state, state.upcomingAppointment!.hospitalId),
+                            doctor: state.upcomingDoctor,
+                            onOpenAppointments: () => _openAppointments(state, controller),
                           ),
                           const SizedBox(height: 16),
                         ],
@@ -373,24 +269,24 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 24),
 
                         NearbyHospitalsSection(
-                          hospitals: _hospitals,
-                          userPosition: _userPosition,
-                          hospitalDistances: _hospitalDistances,
-                          hospitalRatings: _hospitalRatings,
+                          hospitals: state.hospitals,
+                          userPosition: state.userPosition,
+                          hospitalDistances: state.hospitalDistances,
+                          hospitalRatings: state.hospitalRatings,
                           onRequestLocationPermission: _requestLocationPermissionAgain,
                         ),
                         const SizedBox(height: 24),
 
                         PopularDoctorsSection(
-                          popularDoctors: _popularDoctors,
-                          hospitals: _hospitals,
-                          doctorRatings: _doctorRatings,
+                          popularDoctors: state.popularDoctors,
+                          hospitals: state.hospitals,
+                          doctorRatings: state.doctorRatings,
                         ),
                         const SizedBox(height: 24),
 
                         TipsSection(
-                          displayedTips: _displayedTips,
-                          currentTipIndex: _currentTipIndex,
+                          displayedTips: state.tips,
+                          currentTipIndex: state.currentTipIndex,
                         ),
                         const SizedBox(height: 24),
                       ],
@@ -401,4 +297,13 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  Hospital? _getHospitalById(HomeState state, String hospitalId) {
+    try {
+      return state.hospitals.firstWhere((h) => h.id == hospitalId);
+    } catch (_) {
+      return null;
+    }
+  }
+
 }

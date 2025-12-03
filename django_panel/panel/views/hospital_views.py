@@ -13,7 +13,7 @@ from ..forms import (
     DAYS
 )
 from ..utils import build_service_choices
-from ..services import hospital_service, location_service
+from ..services import hospital_service, location_service, event_service
 
 class HospitalSettingsView(View):
     template_name = "panel/hospital_settings.html"
@@ -56,6 +56,11 @@ class HospitalSettingsView(View):
                     messages.error(request, str(exc))
                 else:
                     messages.success(request, "Genel bilgiler güncellendi.")
+                    event_service.log_event(
+                        "hospital_general_updated",
+                        request=request,
+                        properties={"updated_fields": list(form.cleaned_data.keys())},
+                    )
                     context = self._build_context(request)
                     context["active_tab"] = "general"
                     return render(request, self.template_name, context)
@@ -70,6 +75,11 @@ class HospitalSettingsView(View):
             if form.is_valid():
                 hospital_service.update_services(hospital, form.cleaned_data.get("services", []), request)
                 messages.success(request, "Hizmet listesi güncellendi.")
+                event_service.log_event(
+                    "hospital_services_updated",
+                    request=request,
+                    properties={"service_count": len(form.cleaned_data.get("services", []))},
+                )
                 context = self._build_context(request)
                 context["active_tab"] = "services"
                 return render(request, self.template_name, context)
@@ -93,6 +103,11 @@ class HospitalSettingsView(View):
                 hospital_service.update_working_hours(hospital, working_hours, request)
                 hospital_service.update_is_open_24_hours(hospital, is_open_24_hours, request)
                 messages.success(request, "Çalışma saatleri güncellendi.")
+                event_service.log_event(
+                    "hospital_hours_updated",
+                    request=request,
+                    properties={"is_24_hours": is_open_24_hours},
+                )
                 context = self._build_context(request)
                 context["active_tab"] = "hours"
                 return render(request, self.template_name, context)
@@ -126,6 +141,11 @@ class HospitalSettingsView(View):
                             
                             if added_count > 0:
                                 messages.success(request, f"{added_count} görsel galeriye eklendi.")
+                                event_service.log_event(
+                                    "hospital_gallery_updated",
+                                    request=request,
+                                    properties={"added_count": added_count},
+                                )
                 except Exception as exc:
                     messages.error(request, f"Hata: {str(exc)}")
                 
@@ -143,6 +163,11 @@ class HospitalSettingsView(View):
                 index = int(request.POST.get("index", -1))
                 hospital_service.remove_gallery_image(hospital, index, request)
                 messages.success(request, "Galeri görseli kaldırıldı.")
+                event_service.log_event(
+                    "hospital_gallery_removed",
+                    request=request,
+                    properties={"index": index},
+                )
             except ValueError:
                 messages.error(request, "Geçersiz galeri öğesi.")
             
@@ -180,6 +205,14 @@ class HospitalSettingsView(View):
                     request=request,
                 )
                 messages.success(request, "Tatil bilgisi eklendi.")
+                event_service.log_event(
+                    "hospital_holiday_added",
+                    request=request,
+                    properties={
+                        "date": form.cleaned_data["date"].isoformat(),
+                        "is_full_day": is_full_day,
+                    },
+                )
                 return redirect("hospital_settings")
             messages.error(request, "Tatil bilgisi eklenemedi.")
 
@@ -187,6 +220,11 @@ class HospitalSettingsView(View):
             holiday_id = request.POST.get("holiday_id")
             hospital_service.delete_holiday(holiday_id)
             messages.success(request, "Tatil kaydı silindi.")
+            event_service.log_event(
+                "hospital_holiday_deleted",
+                request=request,
+                properties={"holiday_id": holiday_id},
+            )
             return redirect("hospital_settings")
 
         context = self._build_context(request)

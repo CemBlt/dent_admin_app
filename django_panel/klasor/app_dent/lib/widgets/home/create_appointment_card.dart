@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../screens/create_appointment_screen.dart';
+import '../../services/event_service.dart';
 import '../../theme/app_theme.dart';
 
 class CreateAppointmentCard extends StatelessWidget {
@@ -82,6 +83,7 @@ class CreateAppointmentCard extends StatelessWidget {
                   backgroundColor: AppTheme.tealBlue,
                 ),
                 onPressed: () {
+                  AppEventService.log('cta_create_appointment_pressed');
                   Navigator.push(
                     context,
                     MaterialPageRoute(

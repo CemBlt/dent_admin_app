@@ -1,19 +1,13 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class LanguageSettingsScreen extends StatefulWidget {
+import '../providers/language_settings_provider.dart';
+import '../theme/app_theme.dart';
+
+class LanguageSettingsScreen extends ConsumerWidget {
   const LanguageSettingsScreen({super.key});
 
-  @override
-  State<LanguageSettingsScreen> createState() => _LanguageSettingsScreenState();
-}
-
-class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
-  String _selectedLanguage = 'tr';
-  bool _isLoading = true;
-
-  final List<Map<String, dynamic>> _languages = [
+  static const List<Map<String, dynamic>> _languages = [
     {
       'code': 'tr',
       'name': 'Türkçe',
@@ -29,42 +23,10 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
   ];
 
   @override
-  void initState() {
-    super.initState();
-    _loadLanguage();
-  }
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(languageSettingsProvider);
+    final controller = ref.read(languageSettingsProvider.notifier);
 
-  Future<void> _loadLanguage() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _selectedLanguage = prefs.getString('app_language') ?? 'tr';
-      _isLoading = false;
-    });
-  }
-
-  Future<void> _changeLanguage(String languageCode) async {
-    if (_selectedLanguage == languageCode) return;
-
-    setState(() {
-      _selectedLanguage = languageCode;
-    });
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('app_language', languageCode);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Dil değiştirildi. Uygulama yeniden başlatıldığında değişiklik aktif olacak.'),
-          backgroundColor: AppTheme.successGreen,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -113,7 +75,7 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
               ),
               // Content
               Expanded(
-                child: _isLoading
+                child: state.isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : SingleChildScrollView(
                         child: Padding(
@@ -136,13 +98,26 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
                               ),
                               const SizedBox(height: 24),
                               ..._languages.map((language) {
-                                final isSelected = _selectedLanguage == language['code'];
+                                final isSelected =
+                                    state.selectedLanguage == language['code'];
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 12),
                                   child: _buildLanguageCard(
                                     language: language,
                                     isSelected: isSelected,
-                                    onTap: () => _changeLanguage(language['code'] as String),
+                                    onTap: () => controller.changeLanguage(
+                                      languageCode: language['code'] as String,
+                                      showMessage: (message) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(message),
+                                            backgroundColor:
+                                                AppTheme.successGreen,
+                                          ),
+                                        );
+                                      },
+                                    ),
                                   ),
                                 );
                               }),

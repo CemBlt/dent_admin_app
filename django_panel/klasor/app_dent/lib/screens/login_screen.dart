@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../providers/auth_provider.dart';
+import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_logo.dart';
-import '../services/auth_service.dart';
 import '../utils/validators.dart';
 import 'register_screen.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   final VoidCallback? onLoginSuccess;
   
   const LoginScreen({
@@ -14,15 +17,13 @@ class LoginScreen extends StatefulWidget {
   });
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false;
-  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -31,61 +32,39 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
+  Future<void> _handleLogin(LoginController controller) async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final response = await AuthService.signInWithEmail(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
-
-      if (response.user != null) {
-        if (widget.onLoginSuccess != null) {
-          widget.onLoginSuccess!();
-        } else {
-          Navigator.pop(context, true);
-        }
-      }
-    } on ValidationException catch (e) {
-      if (mounted) {
+    final success = await controller.login(
+      email: _emailController.text,
+      password: _passwordController.text,
+      showMessage: (message) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.message),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              e.toString().contains('Invalid login credentials')
-                  ? 'Email veya şifre hatalı'
-                  : 'Giriş yapılırken bir hata oluştu',
-            ),
+            content: Text(message),
             backgroundColor: Colors.red,
           ),
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+      },
+    );
+
+    if (success && mounted) {
+      if (widget.onLoginSuccess != null) {
+        widget.onLoginSuccess!();
+      } else {
+        Navigator.pop(context, true);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(loginControllerProvider);
+    final controller = ref.read(loginControllerProvider.notifier);
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -244,7 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Password input
                         TextFormField(
                           controller: _passwordController,
-                          obscureText: _obscurePassword,
+                          obscureText: state.obscurePassword,
                           decoration: InputDecoration(
                             labelText: 'Şifre',
                             hintText: 'Şifrenizi giriniz',
@@ -258,13 +237,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _obscurePassword ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                                state.obscurePassword
+                                    ? Icons.visibility_rounded
+                                    : Icons.visibility_off_rounded,
                                 color: AppTheme.iconGray,
                               ),
                               onPressed: () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
+                                controller.togglePasswordVisibility();
                               },
                             ),
                             filled: true,
@@ -309,14 +288,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              onTap: _isLoading ? null : _handleLogin,
+                              onTap: state.isLoading
+                                  ? null
+                                  : () => _handleLogin(controller),
                               borderRadius: BorderRadius.circular(18),
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(vertical: 18),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    if (_isLoading)
+                                    if (state.isLoading)
                                       const SizedBox(
                                         height: 20,
                                         width: 20,
