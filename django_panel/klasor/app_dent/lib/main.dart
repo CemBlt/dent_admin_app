@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config/supabase_config.dart';
@@ -7,13 +8,21 @@ import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  try {
+    await dotenv.load(fileName: "assets/env.client");
+  } catch (e) {
+    // .env dosyası yoksa veya yüklenemezse devam et (Production'da dart-define kullanılabilir)
+    debugPrint('Dotenv yüklenemedi: $e');
+  }
+
   // Supabase'i initialize et
+  SupabaseConfig.ensureConfigured();
   await Supabase.initialize(
     url: SupabaseConfig.supabaseUrl,
     anonKey: SupabaseConfig.supabaseAnonKey,
   );
-  
+
   runApp(const MyApp());
 }
 

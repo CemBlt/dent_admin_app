@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_logo.dart';
 import '../services/auth_service.dart';
+import '../utils/validators.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -51,6 +52,15 @@ class _LoginScreenState extends State<LoginScreen> {
         } else {
           Navigator.pop(context, true);
         }
+      }
+    } on ValidationException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            backgroundColor: Colors.orange,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -222,13 +232,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           style: AppTheme.bodyMedium,
                           validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Email adresi gerekli';
+                            try {
+                              Validators.requireEmail(value);
+                              return null;
+                            } on ValidationException catch (e) {
+                              return e.message;
                             }
-                            if (!value.contains('@')) {
-                              return 'Geçerli bir email adresi giriniz';
-                            }
-                            return null;
                           },
                         ),
                         const SizedBox(height: 20),
@@ -275,13 +284,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           style: AppTheme.bodyMedium,
                           validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Şifre gerekli';
+                            try {
+                              Validators.requirePassword(value);
+                              return null;
+                            } on ValidationException catch (e) {
+                              return e.message;
                             }
-                            if (value.length < 6) {
-                              return 'Şifre en az 6 karakter olmalıdır';
-                            }
-                            return null;
                           },
                         ),
                         const SizedBox(height: 32),

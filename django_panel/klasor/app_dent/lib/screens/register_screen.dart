@@ -4,6 +4,7 @@ import 'package:intl_phone_field/phone_number.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
+import '../utils/validators.dart';
 
 class RegisterScreen extends StatefulWidget {
   final VoidCallback? onRegisterSuccess;
@@ -110,31 +111,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       // Email kontrolü (email artık zorunlu)
       final email = _emailController.text.trim();
-      if (email.isEmpty) {
+      try {
+        Validators.requireEmail(email);
+      } on ValidationException catch (e) {
         setState(() {
           _isLoading = false;
         });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Email adresi gerekli'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        return;
-      }
-
-      // Email format kontrolü
-      final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
-      if (!emailRegex.hasMatch(email)) {
-        setState(() {
-          _isLoading = false;
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Geçerli bir email adresi giriniz'),
+              content: Text(e.message),
               backgroundColor: Colors.red,
             ),
           );
@@ -172,7 +158,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       // Kayıt işlemini dene
       AuthResponse? response;
       try {
-        response = await AuthService.signUp(
+        response = await AuthService.signUpWithEmail(
           email: email,
           password: _passwordController.text,
           name: _nameController.text.trim(),
@@ -286,6 +272,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
           }
         }
       }
+    } on ValidationException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     } catch (e) {
       // Bu catch bloğu sadece beklenmeyen hatalar için (signUp zaten kendi try-catch'inde)
       if (mounted) {
@@ -329,7 +324,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   /// Şifre kurallarını kontrol eder
   Map<String, bool> _checkPasswordRules(String password) {
     return {
-      'length': password.length >= 6,
+      'length': password.length >= 8,
       'upperCase': password.contains(RegExp(r'[A-Z]')),
       'lowerCase': password.contains(RegExp(r'[a-z]')),
       'digit': password.contains(RegExp(r'[0-9]')),
@@ -377,7 +372,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             spacing: 12,
             runSpacing: 4,
             children: [
-              _buildRuleItem('En az 6 karakter', rules['length'] ?? false),
+              _buildRuleItem('En az 8 karakter', rules['length'] ?? false),
               _buildRuleItem('1 büyük harf', rules['upperCase'] ?? false),
               _buildRuleItem('1 küçük harf', rules['lowerCase'] ?? false),
               _buildRuleItem('1 rakam', rules['digit'] ?? false),
@@ -548,10 +543,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           style: AppTheme.bodyMedium,
                           validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Ad gerekli';
+                            try {
+                              Validators.requireNonEmpty(value, 'Ad');
+                              return null;
+                            } on ValidationException catch (e) {
+                              return e.message;
                             }
-                            return null;
                           },
                         ),
                         const SizedBox(height: 20),
@@ -586,10 +583,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           style: AppTheme.bodyMedium,
                           validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Soyad gerekli';
+                            try {
+                              Validators.requireNonEmpty(value, 'Soyad');
+                              return null;
+                            } on ValidationException catch (e) {
+                              return e.message;
                             }
-                            return null;
                           },
                         ),
                         const SizedBox(height: 20),
@@ -641,24 +640,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 // Real-time kontrol yok, sadece kayıt butonuna basıldığında kontrol edilecek
                               },
                               validator: (phone) {
-                                if (phone == null || phone.completeNumber.isEmpty) {
+                                final completeNumber = phone?.completeNumber;
+                                try {
+                                  Validators.requirePhone(completeNumber);
+                                } on ValidationException catch (e) {
+                                  return e.message;
+                                }
+
+                                if (phone == null) {
                                   return 'Telefon numarası gerekli';
                                 }
-                                
+
                                 // "0" ile başlayan numaraları reddet
                                 if (phone.number.startsWith('0')) {
                                   return 'Telefon numarası 0 ile başlayamaz. Ülke kodu otomatik eklenir.';
                                 }
-                                
+
                                 // E.164 format kontrolü
                                 if (!phone.completeNumber.startsWith('+')) {
                                   return 'Ülke kodu gerekli';
                                 }
-                                
+
                                 if (_phoneNumberError != null) {
                                   return _phoneNumberError;
                                 }
-                                
+
                                 return null;
                               },
                             ),
@@ -713,22 +719,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           style: AppTheme.bodyMedium,
                           validator: (value) {
-                            // Email artık zorunlu
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Email adresi gerekli';
+                            try {
+                              Validators.requireEmail(value);
+                            } on ValidationException catch (e) {
+                              return e.message;
                             }
-                            
-                            // Email format kontrolü
-                            final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
-                            if (!emailRegex.hasMatch(value.trim())) {
-                              return 'Geçerli bir email adresi giriniz';
-                            }
-                            
-                            // Email unique kontrolü (real-time kontrol sonucu)
+
                             if (_emailIsUnique == false) {
                               return 'Bu email adresi zaten kayıtlı';
                             }
-                            
+
                             return null;
                           },
                         ),
@@ -747,7 +747,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               },
                               decoration: InputDecoration(
                                 labelText: 'Şifre *',
-                                hintText: 'En az 6 karakter',
+                                hintText: 'En az 8 karakter',
                                 prefixIcon: Container(
                                   margin: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
@@ -784,13 +784,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               style: AppTheme.bodyMedium,
                               validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Şifre gerekli';
+                                try {
+                                  Validators.requirePassword(value);
+                                } on ValidationException catch (e) {
+                                  return e.message;
                                 }
-                                if (value.length < 6) {
-                                  return 'Şifre en az 6 karakter olmalıdır';
-                                }
-                                final rules = _checkPasswordRules(value);
+                                final rules = _checkPasswordRules(value ?? '');
                                 if (!rules['upperCase']!) {
                                   return 'Şifre en az 1 büyük harf içermelidir';
                                 }

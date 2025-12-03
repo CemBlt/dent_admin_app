@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
 import 'package:flutter/foundation.dart';
+import '../utils/validators.dart';
 
 /// Authentication service
 /// 
@@ -26,43 +27,16 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    return await SupabaseService.supabase.auth.signInWithPassword(
-      email: email,
+    Validators.requireEmail(email);
+    Validators.requirePassword(password);
+
+    return SupabaseService.supabase.auth.signInWithPassword(
+      email: email.trim(),
       password: password,
     );
   }
 
-  /// Email (zorunlu) ve şifre ile kayıt olur
-  /// Telefon numarası zorunludur ve E.164 formatında olmalıdır
-  static Future<AuthResponse> signUp({
-    required String email,
-    required String password,
-    String? name,
-    String? surname,
-    required String phone, // E.164 formatında: +905321234567
-  }) async {
-    // Email zorunlu, trim yap
-    final finalEmail = email.trim();
-    
-    if (finalEmail.isEmpty) {
-      throw Exception('Email adresi gerekli');
-    }
-
-    final response = await SupabaseService.supabase.auth.signUp(
-      email: finalEmail,
-      password: password,
-      data: {
-        if (name != null && name.isNotEmpty) 'name': name,
-        if (surname != null && surname.isNotEmpty) 'surname': surname,
-        'phone': phone,
-      },
-    );
-
-    return response;
-  }
-
-  /// Email ve şifre ile kayıt olur (geriye dönük uyumluluk için)
-  @Deprecated('Use signUp instead')
+  /// Email ve şifre ile kayıt olur
   static Future<AuthResponse> signUpWithEmail({
     required String email,
     required String password,
@@ -70,13 +44,23 @@ class AuthService {
     String? surname,
     String? phone,
   }) async {
-    return signUp(
-      email: email,
+    Validators.requireEmail(email);
+    Validators.requirePassword(password);
+    Validators.requireNonEmpty(name, 'Ad');
+    Validators.requireNonEmpty(surname, 'Soyad');
+    Validators.requirePhone(phone);
+
+    final response = await SupabaseService.supabase.auth.signUp(
+      email: email.trim(),
       password: password,
-      name: name,
-      surname: surname,
-      phone: phone ?? '',
+      data: {
+        if (name != null) 'name': name.trim(),
+        if (surname != null) 'surname': surname.trim(),
+        if (phone != null) 'phone': phone.trim(),
+      },
     );
+
+    return response;
   }
 
   /// Çıkış yapar
