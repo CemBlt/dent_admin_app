@@ -546,7 +546,6 @@ class JsonService {
     return User(
       id: dbData['id'].toString(),
       email: dbData['email'] ?? '', // auth.users'dan alınacak
-      password: '', // Şifre gösterilmez
       name: dbData['name'] ?? '',
       surname: dbData['surname'] ?? '',
       phone: dbData['phone'] ?? '',
@@ -584,7 +583,6 @@ class JsonService {
           return User(
             id: currentUser.id,
             email: email,
-            password: '', // Şifre gösterilmez
             name: userMetadata['name']?.toString() ?? '',
             surname: userMetadata['surname']?.toString() ?? '',
             phone: userMetadata['phone']?.toString() ?? '',

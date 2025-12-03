@@ -1,7 +1,6 @@
 class User {
   final String id;
   final String email;
-  final String password;
   final String name;
   final String surname;
   final String phone;
@@ -11,7 +10,6 @@ class User {
   User({
     required this.id,
     required this.email,
-    required this.password,
     required this.name,
     required this.surname,
     required this.phone,
@@ -25,7 +23,6 @@ class User {
     return User(
       id: json['id'] as String,
       email: json['email'] as String,
-      password: json['password'] as String,
       name: json['name'] as String,
       surname: json['surname'] as String,
       phone: json['phone'] as String,
@@ -38,7 +35,6 @@ class User {
     return {
       'id': id,
       'email': email,
-      'password': password,
       'name': name,
       'surname': surname,
       'phone': phone,
@@ -47,4 +43,3 @@ class User {
     };
   }
 }
-
