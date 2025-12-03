@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show AuthState;
 
 import '../models/user.dart';
 import '../services/auth_service.dart';
@@ -26,12 +29,13 @@ class ProfileState {
   ProfileState copyWith({
     bool? isLoading,
     User? user,
+    bool updateUser = false,
     bool? isAuthenticated,
     String? errorMessage,
   }) {
     return ProfileState(
       isLoading: isLoading ?? this.isLoading,
-      user: user ?? this.user,
+      user: updateUser ? user : this.user,
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
       errorMessage: errorMessage,
     );
@@ -49,8 +53,19 @@ class ProfileActionResult {
 }
 
 class ProfileController extends StateNotifier<ProfileState> {
+  late final StreamSubscription<AuthState> _authSubscription;
+
   ProfileController() : super(ProfileState.initial()) {
+    _authSubscription = AuthService.authStateChanges.listen((_) {
+      loadProfile();
+    });
     loadProfile();
+  }
+
+  @override
+  void dispose() {
+    _authSubscription.cancel();
+    super.dispose();
   }
 
   Future<void> loadProfile() async {
@@ -81,6 +96,7 @@ class ProfileController extends StateNotifier<ProfileState> {
       state = state.copyWith(
         isLoading: false,
         user: user,
+        updateUser: true,
         isAuthenticated: true,
       );
     } catch (error) {
@@ -98,6 +114,7 @@ class ProfileController extends StateNotifier<ProfileState> {
       await AuthService.signOut();
       state = state.copyWith(
         user: null,
+        updateUser: true,
         isAuthenticated: false,
       );
       return const ProfileActionResult(
