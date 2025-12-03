@@ -202,15 +202,10 @@ class _AccountSettingsScreenState
                                     label: 'E-posta',
                                     icon: Icons.email_outlined,
                                     keyboardType: TextInputType.emailAddress,
-                                    validator: (value) {
-                                      if (value == null || value.trim().isEmpty) {
-                                        return 'E-posta gereklidir';
-                                      }
-                                      if (!value.contains('@')) {
-                                        return 'Geçerli bir e-posta adresi girin';
-                                      }
-                                      return null;
-                                    },
+                                    readOnly: true,
+                                    helperText:
+                                        'Giriş e-posta adresiniz Supabase Auth tarafından yönetilir ve bu ekrandan değiştirilemez.',
+                                    validator: (_) => null,
                                   ),
                                   const SizedBox(height: 20),
                                   // Telefon
@@ -291,6 +286,8 @@ class _AccountSettingsScreenState
     required IconData icon,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    bool readOnly = false,
+    String? helperText,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -307,12 +304,18 @@ class _AccountSettingsScreenState
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
+        readOnly: readOnly,
         validator: validator,
         style: AppTheme.bodyMedium,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: AppTheme.bodySmall.copyWith(color: AppTheme.grayText),
           prefixIcon: Icon(icon, color: AppTheme.tealBlue),
+          helperText: helperText,
+          helperStyle: AppTheme.bodySmall.copyWith(
+            color: AppTheme.grayText,
+            height: 1.3,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,

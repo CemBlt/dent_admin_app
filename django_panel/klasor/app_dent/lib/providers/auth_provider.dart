@@ -210,13 +210,6 @@ class RegisterController extends StateNotifier<RegisterState> {
 
       state = state.copyWith(isPhoneUnique: true);
 
-      final isEmailTaken = await AuthService.isEmailTaken(email.trim());
-      if (isEmailTaken) {
-        state = state.copyWith(isEmailUnique: false);
-        showMessage('Bu email adresi zaten kayıtlı', success: false);
-        return false;
-      }
-
       final response = await AuthService.signUpWithEmail(
         email: email.trim(),
         password: password,

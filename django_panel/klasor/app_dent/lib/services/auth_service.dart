@@ -90,36 +90,5 @@ class AuthService {
     }
   }
 
-  /// Email'in daha önce kayıtlı olup olmadığını kontrol eder
-  /// Sadece user_profiles tablosunda kontrol eder
-  /// Not: Supabase Auth kontrolü yapılmıyor çünkü:
-  /// 1. signInWithPassword() rate-limit sorunlarına yol açar
-  /// 2. Güvenlik loglarında şüpheli aktivite oluşturur
-  /// 3. user_profiles tablosu trigger ile auth.users ile senkron kalır
-  /// 4. Kayıt sırasında Supabase Auth zaten email uniqueness kontrolü yapar
-  static Future<bool> isEmailTaken(String email) async {
-    try {
-      // Email boşsa veya geçersizse kontrol yapma
-      final trimmedEmail = email.trim().toLowerCase();
-      if (trimmedEmail.isEmpty || !trimmedEmail.contains('@')) {
-        return false; // Geçersiz email, kontrol yapma
-      }
-
-      // user_profiles tablosunda kontrol et
-      final response = await SupabaseService.supabase
-          .from('user_profiles')
-          .select('id')
-          .eq('email', trimmedEmail)
-          .maybeSingle();
-      
-      // Eğer user_profiles'da bulunduysa, email alınmış demektir
-      return response != null;
-    } catch (e) {
-      debugPrint('Email kontrolü hatası: $e');
-      // Hata durumunda false döndür (kayıt denemesi yapılsın,
-      // Supabase Auth zaten kontrol edecek)
-      return false;
-    }
-  }
 }
 
