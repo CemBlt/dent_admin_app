@@ -244,7 +244,6 @@ class JsonService {
       status: dbData['status'] ?? 'completed',
       service: dbData['service_id'].toString(),
       notes: dbData['notes'] ?? '',
-      review: dbData['review'] as String?,
       createdAt: dbData['created_at'] ?? '',
     );
   }

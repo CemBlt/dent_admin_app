@@ -180,7 +180,6 @@ class CreateAppointmentController
               status: data['status']?.toString() ?? 'completed',
               service: '',
               notes: '',
-              review: null,
               createdAt: '',
             ),
           )
@@ -425,7 +424,6 @@ class CreateAppointmentController
               status: data['status']?.toString() ?? 'completed',
               service: '',
               notes: '',
-              review: null,
               createdAt: '',
             ),
           )
@@ -581,7 +579,6 @@ class CreateAppointmentController
               status: data['status']?.toString() ?? 'completed',
               service: '',
               notes: '',
-              review: null,
               createdAt: '',
             ),
           )
