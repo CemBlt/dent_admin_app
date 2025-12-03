@@ -8,11 +8,8 @@ import '../theme/app_theme.dart';
 import '../utils/validators.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
-  final VoidCallback? onRegisterSuccess;
-  
   const RegisterScreen({
     super.key,
-    this.onRegisterSuccess,
   });
 
   @override
@@ -62,11 +59,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     );
 
     if (success && mounted) {
-      if (widget.onRegisterSuccess != null) {
-        widget.onRegisterSuccess!();
-      } else {
-        Navigator.pop(context, true);
-      }
+      final email = _emailController.text.trim();
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: Text(
+            'E-postanı Doğrula',
+            style: AppTheme.headingSmall,
+          ),
+          content: Text(
+            '$email adresine bir doğrulama linki gönderdik. Lütfen posta kutunu kontrol ederek hesabını aktifleştir ve ardından giriş yap.',
+            style: AppTheme.bodyMedium,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Tamam',
+                style: AppTheme.bodyMedium.copyWith(color: AppTheme.tealBlue),
+              ),
+            ),
+          ],
+        ),
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context, email);
     }
   }
 

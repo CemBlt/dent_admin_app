@@ -43,6 +43,7 @@ class AuthService {
     String? name,
     String? surname,
     String? phone,
+    String? redirectTo,
   }) async {
     Validators.requireEmail(email);
     Validators.requirePassword(password);
@@ -53,6 +54,7 @@ class AuthService {
     final response = await SupabaseService.supabase.auth.signUp(
       email: email.trim(),
       password: password,
+      emailRedirectTo: redirectTo,
       data: {
         if (name != null) 'name': name.trim(),
         if (surname != null) 'surname': surname.trim(),

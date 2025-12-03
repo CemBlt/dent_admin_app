@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl_phone_field/phone_number.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/auth_service.dart';
 import '../utils/validators.dart';
@@ -101,6 +102,13 @@ class LoginController extends StateNotifier<LoginState> {
       return response.user != null;
     } on ValidationException catch (e) {
       showMessage(e.message);
+    } on AuthException catch (e) {
+      final message = e.message.toLowerCase();
+      if (message.contains('confirm') && message.contains('email')) {
+        showMessage('E-posta adresinizi doğrulamadan giriş yapamazsınız.');
+      } else {
+        showMessage(e.message);
+      }
     } catch (e) {
       showMessage(
         e.toString().contains('Invalid login credentials')
@@ -223,12 +231,7 @@ class RegisterController extends StateNotifier<RegisterState> {
         return false;
       }
 
-      if (!AuthService.isAuthenticated) {
-        await AuthService.signInWithEmail(
-          email: email.trim(),
-          password: password,
-        );
-      }
+      await AuthService.signOut();
 
       state = state.copyWith(isEmailUnique: null);
       showMessage('Kayıt başarılı!', success: true);

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/auth_provider.dart';
-import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_logo.dart';
 import '../utils/validators.dart';
@@ -338,44 +337,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                       TextButton(
-                        onPressed: () {
-                          // Build tamamlandıktan sonra navigasyon yap
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (mounted) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => RegisterScreen(
-                                    onRegisterSuccess: () async {
-                                      // Kayıt başarılı olduğunda
-                                      if (mounted) {
-                                        Navigator.pop(context); // RegisterScreen'i kapat
-                                        
-                                        // Kullanıcının gerçekten giriş yapıp yapmadığını kontrol et
-                                        if (AuthService.isAuthenticated) {
-                                          // Giriş yapılmışsa, callback'i çağır
-                                          if (widget.onLoginSuccess != null) {
-                                            widget.onLoginSuccess!();
-                                          } else {
-                                            // Yoksa login ekranını da kapat
-                                            Navigator.pop(context);
-                                          }
-                                        } else {
-                                          // Giriş yapılmamışsa, kullanıcıya bilgi ver
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: Text('Lütfen email adresinizi doğrulayın ve giriş yapın.'),
-                                              backgroundColor: Colors.orange,
-                                            ),
-                                          );
-                                        }
-                                      }
-                                    },
-                                  ),
-                                ),
-                              );
-                            }
-                          });
+                        onPressed: () async {
+                          final registeredEmail = await Navigator.push<String>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const RegisterScreen(),
+                            ),
+                          );
+
+                          if (!mounted || registeredEmail == null) return;
+
+                          _emailController.text = registeredEmail;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Lütfen e-posta adresini doğrulayıp ardından giriş yap.',
+                              ),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
                         },
                         child: Text(
                           'Kayıt Ol',

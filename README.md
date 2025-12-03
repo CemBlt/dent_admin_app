@@ -77,6 +77,17 @@ flutter run --flavor staging
 - Varsayılan giriş ekranı Supabase Auth olmayan mock akışa dayanır; gerçek API geçişi için `JsonService` adaptörlerini güncelle.
 - Hot reload/hot restart desteklenir.
 
+## Kullanıcı Kayıt & E-posta Doğrulaması
+
+- Supabase Dashboard → **Authentication → Providers → Email** bölümünde “Confirm email” seçeneğini açık tut.
+- (Opsiyonel) Aynı sayfada `SITE_URL` ve `EMAIL_REDIRECT_URL` alanlarını Flutter uygulamasının desteklediği deep-link’e yönlendirirsen doğrulama sonrası kullanıcı otomatik olarak mobil uygulamaya dönebilir.
+- Flutter’daki kayıt akışı:
+  1. Kullanıcı formu doldurur, Supabase `signUp` çağrısı yapılır.
+  2. Kayıt sonrası uygulama doğrulama diyalogu gösterir ve Login ekranına geri döner; kullanıcı e-postasını doğrulamadan devam edemez.
+  3. Login ekranı Supabase’ten gelen `email not confirmed` hatalarını yakalar ve kullanıcıyı bilgilendirir.
+  4. Kullanıcı e-postasını doğrulayıp giriş yaptığında, login ekranına verilen `onLoginSuccess` callback sayesinde başlangıçta gitmek istediği akış (ör: randevu oluşturma) tekrar açılır.
+- Django panel veya CLI’dan kullanıcı oluşturulacaksa aynı kurala uyulmalı; eğer servis üzerinden doğrulanmamış kullanıcı oluşturursan mobil uygulamada giriş yapamaz.
+
 ## Django Panelini Çalıştırma
 
 ```bash
